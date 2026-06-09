@@ -1,0 +1,86 @@
+{
+  "project_context": {
+    "domain": "Manufacturing Execution System (MES) Dashboard",
+    "target_audience": "Factory supervisors, directors, planners in Indonesia",
+    "style": "Professional industrial SaaS, SAP Fiori / Odoo Enterprise inspired",
+    "language": "Bahasa Indonesia"
+  },
+  "theme_and_archetype": {
+    "theme": "light",
+    "archetype": "4 (Swiss & High-Contrast)",
+    "vibe": "Industrial, objective, rigid, functional, high-density data"
+  },
+  "colors": {
+    "background": "#F4F6F8",
+    "surface": "#FFFFFF",
+    "primary": "#0A6ED1",
+    "primary_hover": "#0854A1",
+    "secondary": "#59687A",
+    "text_primary": "#1C252E",
+    "text_secondary": "#455468",
+    "border": "#DFE3E8",
+    "semantic": {
+      "success": "#107E3E",
+      "success_bg": "#E6F5EC",
+      "warning": "#E9730C",
+      "warning_bg": "#FDF3E7",
+      "error": "#B00020",
+      "error_bg": "#FBE6E9",
+      "info": "#0070F2",
+      "info_bg": "#E5F0FA"
+    }
+  },
+  "typography": {
+    "heading_font": "IBM Plex Sans, sans-serif",
+    "body_font": "Roboto, sans-serif",
+    "rules": [
+      "Do not use Inter for headings.",
+      "Use tight tracking (tracking-tight) for large numbers/KPIs.",
+      "Data tables should use text-sm for density.",
+      "Labels and table headers should be uppercase, tracking-wider, text-xs, text-secondary."
+    ]
+  },
+  "layout_and_spacing": {
+    "spacing_system": "Tight and dense, max utilization of screen real estate",
+    "grid_strategy": "Control Room Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4 or 12-col for advanced span)",
+    "sidebar": "Fixed left sidebar, collapsible, w-64 expanded, w-16 collapsed. Background white, border-r border-border.",
+    "header": "Sticky top header, h-14, solid white, border-b border-border.",
+    "card_style": "Flat background (bg-white), 1px solid border (border-border), no shadow or extremely subtle shadow-sm, rounded-md (max 6px radius)."
+  },
+  "components": {
+    "kpi_cards": "Use standard Shadcn Card. Padding p-4. Include Title (text-sm, text-secondary), Value (text-3xl, font-semibold, tracking-tight), and Trend Indicator (green/red arrow).",
+    "tables": "Dense rows (py-2), sticky header, hover state on rows (hover:bg-slate-50). Use Shadcn Table.",
+    "charts": "Use Recharts. Minimal grid lines (stroke-dasharray), use primary and secondary colors for bars/lines. Tooltips must be styled to match theme.",
+    "navigation": "Use lucide-react icons. Active state: bg-blue-50 text-primary border-r-2 border-primary.",
+    "buttons": "Shadcn standard. Primary: bg-primary text-white hover:bg-primary_hover. Outline: border-border text-text_primary hover:bg-slate-50."
+  },
+  "icons_and_assets": {
+    "icon_library": "lucide-react",
+    "image_urls": {
+      "factory_background": {
+        "url": "https://images.unsplash.com/photo-1666219462105-2909c2d72d01?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwcmVjYXN0JTIwY29uY3JldGUlMjBmYWN0b3J5fGVufDB8fHx8MTc4MDk2ODA2NHww&ixlib=rb-4.1.0&q=85",
+        "description": "Precast concrete factory building. Use for login background or empty state."
+      },
+      "product_box_culvert": {
+        "url": "https://images.pexels.com/photos/18928152/pexels-photo-18928152.jpeg",
+        "description": "Concrete tunnel/culvert. Use as thumbnail for Box Culvert product."
+      },
+      "user_avatar": {
+        "url": "https://images.unsplash.com/photo-1603696774905-83ae340e2cae?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwyfHxhc2lhbiUyMGNvbnN0cnVjdGlvbiUyMHdvcmtlciUyMHBvcnRyYWl0fGVufDB8fHx8MTc4MDk2ODA2NHww&ixlib=rb-4.1.0&q=85",
+        "description": "Asian construction worker in yellow hard hat. Use for user profile avatar."
+      }
+    }
+  },
+  "testing": {
+    "attributes": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='sidebar-nav-dashboard')."
+  },
+  "instructions_to_main_agent": [
+    "Create ALL components in .js files, not .tsx.",
+    "Implement a fully responsive sidebar (collapsible on desktop, drawer on mobile).",
+    "Use dummy data in Bahasa Indonesia (e.g., 'Target Produksi Hari Ini', 'Pipa Beton Bertulang', 'Stok Produk Jadi').",
+    "Avoid any purple or teal colors. Strictly adhere to the industrial blue/gray/white palette.",
+    "Use Shadcn UI components but customize their borders and shadows to be flatter, mimicking SAP Fiori.",
+    "Build at least the Dashboard view with KPI cards and Recharts (Production Trend, Monthly Production).",
+    "Ensure high data density: text-sm for tables and secondary information."
+  ]
+}
