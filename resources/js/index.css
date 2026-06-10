@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+}
+
+body {
+    margin: 0;
+    font-family: 'Roboto', 'IBM Plex Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #F4F6F8;
+    color: #1C252E;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'IBM Plex Sans', sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.font-mono-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+@layer base {
+    :root {
+        --background: 210 20% 97%;
+        --foreground: 213 28% 14%;
+        --card: 0 0% 100%;
+        --card-foreground: 213 28% 14%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 213 28% 14%;
+        --primary: 209 92% 43%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 213 14% 41%;
+        --secondary-foreground: 0 0% 100%;
+        --muted: 210 17% 95%;
+        --muted-foreground: 213 19% 34%;
+        --accent: 210 100% 96%;
+        --accent-foreground: 209 92% 43%;
+        --destructive: 350 100% 35%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 210 14% 89%;
+        --input: 210 14% 89%;
+        --ring: 209 92% 43%;
+        --chart-1: 209 92% 43%;
+        --chart-2: 199 95% 60%;
+        --chart-3: 213 14% 41%;
+        --chart-4: 145 70% 35%;
+        --chart-5: 25 85% 48%;
+        --radius: 0.375rem;
+
+        --mes-bg: #F4F6F8;
+        --mes-surface: #FFFFFF;
+        --mes-primary: #0A6ED1;
+        --mes-primary-hover: #0854A1;
+        --mes-secondary: #59687A;
+        --mes-text: #1C252E;
+        --mes-text-secondary: #455468;
+        --mes-border: #DFE3E8;
+        --mes-success: #107E3E;
+        --mes-success-bg: #E6F5EC;
+        --mes-warning: #E9730C;
+        --mes-warning-bg: #FDF3E7;
+        --mes-error: #B00020;
+        --mes-error-bg: #FBE6E9;
+        --mes-info: #0070F2;
+        --mes-info-bg: #E5F0FA;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* SAP Fiori-style tile interactions */
+.mes-tile {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.mes-tile:hover {
+    border-color: #0A6ED1;
+    box-shadow: 0 1px 3px rgba(10, 110, 209, 0.08);
+}
+
+/* dense tables */
+.mes-table th {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #455468;
+    background: #F4F6F8;
+    border-bottom: 1px solid #DFE3E8;
+}
+.mes-table td {
+    font-size: 0.8125rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #EEF0F2;
+}
+.mes-table tr:hover td {
+    background-color: #F8FAFC;
+}
+
+/* sidebar nav active */
+.nav-active {
+    background-color: #E5F0FA;
+    color: #0A6ED1;
+    border-right: 2px solid #0A6ED1;
+}
+
+/* scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #CBD2D9;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #9AA5B1;
+}
+
+/* recharts custom tooltip */
+.recharts-default-tooltip {
+    background: #FFFFFF !important;
+    border: 1px solid #DFE3E8 !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+    font-size: 12px !important;
+}
+
+@layer base {
+    [data-debug-wrapper="true"] {
+        display: contents !important;
+    }
+}
