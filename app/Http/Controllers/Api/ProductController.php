@@ -3,47 +3,81 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        //
+        $query = Product::query()->whereNull('deleted_at');
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('kode', 'ilike', "%{$request->search}%")
+                  ->orWhere('nama', 'ilike', "%{$request->search}%");
+            });
+        }
+        if ($request->boolean('active_only')) {
+            $query->where('aktif', true);
+        }
+        if ($request->filled('kategori')) {
+            $query->where('kategori', $request->kategori);
+        }
+
+        $data = $query->orderBy('kode')->paginate($request->get('per_page', 20));
+
+        return response()->json($data);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $validated = $request->validate([
+            'kode'     => 'required|string|max:30|unique:production_products,kode',
+            'nama'     => 'required|string|max:200',
+            'kategori' => 'nullable|string|max:50',
+            'varian'   => 'nullable|string|max:50',
+            'spek'     => 'nullable|string|max:100',
+            'grade'    => 'nullable|string|max:20',
+            'berat'    => 'nullable|numeric|min:0',
+            'harga'    => 'nullable|integer|min:0',
+            'satuan'   => 'nullable|string|max:20',
+            'standar'  => 'nullable|string|max:50',
+            'aktif'    => 'boolean',
+        ]);
+
+        $product = Product::create($validated);
+        return response()->json($product, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function show(Product $product): JsonResponse
     {
-        //
+        return response()->json($product->load(['bomHeaders.items.material']));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Product $product): JsonResponse
     {
-        //
+        $validated = $request->validate([
+            'nama'     => 'sometimes|string|max:200',
+            'kategori' => 'nullable|string|max:50',
+            'varian'   => 'nullable|string|max:50',
+            'spek'     => 'nullable|string|max:100',
+            'grade'    => 'nullable|string|max:20',
+            'berat'    => 'nullable|numeric|min:0',
+            'harga'    => 'nullable|integer|min:0',
+            'satuan'   => 'nullable|string|max:20',
+            'standar'  => 'nullable|string|max:50',
+            'aktif'    => 'boolean',
+        ]);
+
+        $product->update($validated);
+        return response()->json($product->fresh());
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy(Product $product): JsonResponse
     {
-        //
+        $product->delete();
+        return response()->json(['message' => 'Deleted successfully']);
     }
 }

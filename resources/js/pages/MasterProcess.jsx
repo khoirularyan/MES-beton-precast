@@ -116,8 +116,8 @@ const ProcessForm = ({ open, onOpenChange, initial, onSave }) => {
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (o && initial) setForm(initial); else if (o) setForm({ nama: "", icon: "Wrench", warna: "#0A6ED1", deskripsi: "", durasi: 30, aktif: true }); }}>
       <DialogContent className="max-w-lg" data-testid="process-form-dialog">
         <DialogHeader>
-          <DialogTitle className="text-base">{isEdit ? "Edit Tahap Proses" : "Tambah Tahap Proses"}</DialogTitle>
-          <DialogDescription className="text-xs">Definisikan tahap proses produksi yang dapat dipakai di seluruh aplikasi.</DialogDescription>
+          <DialogTitle className="text-base">{isEdit ? "Edit Process Stage" : "Add Process Stage"}</DialogTitle>
+          <DialogDescription className="text-xs">Define production process stages usable across the application.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3 py-2">
           <div className="col-span-2">
@@ -173,13 +173,13 @@ const ProcessForm = ({ open, onOpenChange, initial, onSave }) => {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Batal</Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             data-testid="process-form-save"
             size="sm" className="bg-[#0A6ED1] hover:bg-[#0854A1]"
-            onClick={() => { if (!form.nama) { toast.error("Nama wajib diisi"); return; } onSave(form); }}
+            onClick={() => { if (!form.nama) { toast.error("Name is required"); return; } onSave(form); }}
           >
-            {isEdit ? "Simpan Perubahan" : "Tambah Tahap"}
+            {isEdit ? "Save Changes" : "Add Stage"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -219,7 +219,7 @@ const MasterProcess = () => {
     } else {
       const id = `P${String(processes.length + 1).padStart(2, "0")}`;
       setProcesses((prev) => resequence([...prev, { id, ...form }]));
-      toast.success("Tahap baru ditambahkan");
+      toast.success("New stage added");
     }
     setFormOpen(false);
     setEditing(null);
@@ -239,7 +239,7 @@ const MasterProcess = () => {
           <Dialog open={formOpen} onOpenChange={(o) => { setFormOpen(o); if (!o) setEditing(null); }}>
             <DialogTrigger asChild>
               <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" data-testid="add-process-btn">
-                <Plus className="w-3.5 h-3.5" /> Tambah Tahap
+                <Plus className="w-3.5 h-3.5" /> Add Stage
               </Button>
             </DialogTrigger>
             <ProcessForm
@@ -320,8 +320,8 @@ const MasterProcess = () => {
         <div className="bg-white border border-[#DFE3E8] rounded-md p-5">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Daftar Tahap</div>
-              <div className="text-base font-display font-semibold text-[#1C252E]">Builder — Urutkan, Edit, atau Tambah</div>
+              <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Stage List</div>
+              <div className="text-base font-display font-semibold text-[#1C252E]">Builder — Sort, Edit, or Add</div>
             </div>
           </div>
           <div className="space-y-2" data-testid="process-list">

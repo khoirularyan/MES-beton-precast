@@ -62,7 +62,7 @@ export const DetailDialog = ({ trigger, title, subtitle, sections = [], status, 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" data-testid={`${testId}-close`}>Tutup</Button>
+          <Button variant="outline" size="sm" data-testid={`${testId}-close`}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

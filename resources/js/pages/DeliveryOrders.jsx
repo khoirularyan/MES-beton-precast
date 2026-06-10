@@ -64,17 +64,17 @@ const DeliveryOrders = () => {
   return (
     <div>
       <PageHeader
-        title="Pengiriman"
-        subtitle="Manajemen delivery order dan pengiriman produk ke customer"
-        breadcrumbs={["Beranda", "Pengiriman"]}
+        title="Delivery"
+        subtitle="Delivery order management and product shipment to customers"
+        breadcrumbs={["Home", "Delivery"]}
         testId="delivery-page-header"
         actions={
           <FormDialog
             testId="do-create"
-            title="Delivery Order Baru"
-            description="Buat surat jalan pengiriman ke customer"
-            submitLabel="Buat DO"
-            successMessage="Delivery Order berhasil dibuat"
+            title="New Delivery Order"
+            description="Create delivery note to customer"
+            submitLabel="Create DO"
+            successMessage="Delivery Order created successfully"
             fields={[
               { name: "so", label: "Sales Order", type: "select", required: true, options: [
                 { value: "SO-2026-0095", label: "SO-2026-0095 — PT Adhi Karya" },
@@ -82,12 +82,12 @@ const DeliveryOrders = () => {
                 { value: "SO-2026-0097", label: "SO-2026-0097 — PT Hutama Karya" },
               ]},
               { name: "customer", label: "Customer", type: "select", required: true, options: customers.map(c => ({ value: c.kode, label: c.nama })) },
-              { name: "muatan", label: "Muatan", type: "text", span: 2, placeholder: "Mis. 80 U-Ditch 500 + 160 Cover" },
-              { name: "truk", label: "Nomor Polisi Truk", type: "text", placeholder: "Mis. B-9012-AB" },
-              { name: "driver", label: "Driver", type: "text", placeholder: "Nama driver" },
-              { name: "tglKirim", label: "Tanggal Kirim", type: "date", required: true },
-              { name: "tujuan", label: "Tujuan", type: "text" },
-              { name: "catatan", label: "Catatan Pengiriman", type: "textarea", span: 2 },
+              { name: "muatan", label: "Load", type: "text", span: 2, placeholder: "e.g. 80 U-Ditch 500 + 160 Cover" },
+              { name: "truk", label: "Truck Plate Number", type: "text", placeholder: "e.g. B-9012-AB" },
+              { name: "driver", label: "Driver", type: "text", placeholder: "Driver name" },
+              { name: "tglKirim", label: "Delivery Date", type: "date", required: true },
+              { name: "tujuan", label: "Destination", type: "text" },
+              { name: "catatan", label: "Delivery Notes", type: "textarea", span: 2 },
             ]}
             trigger={<Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]"><Plus className="w-3.5 h-3.5" />DO Baru</Button>}
           />
@@ -95,10 +95,10 @@ const DeliveryOrders = () => {
       />
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KPICard testId="do-kpi-active" label="Pengiriman Aktif" value="2" unit="DO" icon={Truck} accent="warning" />
-          <KPICard testId="do-kpi-route" label="Dalam Perjalanan" value="1" unit="DO" icon={MapPin} accent="default" />
-          <KPICard testId="do-kpi-ready" label="Siap Berangkat" value="1" unit="DO" icon={Clock} accent="default" />
-          <KPICard testId="do-kpi-done" label="Selesai Minggu Ini" value="12" unit="DO" icon={CheckCircle2} accent="success" trend="up" trendValue="+25%" />
+          <KPICard testId="do-kpi-active" label="Active Deliveries" value="2" unit="DO" icon={Truck} accent="warning" />
+          <KPICard testId="do-kpi-route" label="In Transit" value="1" unit="DO" icon={MapPin} accent="default" />
+          <KPICard testId="do-kpi-ready" label="Ready to Depart" value="1" unit="DO" icon={Clock} accent="default" />
+          <KPICard testId="do-kpi-done" label="Completed This Week" value="12" unit="DO" icon={CheckCircle2} accent="success" trend="up" trendValue="+25%" />
         </div>
 
         {/* Active fleet snapshot */}
@@ -143,19 +143,19 @@ const DeliveryOrders = () => {
 
         <div className="bg-white border border-[#DFE3E8] rounded-md overflow-hidden">
           <div className="px-4 py-3 border-b border-[#DFE3E8]">
-            <div className="text-base font-semibold text-[#1C252E] font-display">Daftar Delivery Order</div>
+            <div className="text-base font-semibold text-[#1C252E] font-display">Delivery Order List</div>
           </div>
           <table className="w-full mes-table">
             <thead>
               <tr>
-                <th className="px-4 py-2 text-left">No. DO</th>
-                <th className="px-4 py-2 text-left">SO Terkait</th>
+                <th className="px-4 py-2 text-left">DO No.</th>
+                <th className="px-4 py-2 text-left">Related SO</th>
                 <th className="px-4 py-2 text-left">Customer</th>
-                <th className="px-4 py-2 text-left">Muatan</th>
-                <th className="px-4 py-2 text-left">Truk</th>
+                <th className="px-4 py-2 text-left">Load</th>
+                <th className="px-4 py-2 text-left">Truck</th>
                 <th className="px-4 py-2 text-left">Driver</th>
-                <th className="px-4 py-2 text-left w-48">Linimasa</th>
-                <th className="px-4 py-2 text-left">Tgl Kirim</th>
+                <th className="px-4 py-2 text-left w-48">Timeline</th>
+                <th className="px-4 py-2 text-left">Delivery Date</th>
                 <th className="px-4 py-2 text-left">Status</th>
               </tr>
             </thead>

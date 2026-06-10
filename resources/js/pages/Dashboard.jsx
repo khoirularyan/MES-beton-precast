@@ -39,17 +39,17 @@ const Dashboard = () => {
   return (
     <div>
       <PageHeader
-        title="Dashboard Produksi"
-        subtitle="Ringkasan kinerja pabrik Precast Concrete hari ini"
-        breadcrumbs={["Beranda", "Dashboard"]}
+        title="Production Dashboard"
+        subtitle="Performance summary of Precast Concrete plant today"
+        breadcrumbs={["Home", "Dashboard"]}
         testId="dashboard-page-header"
         actions={
           <>
             <Button data-testid="btn-refresh" variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={showRefreshToast}>
-              <RefreshCw className="w-3.5 h-3.5" /> Perbarui
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh
             </Button>
-            <Button data-testid="btn-export" size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" onClick={() => showExportToast("laporan dashboard")}>
-              <Download className="w-3.5 h-3.5" /> Ekspor Laporan
+            <Button data-testid="btn-export" size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" onClick={() => showExportToast("dashboard report")}>
+              <Download className="w-3.5 h-3.5" /> Export Report
             </Button>
           </>
         }
@@ -61,19 +61,19 @@ const Dashboard = () => {
 
         {/* KPI Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <KPICard testId="kpi-target" label="Target Produksi" value={todayKPIs.targetProduksi} unit="unit" icon={Target} accent="neutral" info={kpiDefinitions["kpi-target"].deskripsi} onClick={() => openKPI("kpi-target", "neutral", `${todayKPIs.targetProduksi} unit`)} />
-          <KPICard testId="kpi-realisasi" label="Realisasi Hari Ini" value={todayKPIs.realisasiProduksi} unit="unit" icon={TrendingUp} accent="default" trend="down" trendValue="-3.5%" info={kpiDefinitions["kpi-realisasi"].deskripsi} onClick={() => openKPI("kpi-realisasi", "default", `${todayKPIs.realisasiProduksi} unit`, "-3.5% vs kemarin")} />
-          <KPICard testId="kpi-achievement" label="Pencapaian" value={`${todayKPIs.achievement.toFixed(1)}%`} icon={Activity} accent={todayKPIs.achievement >= 90 ? "success" : "warning"} trend="down" trendValue="-2.1%" info={kpiDefinitions["kpi-achievement"].deskripsi} onClick={() => openKPI("kpi-achievement", todayKPIs.achievement >= 90 ? "success" : "warning", `${todayKPIs.achievement.toFixed(1)}%`, "-2.1% vs kemarin")} />
-          <KPICard testId="kpi-curing" label="Dalam Curing" value={todayKPIs.dalamCuring} unit="unit" icon={Thermometer} accent="warning" trend="up" trendValue="+12" info={kpiDefinitions["kpi-curing"].deskripsi} onClick={() => openKPI("kpi-curing", "warning", `${todayKPIs.dalamCuring} unit`, "+12 vs kemarin")} />
-          <KPICard testId="kpi-qc" label="Siap QC" value={todayKPIs.siapQC} unit="unit" icon={ShieldCheck} accent="default" trend="up" trendValue="+8" info={kpiDefinitions["kpi-qc"].deskripsi} onClick={() => openKPI("kpi-qc", "default", `${todayKPIs.siapQC} unit`, "+8 vs kemarin")} />
-          <KPICard testId="kpi-reject" label="Reject Rate" value={`${todayKPIs.rejectRate}%`} icon={AlertTriangle} accent="error" trend="up" trendValue="+0.4%" info={kpiDefinitions["kpi-reject"].deskripsi} onClick={() => openKPI("kpi-reject", "error", `${todayKPIs.rejectRate}%`, "+0.4% vs kemarin")} />
+          <KPICard testId="kpi-target" label="Production Target" value={todayKPIs.targetProduksi} unit="unit" icon={Target} accent="neutral" info={kpiDefinitions["kpi-target"].deskripsi} onClick={() => openKPI("kpi-target", "neutral", `${todayKPIs.targetProduksi} unit`)} />
+          <KPICard testId="kpi-realisasi" label="Actual Today" value={todayKPIs.realisasiProduksi} unit="unit" icon={TrendingUp} accent="default" trend="down" trendValue="-3.5%" info={kpiDefinitions["kpi-realisasi"].deskripsi} onClick={() => openKPI("kpi-realisasi", "default", `${todayKPIs.realisasiProduksi} unit`, "-3.5% vs yesterday")} />
+          <KPICard testId="kpi-achievement" label="Achievement" value={`${todayKPIs.achievement.toFixed(1)}%`} icon={Activity} accent={todayKPIs.achievement >= 90 ? "success" : "warning"} trend="down" trendValue="-2.1%" info={kpiDefinitions["kpi-achievement"].deskripsi} onClick={() => openKPI("kpi-achievement", todayKPIs.achievement >= 90 ? "success" : "warning", `${todayKPIs.achievement.toFixed(1)}%`, "-2.1% vs yesterday")} />
+          <KPICard testId="kpi-curing" label="In Curing" value={todayKPIs.dalamCuring} unit="unit" icon={Thermometer} accent="warning" trend="up" trendValue="+12" info={kpiDefinitions["kpi-curing"].deskripsi} onClick={() => openKPI("kpi-curing", "warning", `${todayKPIs.dalamCuring} unit`, "+12 vs yesterday")} />
+          <KPICard testId="kpi-qc" label="Ready for QC" value={todayKPIs.siapQC} unit="unit" icon={ShieldCheck} accent="default" trend="up" trendValue="+8" info={kpiDefinitions["kpi-qc"].deskripsi} onClick={() => openKPI("kpi-qc", "default", `${todayKPIs.siapQC} unit`, "+8 vs yesterday")} />
+          <KPICard testId="kpi-reject" label="Reject Rate" value={`${todayKPIs.rejectRate}%`} icon={AlertTriangle} accent="error" trend="up" trendValue="+0.4%" info={kpiDefinitions["kpi-reject"].deskripsi} onClick={() => openKPI("kpi-reject", "error", `${todayKPIs.rejectRate}%`, "+0.4% vs yesterday")} />
 
-          <KPICard testId="kpi-stok" label="Stok Produk Jadi" value={formatNumber(todayKPIs.stokProdukJadi)} unit="unit" icon={Package} accent="success" trend="up" trendValue="+124" info={kpiDefinitions["kpi-stok"].deskripsi} onClick={() => openKPI("kpi-stok", "success", `${formatNumber(todayKPIs.stokProdukJadi)} unit`, "+124 vs kemarin")} />
-          <KPICard testId="kpi-material" label="Pemakaian Material" value={todayKPIs.pemakaianMaterial} unit="ton" icon={Boxes} accent="default" trend="up" trendValue="+5.2%" info={kpiDefinitions["kpi-material"].deskripsi} onClick={() => openKPI("kpi-material", "default", `${todayKPIs.pemakaianMaterial} ton`, "+5.2% vs kemarin")} />
-          <KPICard testId="kpi-mold" label="Utilisasi Cetakan" value={`${todayKPIs.utilisasiCetakan}%`} icon={Hammer} accent={todayKPIs.utilisasiCetakan >= 80 ? "success" : "warning"} trend="up" trendValue="+3%" info={kpiDefinitions["kpi-mold"].deskripsi} onClick={() => openKPI("kpi-mold", todayKPIs.utilisasiCetakan >= 80 ? "success" : "warning", `${todayKPIs.utilisasiCetakan}%`, "+3% vs kemarin")} />
-          <KPICard testId="kpi-wip" label="Work In Progress" value={todayKPIs.worKInProgress} unit="unit" icon={Activity} accent="neutral" trend="up" trendValue="+18" info={kpiDefinitions["kpi-wip"].deskripsi} onClick={() => openKPI("kpi-wip", "neutral", `${todayKPIs.worKInProgress} unit`, "+18 vs kemarin")} />
-          <KPICard testId="kpi-efisiensi" label="Efisiensi Produksi" value={`${todayKPIs.efisiensiProduksi}%`} icon={TrendingUp} accent="success" trend="up" trendValue="+1.2%" info={kpiDefinitions["kpi-efisiensi"].deskripsi} onClick={() => openKPI("kpi-efisiensi", "success", `${todayKPIs.efisiensiProduksi}%`, "+1.2% vs kemarin")} />
-          <KPICard testId="kpi-jadi-hari" label="Produk Jadi Hari Ini" value={todayKPIs.realisasiProduksi - todayKPIs.reject} unit="unit" icon={ShieldCheck} accent="success" trend="down" trendValue="-2%" info={kpiDefinitions["kpi-jadi-hari"].deskripsi} onClick={() => openKPI("kpi-jadi-hari", "success", `${todayKPIs.realisasiProduksi - todayKPIs.reject} unit`, "-2% vs kemarin")} />
+          <KPICard testId="kpi-stok" label="Finished Goods Stock" value={formatNumber(todayKPIs.stokProdukJadi)} unit="unit" icon={Package} accent="success" trend="up" trendValue="+124" info={kpiDefinitions["kpi-stok"].deskripsi} onClick={() => openKPI("kpi-stok", "success", `${formatNumber(todayKPIs.stokProdukJadi)} unit`, "+124 vs yesterday")} />
+          <KPICard testId="kpi-material" label="Material Consumption" value={todayKPIs.pemakaianMaterial} unit="ton" icon={Boxes} accent="default" trend="up" trendValue="+5.2%" info={kpiDefinitions["kpi-material"].deskripsi} onClick={() => openKPI("kpi-material", "default", `${todayKPIs.pemakaianMaterial} ton`, "+5.2% vs yesterday")} />
+          <KPICard testId="kpi-mold" label="Mold Utilization" value={`${todayKPIs.utilisasiCetakan}%`} icon={Hammer} accent={todayKPIs.utilisasiCetakan >= 80 ? "success" : "warning"} trend="up" trendValue="+3%" info={kpiDefinitions["kpi-mold"].deskripsi} onClick={() => openKPI("kpi-mold", todayKPIs.utilisasiCetakan >= 80 ? "success" : "warning", `${todayKPIs.utilisasiCetakan}%`, "+3% vs yesterday")} />
+          <KPICard testId="kpi-wip" label="Work In Progress" value={todayKPIs.worKInProgress} unit="unit" icon={Activity} accent="neutral" trend="up" trendValue="+18" info={kpiDefinitions["kpi-wip"].deskripsi} onClick={() => openKPI("kpi-wip", "neutral", `${todayKPIs.worKInProgress} unit`, "+18 vs yesterday")} />
+          <KPICard testId="kpi-efisiensi" label="Production Efficiency" value={`${todayKPIs.efisiensiProduksi}%`} icon={TrendingUp} accent="success" trend="up" trendValue="+1.2%" info={kpiDefinitions["kpi-efisiensi"].deskripsi} onClick={() => openKPI("kpi-efisiensi", "success", `${todayKPIs.efisiensiProduksi}%`, "+1.2% vs yesterday")} />
+          <KPICard testId="kpi-jadi-hari" label="Finished Products Today" value={todayKPIs.realisasiProduksi - todayKPIs.reject} unit="unit" icon={ShieldCheck} accent="success" trend="down" trendValue="-2%" info={kpiDefinitions["kpi-jadi-hari"].deskripsi} onClick={() => openKPI("kpi-jadi-hari", "success", `${todayKPIs.realisasiProduksi - todayKPIs.reject} unit`, "-2% vs yesterday")} />
         </div>
 
         <KPIDrilldownDialog
@@ -91,12 +91,12 @@ const Dashboard = () => {
           <div className="lg:col-span-2 bg-white border border-[#DFE3E8] rounded-md p-4">
             <div className="flex items-end justify-between mb-4">
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Tren Produksi</div>
-                <div className="text-base font-semibold text-[#1C252E] font-display">14 Hari Terakhir</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Production Trend</div>
+                <div className="text-base font-semibold text-[#1C252E] font-display">Last 14 Days</div>
               </div>
               <div className="flex items-center gap-3 text-[11px] text-[#59687A]">
                 <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#59687A]" /> Target</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#0A6ED1]" /> Realisasi</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#0A6ED1]" /> Actual</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#B00020]" /> Reject</span>
               </div>
             </div>
@@ -122,8 +122,8 @@ const Dashboard = () => {
           {/* Monthly bar */}
           <div className="bg-white border border-[#DFE3E8] rounded-md p-4">
             <div className="mb-4">
-              <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Produksi Bulanan</div>
-              <div className="text-base font-semibold text-[#1C252E] font-display">6 Bulan Terakhir</div>
+              <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Monthly Production</div>
+              <div className="text-base font-semibold text-[#1C252E] font-display">Last 6 Months</div>
             </div>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={monthlyProduction} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
@@ -143,10 +143,10 @@ const Dashboard = () => {
           <div className="bg-white border border-[#DFE3E8] rounded-md p-4">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Top Produk</div>
-                <div className="text-base font-semibold text-[#1C252E] font-display">Bulan Ini</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Top Products</div>
+                <div className="text-base font-semibold text-[#1C252E] font-display">This Month</div>
               </div>
-              <Button variant="link" size="sm" className="text-xs text-[#0A6ED1] h-auto p-0" onClick={() => toast.info("Membuka daftar lengkap top produk...")}>Lihat semua →</Button>
+              <Button variant="link" size="sm" className="text-xs text-[#0A6ED1] h-auto p-0" onClick={() => toast.info("Opening full top products list...")}>View all →</Button>
             </div>
             <div className="space-y-3">
               {topProducts.map((p, i) => (
@@ -173,10 +173,10 @@ const Dashboard = () => {
           <div className="lg:col-span-2 bg-white border border-[#DFE3E8] rounded-md p-4">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Aktivitas Produksi</div>
-                <div className="text-base font-semibold text-[#1C252E] font-display">Timeline Hari Ini</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Production Activity</div>
+                <div className="text-base font-semibold text-[#1C252E] font-display">Today's Timeline</div>
               </div>
-              <Button variant="link" size="sm" className="text-xs text-[#0A6ED1] h-auto p-0" onClick={() => toast.info("Membuka log aktivitas lengkap...")}>Log lengkap →</Button>
+              <Button variant="link" size="sm" className="text-xs text-[#0A6ED1] h-auto p-0" onClick={() => toast.info("Opening full activity log...")}>Full log →</Button>
             </div>
             <div className="space-y-0 -mx-4">
               {recentActivities.map((a, i) => {

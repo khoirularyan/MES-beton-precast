@@ -27,8 +27,8 @@ export const FormDialog = ({
   title,
   description,
   fields = [],
-  submitLabel = "Simpan",
-  successMessage = "Data berhasil disimpan",
+  submitLabel = "Save",
+  successMessage = "Data saved successfully",
   testId = "form-dialog",
 }) => {
   const [open, setOpen] = useState(false);
@@ -39,7 +39,7 @@ export const FormDialog = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     toast.success(successMessage, {
-      description: `Data tersimpan pada ${new Date().toLocaleString("id-ID")}`,
+      description: `Data saved on ${new Date().toLocaleString("en-US")}`,
     });
     setOpen(false);
     setValues({});
@@ -128,7 +128,7 @@ export const FormDialog = ({
               onClick={() => setOpen(false)}
               data-testid={`${testId}-cancel`}
             >
-              Batal
+              Cancel
             </Button>
             <Button
               type="submit"

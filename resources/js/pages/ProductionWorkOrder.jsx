@@ -131,7 +131,7 @@ const ProductionWorkOrder = () => {
     <div>
       <PageHeader
         title="Production Execution"
-        subtitle="Manage and track concrete precast manufacturing cycles."
+        subtitle="Manage and track concrete precast manufacturing cycles"
         breadcrumbs={["Home", "Production", "Production Execution"]}
         testId="work-order-page-header"
         actions={

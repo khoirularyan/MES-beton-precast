@@ -47,7 +47,7 @@ const ChangeLogDialog = ({ open, onOpenChange, versions }) => (
         ))}
       </div>
       <DialogFooter className="px-5 py-3 bg-[#F8FAFC] border-t border-[#EEF0F2]">
-        <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Tutup</Button>
+        <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
@@ -114,7 +114,7 @@ const AddMaterialDialog = ({ open, onOpenChange, onAdd }) => {
           </div>
         </div>
         <DialogFooter className="px-5 py-3 bg-[#F8FAFC] border-t border-[#EEF0F2]">
-          <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
+          <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button size="sm" className="bg-[#0A6ED1] hover:bg-[#0854A1]" onClick={handleAdd} data-testid="confirm-add-material">
             Add Material
           </Button>
@@ -272,7 +272,7 @@ const MasterBOM = () => {
                 variant="outline"
                 size="sm"
                 className="h-8 text-xs gap-1.5 border-[#DFE3E8]"
-                onClick={() => toast.info("Mengekspor BOM...")}
+                onClick={() => toast.info("Exporting BOM...")}
                 data-testid="btn-export-bom"
               >
                 <Download className="w-3.5 h-3.5" /> Export

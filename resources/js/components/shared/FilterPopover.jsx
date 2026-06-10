@@ -79,9 +79,9 @@ export const FilterPopover = ({ selects = [], testId = "filter-popover" }) => {
 export const showExportToast = (label = "laporan") => {
   const id = toast.loading(`Menyiapkan ${label}...`);
   setTimeout(() => {
-    toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} berhasil diunduh`, {
+    toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} successfully downloaded`, {
       id,
-      description: `File ${label.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0,10)}.xlsx telah disimpan`,
+      description: `File ${label.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0,10)}.xlsx has been saved`,
     });
   }, 1200);
 };

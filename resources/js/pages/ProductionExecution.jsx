@@ -32,10 +32,10 @@ const StageEditBody = ({ order, onSave, onCancel }) => {
     <>
       <div className="px-6 py-4 bg-gradient-to-r from-[#0A6ED1] to-[#0854A1] text-white">
         <DialogHeader>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-white/75 font-semibold">Edit Tahap Produksi</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-white/75 font-semibold">Edit Production Stage</div>
           <DialogTitle className="text-base font-display text-white">{order.no}</DialogTitle>
           <DialogDescription className="text-xs text-white/85">
-            {order.produk} · {order.qty} unit · Batch {order.line}
+            {order.produk} · {order.qty} units · Batch {order.line}
           </DialogDescription>
         </DialogHeader>
       </div>
@@ -43,17 +43,17 @@ const StageEditBody = ({ order, onSave, onCancel }) => {
       <div className="p-6 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded p-3">
-            <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Tahap Saat Ini</div>
+            <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Current Stage</div>
             <div className="mt-1.5"><StatusBadge status={order.status} /></div>
           </div>
           <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded p-3">
-            <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Progress Sekarang</div>
+            <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Current Progress</div>
             <div className="text-xl font-semibold font-mono-num text-[#1C252E] mt-1">{order.progress}%</div>
           </div>
         </div>
 
         <div>
-          <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Pilih Tahap Baru</label>
+          <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Select New Stage</label>
           <div className="grid grid-cols-2 gap-2 mt-2" data-testid="stage-picker">
             {stageOptions.map((s) => {
               const selected = newStage === s.status;
@@ -96,12 +96,12 @@ const StageEditBody = ({ order, onSave, onCancel }) => {
         </div>
 
         <div>
-          <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Catatan Operator (opsional)</label>
+          <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Operator Notes (optional)</label>
           <input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Mis. Selesai casting, masuk chamber B"
+            placeholder="e.g. Casting completed, moving to chamber B"
             data-testid="stage-note-input"
             className="w-full mt-1 h-9 px-2.5 text-sm border border-[#DFE3E8] rounded focus:outline-none focus:ring-2 focus:ring-[#0A6ED1]/30 focus:border-[#0A6ED1]"
           />
@@ -109,18 +109,18 @@ const StageEditBody = ({ order, onSave, onCancel }) => {
 
         <div className="text-[10px] text-[#59687A] flex items-center gap-1.5 border-t border-[#EEF0F2] pt-2">
           <Clock className="w-3 h-3" />
-          Tahap dapat dikonfigurasi lewat <a href="/master-process" className="text-[#0A6ED1] hover:underline">Master Proses</a> ({processDefinitions.filter((p) => p.aktif).length} tahap aktif)
+          Stages can be configured via <a href="/master-process" className="text-[#0A6ED1] hover:underline">Master Process</a> ({processDefinitions.filter((p) => p.aktif).length} active stages)
         </div>
       </div>
 
       <DialogFooter className="px-6 py-3 bg-[#F8FAFC] border-t border-[#EEF0F2]">
-        <Button variant="outline" size="sm" onClick={onCancel} data-testid="stage-edit-cancel">Batal</Button>
+        <Button variant="outline" size="sm" onClick={onCancel} data-testid="stage-edit-cancel">Cancel</Button>
         <Button
           size="sm" className="bg-[#0A6ED1] hover:bg-[#0854A1]"
           data-testid="stage-edit-save"
           onClick={() => onSave({ status: newStage, progress, note })}
         >
-          Simpan Perubahan
+          Save Changes
         </Button>
       </DialogFooter>
     </>
@@ -146,7 +146,7 @@ const ProductionExecution = () => {
   const [orders, setOrders] = useState(productionOrders);
   const [editOrder, setEditOrder] = useState(null);
   const [execQtyMap, setExecQtyMap] = useState({});
-  const active = orders.filter((o) => o.status !== "Selesai" && o.status !== "Direncanakan");
+  const active = orders.filter((o) => o.status !== "Completed" && o.status !== "Planned");
 
   const handleStartExecution = (orderNo) => {
     const qty = Number(execQtyMap[orderNo] || 0);
@@ -155,11 +155,11 @@ const ProductionExecution = () => {
     const executed = Number(ord.executed || 0);
     const remaining = ord.qty - executed;
     if (!qty || qty <= 0) {
-      toast.error("Masukkan jumlah eksekusi yang valid (>=1)");
+      toast.error("Please enter a valid execution quantity (>=1)");
       return;
     }
     if (qty > remaining) {
-      toast.error(`Maksimum sisa untuk dieksekusi: ${remaining}`);
+      toast.error(`Maximum remaining quantity for execution: ${remaining}`);
       return;
     }
 
@@ -167,12 +167,12 @@ const ProductionExecution = () => {
       if (o.no !== orderNo) return o;
       const newExecuted = (Number(o.executed || 0) + qty);
       const newProgress = Math.min(100, Math.round((newExecuted / o.qty) * 100));
-      const newStatus = newProgress >= 100 ? "Selesai" : "Production";
+      const newStatus = newProgress >= 100 ? "Completed" : "Production";
       return { ...o, executed: newExecuted, progress: newProgress, status: newStatus };
     }));
 
     setExecQtyMap((m) => ({ ...m, [orderNo]: "" }));
-    toast.success(`Mulai eksekusi ${qty} unit untuk ${orderNo}`);
+    toast.success(`Execution started: ${qty} units for ${orderNo}`);
   };
 
   const handleSaveStage = ({ status, progress, note }) => {
@@ -188,9 +188,9 @@ const ProductionExecution = () => {
   return (
     <div>
       <PageHeader
-        title="Eksekusi Produksi"
-        subtitle="Pemantauan real-time proses casting, curing, demoulding & QC"
-        breadcrumbs={["Beranda", "Eksekusi Produksi"]}
+        title="Production Execution"
+        subtitle="Real-time monitoring of casting, curing, demoulding & QC processes"
+        breadcrumbs={["Home", "Production Execution"]}
         testId="exec-page-header"
       />
       <div className="p-6 space-y-6">
@@ -283,7 +283,7 @@ const ProductionExecution = () => {
         <div className="bg-white border border-[#DFE3E8] rounded-md p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-base font-semibold text-[#1C252E] font-display">Alur Proses Produksi</div>
+              <div className="text-base font-semibold text-[#1C252E] font-display">Production Process Flow</div>
               <div className="text-xs text-[#59687A]">Preparation → Material → Production → Finishing → Removal</div>
             </div>
           </div>
@@ -302,7 +302,7 @@ const ProductionExecution = () => {
                         <ProcessIcon stage={s.id} color={s.color} size="md" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Tahap {i + 1}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Stage {i + 1}</div>
                         <div className="text-sm font-semibold text-[#1C252E]">{s.label}</div>
                       </div>
                     </div>

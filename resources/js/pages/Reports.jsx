@@ -33,30 +33,30 @@ const Reports = () => {
   return (
     <div>
       <PageHeader
-        title="Laporan"
-        subtitle="Analitik produksi, material, reject, dan penjualan"
-        breadcrumbs={["Beranda", "Laporan"]}
+        title="Reports"
+        subtitle="Production, material, reject, and sales analytics"
+        breadcrumbs={["Home", "Reports"]}
         testId="reports-page-header"
         actions={
           <>
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={showPrintToast}><Printer className="w-3.5 h-3.5" />Cetak</Button>
-            <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" onClick={() => showExportToast("laporan PDF")}><Download className="w-3.5 h-3.5" />Ekspor PDF</Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={showPrintToast}><Printer className="w-3.5 h-3.5" />Print</Button>
+            <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" onClick={() => showExportToast("PDF report")}><Download className="w-3.5 h-3.5" />Export PDF</Button>
           </>
         }
       />
       <div className="p-6 space-y-6">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-white border border-[#DFE3E8] p-1 h-auto flex-wrap">
-            <TabsTrigger value="daily" className="text-xs h-8">Produksi Harian</TabsTrigger>
-            <TabsTrigger value="monthly" className="text-xs h-8">Produksi Bulanan</TabsTrigger>
-            <TabsTrigger value="material" className="text-xs h-8">Pemakaian Material</TabsTrigger>
-            <TabsTrigger value="reject" className="text-xs h-8">Analisis Reject</TabsTrigger>
-            <TabsTrigger value="mold" className="text-xs h-8">Utilisasi Cetakan</TabsTrigger>
-            <TabsTrigger value="sales" className="text-xs h-8">Penjualan</TabsTrigger>
+            <TabsTrigger value="daily" className="text-xs h-8">Daily Production</TabsTrigger>
+            <TabsTrigger value="monthly" className="text-xs h-8">Monthly Production</TabsTrigger>
+            <TabsTrigger value="material" className="text-xs h-8">Material Consumption</TabsTrigger>
+            <TabsTrigger value="reject" className="text-xs h-8">Reject Analysis</TabsTrigger>
+            <TabsTrigger value="mold" className="text-xs h-8">Mold Utilization</TabsTrigger>
+            <TabsTrigger value="sales" className="text-xs h-8">Sales</TabsTrigger>
           </TabsList>
 
           <TabsContent value="daily" className="mt-4">
-            <ChartCard testId="report-daily" title="Laporan Produksi Harian" subtitle="Target vs realisasi 14 hari terakhir">
+            <ChartCard testId="report-daily" title="Daily Production Report" subtitle="Target vs actual last 14 days">
               <ResponsiveContainer width="100%" height={400}>
                 <AreaChart data={productionTrend} margin={{ left: -10 }}>
                   <defs>
@@ -80,7 +80,7 @@ const Reports = () => {
 
           <TabsContent value="monthly" className="mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ChartCard testId="report-monthly-trend" title="Tren Produksi Bulanan" subtitle="Realisasi vs target 6 bulan terakhir">
+              <ChartCard testId="report-monthly-trend" title="Monthly Production Trend" subtitle="Actual vs target last 6 months">
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={monthlyProduction} margin={{ left: -10 }}>
                     <CartesianGrid stroke="#EEF0F2" strokeDasharray="3 3" vertical={false} />
@@ -93,7 +93,7 @@ const Reports = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartCard>
-              <ChartCard testId="report-by-product" title="Produksi per Kategori Produk" subtitle="Distribusi bulan ini">
+              <ChartCard testId="report-by-product" title="Production by Product Category" subtitle="Current month distribution">
                 <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
                     <Pie data={monthlyByProduct} dataKey="produksi" nameKey="produk" cx="50%" cy="50%" outerRadius={110} label={(e) => `${e.persen}%`} labelLine={false}>
@@ -107,7 +107,7 @@ const Reports = () => {
           </TabsContent>
 
           <TabsContent value="material" className="mt-4">
-            <ChartCard testId="report-material" title="Pemakaian Material" subtitle="Konsumsi semen, agregat, besi tulangan dalam ton (7 hari)">
+            <ChartCard testId="report-material" title="Material Consumption" subtitle="Cement, aggregate, rebar consumption in tons (7 days)">
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={materialConsumption} margin={{ left: -10 }}>
                   <CartesianGrid stroke="#EEF0F2" strokeDasharray="3 3" vertical={false} />
@@ -125,7 +125,7 @@ const Reports = () => {
 
           <TabsContent value="reject" className="mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ChartCard testId="report-reject-pie" title="Distribusi Reject" subtitle="Berdasarkan penyebab">
+              <ChartCard testId="report-reject-pie" title="Reject Distribution" subtitle="By cause">
                 <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
                     <Pie data={rejectByReason} dataKey="jumlah" nameKey="alasan" cx="50%" cy="50%" innerRadius={60} outerRadius={110}>
@@ -135,7 +135,7 @@ const Reports = () => {
                   </PieChart>
                 </ResponsiveContainer>
               </ChartCard>
-              <ChartCard testId="report-reject-bar" title="Pareto Reject" subtitle="Top penyebab reject">
+              <ChartCard testId="report-reject-bar" title="Reject Pareto" subtitle="Top reject causes">
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={rejectByReason} layout="vertical" margin={{ left: 10 }}>
                     <CartesianGrid stroke="#EEF0F2" strokeDasharray="3 3" horizontal={false} />
@@ -166,7 +166,7 @@ const Reports = () => {
           <TabsContent value="sales" className="mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
-                <ChartCard testId="report-sales-bar" title="Penjualan per Customer" subtitle="Nilai sales order">
+                <ChartCard testId="report-sales-bar" title="Sales per Customer" subtitle="Sales order value">
                   <ResponsiveContainer width="100%" height={400}>
                     <BarChart data={salesOrders.map(s => ({ customer: s.customer.replace("(Persero) Tbk", "").replace("PT ", "").substring(0, 18), nilai: s.nilai / 1000000 }))} margin={{ left: -10 }}>
                       <CartesianGrid stroke="#EEF0F2" strokeDasharray="3 3" vertical={false} />
@@ -178,22 +178,22 @@ const Reports = () => {
                   </ResponsiveContainer>
                 </ChartCard>
               </div>
-              <ChartCard testId="report-sales-summary" title="Ringkasan Sales" subtitle="Bulan ini">
+              <ChartCard testId="report-sales-summary" title="Sales Summary" subtitle="Current month">
                 <div className="space-y-3">
                   <div className="border-l-2 border-[#0A6ED1] pl-3">
-                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Total Nilai SO</div>
+                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Total SO Value</div>
                     <div className="text-xl font-semibold font-mono-num text-[#1C252E]">{formatRupiah(salesOrders.reduce((s, o) => s + o.nilai, 0))}</div>
                   </div>
                   <div className="border-l-2 border-[#107E3E] pl-3">
-                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Rata-rata per Order</div>
+                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Average per Order</div>
                     <div className="text-xl font-semibold font-mono-num text-[#1C252E]">{formatRupiah(Math.round(salesOrders.reduce((s, o) => s + o.nilai, 0) / salesOrders.length))}</div>
                   </div>
                   <div className="border-l-2 border-[#E9730C] pl-3">
-                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Order Aktif</div>
+                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Active Orders</div>
                     <div className="text-xl font-semibold font-mono-num text-[#1C252E]">{salesOrders.filter(s => s.status !== "Selesai").length}</div>
                   </div>
                   <div className="border-l-2 border-[#59687A] pl-3">
-                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Total Customer</div>
+                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Total Customers</div>
                     <div className="text-xl font-semibold font-mono-num text-[#1C252E]">{new Set(salesOrders.map(s => s.customer)).size}</div>
                   </div>
                 </div>
@@ -210,7 +210,7 @@ const Reports = () => {
                 <OEEGauge value={l.oee} label={l.line} subLabel="OEE %" size={150} />
                 <div className="w-full grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#EEF0F2]">
                   <div className="text-center">
-                    <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold">Utilisasi</div>
+                    <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold">Utilization</div>
                     <div className="font-mono-num text-sm font-semibold text-[#0A6ED1]">{l.utilisasi}%</div>
                   </div>
                   <div className="text-center">
@@ -224,9 +224,9 @@ const Reports = () => {
           {/* Benchmark band */}
           <div className="border-t border-[#EEF0F2] pt-4">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-[#59687A] font-medium">Benchmark OEE Industri Manufaktur (World Class: ≥85%)</span>
+              <span className="text-[#59687A] font-medium">Manufacturing Industry OEE Benchmark (World Class: ≥85%)</span>
               <span className="font-mono-num text-[#1C252E] font-semibold">
-                Rata-rata: {(efficiencyByLine.reduce((s, l) => s + l.oee, 0) / efficiencyByLine.length).toFixed(1)}%
+                Average: {(efficiencyByLine.reduce((s, l) => s + l.oee, 0) / efficiencyByLine.length).toFixed(1)}%
               </span>
             </div>
             <div className="relative h-3 bg-gradient-to-r from-[#B00020] via-[#E9730C] to-[#107E3E] rounded-full overflow-hidden">

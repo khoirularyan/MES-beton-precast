@@ -41,18 +41,18 @@ const Inventory = () => {
   return (
     <div>
       <PageHeader
-        title="Persediaan"
-        subtitle="Manajemen stok bahan baku, work-in-progress, dan produk jadi"
-        breadcrumbs={["Beranda", "Persediaan"]}
+        title="Inventory"
+        subtitle="Raw materials, work-in-progress, and finished goods stock management"
+        breadcrumbs={["Home", "Inventory"]}
         testId="inventory-page-header"
       />
       <div className="p-6 space-y-6">
         {/* KPI */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KPICard testId="inv-kpi-fg" label="Total Stok Produk Jadi" value={formatNumber(1842)} unit="unit" icon={Package} accent="success" />
-          <KPICard testId="inv-kpi-rm" label="Total Bahan Baku" value="184.5" unit="ton" icon={Boxes} accent="default" />
-          <KPICard testId="inv-kpi-in" label="Penerimaan Hari Ini" value="3" unit="transaksi" icon={ArrowDownToLine} accent="warning" />
-          <KPICard testId="inv-kpi-out" label="Pengeluaran Hari Ini" value="5" unit="transaksi" icon={ArrowUpFromLine} accent="neutral" />
+          <KPICard testId="inv-kpi-fg" label="Total Finished Goods" value={formatNumber(1842)} unit="units" icon={Package} accent="success" />
+          <KPICard testId="inv-kpi-rm" label="Total Raw Materials" value="184.5" unit="tons" icon={Boxes} accent="default" />
+          <KPICard testId="inv-kpi-in" label="Receipts Today" value="3" unit="transactions" icon={ArrowDownToLine} accent="warning" />
+          <KPICard testId="inv-kpi-out" label="Issues Today" value="5" unit="transactions" icon={ArrowUpFromLine} accent="neutral" />
         </div>
 
         {/* Storage visuals */}
@@ -60,7 +60,7 @@ const Inventory = () => {
 
         {/* Warehouse utilization 3D */}
         <div>
-          <div className="text-base font-semibold text-[#1C252E] font-display mb-3">Utilisasi Gudang</div>
+          <div className="text-base font-semibold text-[#1C252E] font-display mb-3">Warehouse Utilization</div>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {warehouses.map((w, i) => (
               <WarehouseFill key={w.kode} code={w.kode} label={w.nama} level={w.utilisasi} capacity={w.kapasitas} />
@@ -70,10 +70,10 @@ const Inventory = () => {
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-white border border-[#DFE3E8] p-1 h-auto">
-            <TabsTrigger value="finished" className="text-xs h-8">Produk Jadi</TabsTrigger>
-            <TabsTrigger value="raw" className="text-xs h-8">Bahan Baku</TabsTrigger>
-            <TabsTrigger value="movement" className="text-xs h-8">Mutasi Stok</TabsTrigger>
-            <TabsTrigger value="consumption" className="text-xs h-8">Pemakaian Material</TabsTrigger>
+            <TabsTrigger value="finished" className="text-xs h-8">Finished Goods</TabsTrigger>
+            <TabsTrigger value="raw" className="text-xs h-8">Raw Materials</TabsTrigger>
+            <TabsTrigger value="movement" className="text-xs h-8">Stock Movement</TabsTrigger>
+            <TabsTrigger value="consumption" className="text-xs h-8">Material Consumption</TabsTrigger>
           </TabsList>
 
           <TabsContent value="finished" className="mt-4">
@@ -81,13 +81,13 @@ const Inventory = () => {
               <table className="w-full mes-table">
                 <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left">Kode</th>
-                    <th className="px-4 py-2 text-left">Produk</th>
-                    <th className="px-4 py-2 text-right">Total Stok</th>
+                    <th className="px-4 py-2 text-left">Code</th>
+                    <th className="px-4 py-2 text-left">Product</th>
+                    <th className="px-4 py-2 text-right">Total Stock</th>
                     <th className="px-4 py-2 text-right">Reserved</th>
                     <th className="px-4 py-2 text-right">Available</th>
-                    <th className="px-4 py-2 text-left">Gudang</th>
-                    <th className="px-4 py-2 text-left">Lokasi</th>
+                    <th className="px-4 py-2 text-left">Warehouse</th>
+                    <th className="px-4 py-2 text-left">Location</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,13 +117,13 @@ const Inventory = () => {
               <table className="w-full mes-table">
                 <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left">Kode</th>
+                    <th className="px-4 py-2 text-left">Code</th>
                     <th className="px-4 py-2 text-left">Material</th>
-                    <th className="px-4 py-2 text-left">Satuan</th>
-                    <th className="px-4 py-2 text-right">Stok Saat Ini</th>
-                    <th className="px-4 py-2 text-right">Min Stok</th>
+                    <th className="px-4 py-2 text-left">Unit</th>
+                    <th className="px-4 py-2 text-right">Current Stock</th>
+                    <th className="px-4 py-2 text-right">Min Stock</th>
                     <th className="px-4 py-2 text-left w-40">Level</th>
-                    <th className="px-4 py-2 text-right">Nilai Stok</th>
+                    <th className="px-4 py-2 text-right">Stock Value</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,7 +140,7 @@ const Inventory = () => {
                         <td className="px-4">
                           <div className="flex items-center gap-2">
                             <Progress value={Math.min(ratio, 100)} className="h-1.5 flex-1" />
-                            {isLow && <StatusBadge status="Rendah" variant="error" />}
+                            {isLow && <StatusBadge status="Low" variant="error" />}
                           </div>
                         </td>
                         <td className="px-4 text-right font-mono-num">{formatRupiah(m.stok * m.harga)}</td>
@@ -157,13 +157,13 @@ const Inventory = () => {
               <table className="w-full mes-table">
                 <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left">No. Mutasi</th>
-                    <th className="px-4 py-2 text-left">Tipe</th>
+                    <th className="px-4 py-2 text-left">Movement No.</th>
+                    <th className="px-4 py-2 text-left">Type</th>
                     <th className="px-4 py-2 text-left">Item</th>
                     <th className="px-4 py-2 text-right">Qty</th>
-                    <th className="px-4 py-2 text-left">Referensi</th>
-                    <th className="px-4 py-2 text-left">Tanggal</th>
-                    <th className="px-4 py-2 text-left">Lokasi</th>
+                    <th className="px-4 py-2 text-left">Reference</th>
+                    <th className="px-4 py-2 text-left">Date</th>
+                    <th className="px-4 py-2 text-left">Location</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -185,8 +185,8 @@ const Inventory = () => {
 
           <TabsContent value="consumption" className="mt-4">
             <div className="bg-white border border-[#DFE3E8] rounded-md p-4">
-              <div className="text-base font-semibold text-[#1C252E] font-display mb-1">Pemakaian Material 7 Hari Terakhir</div>
-              <div className="text-xs text-[#59687A] mb-4">Konsumsi semen, agregat, dan besi tulangan dalam ton</div>
+              <div className="text-base font-semibold text-[#1C252E] font-display mb-1">Material Consumption Last 7 Days</div>
+              <div className="text-xs text-[#59687A] mb-4">Cement, aggregate, and rebar consumption in tons</div>
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={materialConsumption} margin={{ left: -10 }}>
                   <CartesianGrid stroke="#EEF0F2" strokeDasharray="3 3" vertical={false} />

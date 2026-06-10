@@ -23,18 +23,18 @@ const CuringManagement = () => {
     <div>
       <PageHeader
         title="Curing Management"
-        subtitle="Pemantauan proses curing — suhu, kelembaban, dan durasi per batch"
-        breadcrumbs={["Beranda", "Curing"]}
+        subtitle="Monitor curing process — temperature, humidity, and batch duration"
+        breadcrumbs={["Home", "Curing"]}
         testId="curing-page-header"
         actions={
           <FormDialog
             testId="curing-create"
-            title="Mulai Batch Curing Baru"
-            description="Mulai proses curing untuk batch produk yang telah selesai casting"
-            submitLabel="Mulai Curing"
-            successMessage="Batch curing berhasil dimulai"
+            title="Start New Curing Batch"
+            description="Begin curing process for cast products batch"
+            submitLabel="Start Curing"
+            successMessage="Curing batch started successfully"
             fields={[
-              { name: "po", label: "Order Produksi (PO)", type: "select", required: true, options: [
+              { name: "po", label: "Production Order (PO)", type: "select", required: true, options: [
                 { value: "PO-2026-0244", label: "PO-2026-0244 — Barrier NJ" },
                 { value: "PO-2026-0243", label: "PO-2026-0243 — Box Culvert 1500" },
                 { value: "PO-2026-0242", label: "PO-2026-0242 — U-Ditch 800" },
@@ -43,14 +43,14 @@ const CuringManagement = () => {
                 { value: "Curing-A", label: "Chamber A" },
                 { value: "Curing-B", label: "Chamber B" },
               ]},
-              { name: "qty", label: "Jumlah Unit", type: "number", placeholder: "Mis. 24", required: true },
-              { name: "suhu", label: "Setpoint Suhu (°C)", type: "number", placeholder: "65", required: true },
-              { name: "kelembaban", label: "Setpoint Kelembaban (%)", type: "number", placeholder: "92" },
-              { name: "durasi", label: "Durasi (jam)", type: "number", placeholder: "48" },
-              { name: "catatan", label: "Catatan", type: "textarea", span: 2 },
+              { name: "qty", label: "Quantity", type: "number", placeholder: "e.g. 24", required: true },
+              { name: "temperature", label: "Temperature Setpoint (°C)", type: "number", placeholder: "65", required: true },
+              { name: "humidity", label: "Humidity Setpoint (%)", type: "number", placeholder: "92" },
+              { name: "duration", label: "Duration (hours)", type: "number", placeholder: "48" },
+              { name: "notes", label: "Notes", type: "textarea", span: 2 },
             ]}
             trigger={
-              <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]"><Plus className="w-3.5 h-3.5" />Mulai Batch Baru</Button>
+              <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]"><Plus className="w-3.5 h-3.5" />Start New Batch</Button>
             }
           />
         }
@@ -78,18 +78,18 @@ const CuringManagement = () => {
                 <div className="grid grid-cols-2 gap-4 mb-2">
                   <div className="border-l-2 border-[#E9730C] pl-3">
                     <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">
-                      <Thermometer className="w-3 h-3" /> Suhu Rata-rata
+                      <Thermometer className="w-3 h-3" /> Avg Temperature
                     </div>
                     <div className="text-2xl font-semibold font-mono-num text-[#1C252E] mt-1">{avgTemp.toFixed(0)}°C</div>
                   </div>
                   <div className="border-l-2 border-[#0070F2] pl-3">
                     <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">
-                      <Droplets className="w-3 h-3" /> Kelembaban
+                      <Droplets className="w-3 h-3" /> Humidity
                     </div>
                     <div className="text-2xl font-semibold font-mono-num text-[#1C252E] mt-1">{avgHum.toFixed(0)}%</div>
                   </div>
                 </div>
-                <div className="text-xs text-[#59687A]">{batches.length} batch aktif • Total {batches.reduce((s, b) => s + b.qty, 0)} unit</div>
+                <div className="text-xs text-[#59687A]">{batches.length} active batch • Total {batches.reduce((s, b) => s + b.qty, 0)} units</div>
               </div>
             );
           })}
@@ -99,8 +99,8 @@ const CuringManagement = () => {
         <div className="bg-white border border-[#DFE3E8] rounded-md overflow-hidden">
           <div className="px-4 py-3 border-b border-[#DFE3E8] flex items-center justify-between">
             <div>
-              <div className="text-base font-semibold text-[#1C252E] font-display">Batch Curing Aktif</div>
-              <div className="text-xs text-[#59687A]">Standar PCI: 65-70°C selama 48 jam, kelembaban &gt;90%</div>
+              <div className="text-base font-semibold text-[#1C252E] font-display">Active Curing Batches</div>
+              <div className="text-xs text-[#59687A]">PCI Standard: 65-70°C for 48 hours, humidity &gt;90%</div>
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-4">
@@ -135,7 +135,7 @@ const CuringManagement = () => {
                 <div className="bg-[#FDF8F2] border border-[#FBC36C]/40 rounded p-2 mb-3">
                   <div className="flex items-center justify-between mb-1">
                     <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold flex items-center gap-1">
-                      <Thermometer className="w-3 h-3" /> Tren Suhu 12 Jam
+                      <Thermometer className="w-3 h-3" /> 12h Temp Trend
                     </div>
                     <div className="text-[10px] text-[#59687A] font-mono-num">Target {b.suhu}°C</div>
                   </div>
@@ -143,11 +143,11 @@ const CuringManagement = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold flex items-center gap-1"><Thermometer className="w-3 h-3" />Suhu</div>
+                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold flex items-center gap-1"><Thermometer className="w-3 h-3" />Temp</div>
                     <div className="font-mono-num text-[#E9730C] font-semibold text-sm">{b.suhu}°C</div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold flex items-center gap-1"><Droplets className="w-3 h-3" />Kelembaban</div>
+                    <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold flex items-center gap-1"><Droplets className="w-3 h-3" />Humidity</div>
                     <div className="font-mono-num text-[#0070F2] font-semibold text-sm">{b.kelembaban}%</div>
                   </div>
                   <div>
@@ -157,8 +157,8 @@ const CuringManagement = () => {
                 </div>
                 <Progress value={b.progress} className="h-1.5 mb-2" />
                 <div className="flex items-center justify-between text-[11px] text-[#59687A] font-mono-num">
-                  <span>Mulai: {b.mulai}</span>
-                  <span>Selesai: {b.target}</span>
+                  <span>Start: {b.mulai}</span>
+                  <span>Complete: {b.target}</span>
                 </div>
               </div>
             ))}

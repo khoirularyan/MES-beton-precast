@@ -76,8 +76,8 @@ const ProductionPlanning = () => {
     <div>
       <PageHeader
         title="Production Planning"
-        subtitle="Perencanaan Produksi dari Sales Order (MTO/MTS) hingga Master Production Schedule"
-        breadcrumbs={["Beranda", "Perencanaan Produksi"]}
+        subtitle="Plan production from Sales Orders (MTO/MTS) through Master Production Schedule"
+        breadcrumbs={["Home", "Production Planning"]}
         testId="planning-page-header"
         actions={
           <div className="flex items-center gap-2">

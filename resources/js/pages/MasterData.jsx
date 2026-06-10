@@ -47,10 +47,10 @@ const Section = ({ children, columns, data, testId, entityName, addFields, filte
           </Button>
           <FormDialog
             testId={`${testId}-create`}
-            title={`Tambah ${entityName}`}
-            description={`Tambahkan data ${entityName.toLowerCase()} baru ke master data`}
-            submitLabel="Simpan"
-            successMessage={`${entityName} berhasil ditambahkan`}
+            title={`Add ${entityName}`}
+            description={`Add new ${entityName.toLowerCase()} data to master data`}
+            submitLabel="Save"
+            successMessage={`${entityName} successfully added`}
             fields={addFields}
             trigger={
               <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" data-testid={`${testId}-add`}>
@@ -215,14 +215,14 @@ const MasterData = () => {
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => showExportToast("Katalog Produk")}>
-                      <Download className="w-3.5 h-3.5" />Ekspor Katalog
+                      <Download className="w-3.5 h-3.5" />Export Catalog
                     </Button>
                     <FormDialog
                       testId="products-grid-create"
-                      title="Tambah Produk"
-                      description="Tambahkan produk baru ke katalog"
-                      submitLabel="Simpan"
-                      successMessage="Produk berhasil ditambahkan"
+                      title="Add Product"
+                      description="Add new product to catalog"
+                      submitLabel="Save"
+                      successMessage="Product successfully added"
                       fields={[
                         { name: "kode", label: "Kode Produk", required: true },
                         { name: "nama", label: "Nama Produk", required: true, span: 2 },
@@ -234,7 +234,7 @@ const MasterData = () => {
                       ]}
                       trigger={
                         <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]">
-                          <Plus className="w-3.5 h-3.5" />Tambah Produk
+                          <Plus className="w-3.5 h-3.5" />Add Product
                         </Button>
                       }
                     />

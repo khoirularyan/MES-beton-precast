@@ -16,11 +16,11 @@ import ProductIcon from "@/components/visuals/ProductIcon";
 import { toast } from "sonner";
 
 const COLORS = ["#0A6ED1", "#E9730C", "#107E3E", "#0070F2", "#B00020", "#59687A"];
-const DISPOSISI_OPTIONS = ["Hancurkan", "Rework", "Downgrade", "Repair"];
+const DISPOSISI_OPTIONS = ["Destroy", "Rework", "Downgrade", "Repair"];
 
 const SEVERITY_STYLE = {
-  Kritis: { bg: "#FBE6E9", color: "#B00020", border: "#B00020" },
-  Mayor:  { bg: "#FDF3E7", color: "#E9730C", border: "#E9730C" },
+  Critical: { bg: "#FBE6E9", color: "#B00020", border: "#B00020" },
+  Major:  { bg: "#FDF3E7", color: "#E9730C", border: "#E9730C" },
   Minor:  { bg: "#FFF6E0", color: "#9C4F00", border: "#FBC36C" },
 };
 
@@ -48,23 +48,23 @@ const RejectReasonBody = ({ record, onSave, onCancel }) => {
   };
 
   const selectedDefects = defectCategories.filter((d) => selected.includes(d.kode));
-  const highestLevel = selectedDefects.some((d) => d.tingkat === "Kritis") ? "Kritis"
-                      : selectedDefects.some((d) => d.tingkat === "Mayor") ? "Mayor"
+  const highestLevel = selectedDefects.some((d) => d.tingkat === "Critical") ? "Critical"
+                      : selectedDefects.some((d) => d.tingkat === "Major") ? "Major"
                       : selectedDefects.some((d) => d.tingkat === "Minor") ? "Minor" : null;
-  const suggestedDisposisi = highestLevel === "Kritis" ? "Hancurkan" : highestLevel === "Mayor" ? "Rework" : highestLevel === "Minor" ? "Downgrade" : null;
+  const suggestedDisposisi = highestLevel === "Critical" ? "Destroy" : highestLevel === "Major" ? "Rework" : highestLevel === "Minor" ? "Downgrade" : null;
 
   return (
     <>
       <div className="px-6 py-4 bg-gradient-to-r from-[#B00020] to-[#8A0019] text-white">
         <DialogHeader>
           <div className="text-[10px] uppercase tracking-[0.2em] text-white/75 font-semibold">
-            {isEdit ? "Edit Alasan Reject" : "Tandai Produk Reject"}
+            {isEdit ? "Edit Reject Reason" : "Mark Product as Reject"}
           </div>
           <DialogTitle className="text-base font-display text-white">
-            {isEdit ? record.no : "Reject Baru"}
+            {isEdit ? record.no : "New Reject"}
           </DialogTitle>
           <DialogDescription className="text-xs text-white/85">
-            Pilih satu atau lebih kategori cacat sesuai standar SNI 7833:2012
+            Select one or more defect categories according to SNI 7833:2012 standard
           </DialogDescription>
         </DialogHeader>
       </div>
@@ -73,20 +73,20 @@ const RejectReasonBody = ({ record, onSave, onCancel }) => {
         {!isEdit && (
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">PO Asal</label>
+              <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Source PO</label>
               <select
                 value={po} onChange={(e) => setPo(e.target.value)}
                 data-testid="reject-po-select"
                 className="w-full mt-1 h-9 px-2.5 text-sm border border-[#DFE3E8] rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#B00020]/30 focus:border-[#B00020]"
               >
-                <option value="">Pilih PO…</option>
+                <option value="">Select PO…</option>
                 {productionOrders.map((o) => (
                   <option key={o.no} value={o.no}>{o.no} — {o.produk}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Produk</label>
+              <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Product</label>
               <input
                 type="text" value={produk} onChange={(e) => setProduk(e.target.value)}
                 data-testid="reject-produk-input"
@@ -94,7 +94,7 @@ const RejectReasonBody = ({ record, onSave, onCancel }) => {
               />
             </div>
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Jumlah Reject</label>
+              <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Reject Quantity</label>
               <input
                 type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))}
                 data-testid="reject-qty-input"
@@ -107,10 +107,10 @@ const RejectReasonBody = ({ record, onSave, onCancel }) => {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">
-              Alasan Reject <span className="text-[#B00020]">*</span>
+              Reject Reason <span className="text-[#B00020]">*</span>
             </label>
             <span className="text-[10px] text-[#59687A]" data-testid="reject-count">
-              {selected.length} dipilih
+              {selected.length} selected
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2" data-testid="reject-reason-grid">
@@ -198,7 +198,7 @@ const RejectReasonBody = ({ record, onSave, onCancel }) => {
             rows={2}
             value={catatan} onChange={(e) => setCatatan(e.target.value)}
             data-testid="reject-catatan-input"
-            placeholder="Catatan tambahan untuk tindak lanjut tim produksi…"
+            placeholder="Additional notes for production team follow-up…"
             className="w-full mt-1 px-2.5 py-2 text-sm border border-[#DFE3E8] rounded focus:outline-none focus:ring-2 focus:ring-[#B00020]/30 focus:border-[#B00020] resize-none"
           />
         </div>
@@ -209,7 +209,7 @@ const RejectReasonBody = ({ record, onSave, onCancel }) => {
       </div>
 
       <DialogFooter className="px-6 py-3 bg-[#F8FAFC] border-t border-[#EEF0F2]">
-        <Button variant="outline" size="sm" onClick={onCancel} data-testid="reject-cancel">Batal</Button>
+        <Button variant="outline" size="sm" onClick={onCancel} data-testid="reject-cancel">Cancel</Button>
         <Button
           size="sm"
           className="bg-[#B00020] hover:bg-[#8A0019] text-white"
@@ -227,7 +227,7 @@ const RejectReasonBody = ({ record, onSave, onCancel }) => {
             });
           }}
         >
-          <XCircle className="w-3.5 h-3.5 mr-1.5" /> {isEdit ? "Simpan Alasan" : "Tandai Reject"}
+          <XCircle className="w-3.5 h-3.5 mr-1.5" /> {isEdit ? "Save Reason" : "Mark Reject"}
         </Button>
       </DialogFooter>
     </>
@@ -278,42 +278,42 @@ const QualityControl = () => {
     <div>
       <PageHeader
         title="Quality Control"
-        subtitle="Inspeksi mutu beton, dimensi, dan manajemen produk reject"
-        breadcrumbs={["Beranda", "Quality Control"]}
+        subtitle="Concrete quality inspection, dimensions, and reject management"
+        breadcrumbs={["Home", "Quality Control"]}
         testId="qc-page-header"
         actions={
           <FormDialog
             testId="qc-create"
-            title="Inspeksi QC Baru"
-            description="Catat hasil inspeksi quality control untuk batch produk"
-            submitLabel="Simpan Inspeksi"
-            successMessage="Inspeksi QC berhasil disimpan"
+            title="New QC Inspection"
+            description="Record quality control inspection results for product batch"
+            submitLabel="Save Inspection"
+            successMessage="QC inspection saved successfully"
             fields={[
               { name: "po", label: "PO / Batch", type: "select", required: true, options: [
                 { value: "PO-2026-0241", label: "PO-2026-0241 — U-Ditch 500" },
                 { value: "PO-2026-0242", label: "PO-2026-0242 — U-Ditch 800" },
                 { value: "PO-2026-0243", label: "PO-2026-0243 — Box Culvert 1500" },
               ]},
-              { name: "jenis", label: "Jenis Inspeksi", type: "select", required: true, options: [
-                { value: "dimensi", label: "Inspeksi Dimensi" },
-                { value: "visual", label: "Inspeksi Visual" },
-                { value: "full", label: "Inspeksi Lengkap" },
+              { name: "jenis", label: "Inspection Type", type: "select", required: true, options: [
+                { value: "dimensi", label: "Dimension Inspection" },
+                { value: "visual", label: "Visual Inspection" },
+                { value: "full", label: "Full Inspection" },
               ]},
-              { name: "qty", label: "Jumlah Diinspeksi", type: "number", required: true },
-              { name: "lulus", label: "Jumlah Lulus", type: "number" },
-              { name: "inspektur", label: "Inspektur", type: "select", required: true, options: [
+              { name: "qty", label: "Quantity Inspected", type: "number", required: true },
+              { name: "lulus", label: "Passed Quantity", type: "number" },
+              { name: "inspektur", label: "Inspector", type: "select", required: true, options: [
                 { value: "Rina Kusumawati", label: "Rina Kusumawati" },
                 { value: "Hendra Gunawan", label: "Hendra Gunawan" },
               ]},
-              { name: "hasil", label: "Hasil", type: "select", options: [
-                { value: "Lulus", label: "Lulus" },
-                { value: "Lulus Bersyarat", label: "Lulus Bersyarat" },
+              { name: "hasil", label: "Result", type: "select", options: [
+                { value: "Lulus", label: "Passed" },
+                { value: "Lulus Bersyarat", label: "Conditional Pass" },
                 { value: "Reject", label: "Reject" },
               ]},
-              { name: "catatan", label: "Catatan Inspeksi", type: "textarea", span: 2 },
+              { name: "catatan", label: "Inspection Notes", type: "textarea", span: 2 },
             ]}
             trigger={
-              <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]"><Plus className="w-3.5 h-3.5" />Inspeksi Baru</Button>
+              <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]"><Plus className="w-3.5 h-3.5" />New Inspection</Button>
             }
           />
         }
@@ -321,16 +321,16 @@ const QualityControl = () => {
       <div className="p-6 space-y-6">
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <KPICard testId="qc-kpi-lulus" label="Lulus QC Hari Ini" value="42" unit="unit" icon={ShieldCheck} accent="success" trend="up" trendValue="+12%" />
-          <KPICard testId="qc-kpi-reject" label="Reject Hari Ini" value="6" unit="unit" icon={AlertTriangle} accent="error" trend="up" trendValue="+2 unit" />
+          <KPICard testId="qc-kpi-lulus" label="Passed QC Today" value="42" unit="units" icon={ShieldCheck} accent="success" trend="up" trendValue="+12%" />
+          <KPICard testId="qc-kpi-reject" label="Rejected Today" value="6" unit="units" icon={AlertTriangle} accent="error" trend="up" trendValue="+2 units" />
           <KPICard testId="qc-kpi-rate" label="Reject Rate" value="2.1%" icon={Activity} accent="warning" trend="up" trendValue="+0.4%" />
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-white border border-[#DFE3E8] p-1 h-auto">
-            <TabsTrigger value="inspections" className="text-xs h-8">Inspeksi Produk</TabsTrigger>
+            <TabsTrigger value="inspections" className="text-xs h-8">Product Inspections</TabsTrigger>
             <TabsTrigger value="rejects" className="text-xs h-8">Reject Management</TabsTrigger>
-            <TabsTrigger value="analysis" className="text-xs h-8">Analisis Reject</TabsTrigger>
+            <TabsTrigger value="analysis" className="text-xs h-8">Reject Analysis</TabsTrigger>
           </TabsList>
 
           <TabsContent value="inspections" className="mt-4">
@@ -338,15 +338,15 @@ const QualityControl = () => {
               <table className="w-full mes-table">
                 <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left">No. QC</th>
+                    <th className="px-4 py-2 text-left">QC Number</th>
                     <th className="px-4 py-2 text-left">PO</th>
-                    <th className="px-4 py-2 text-left">Produk</th>
+                    <th className="px-4 py-2 text-left">Product</th>
                     <th className="px-4 py-2 text-right">Qty</th>
-                    <th className="px-4 py-2 text-right">Dimensi OK</th>
+                    <th className="px-4 py-2 text-right">Dimension OK</th>
                     <th className="px-4 py-2 text-right">Reject</th>
                     <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">Inspektur</th>
-                    <th className="px-4 py-2 text-left">Tanggal</th>
+                    <th className="px-4 py-2 text-left">Inspector</th>
+                    <th className="px-4 py-2 text-left">Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -384,7 +384,7 @@ const QualityControl = () => {
               <div className="flex items-center justify-between px-4 py-3 border-b border-[#DFE3E8]">
                 <div>
                   <div className="text-base font-semibold text-[#1C252E] font-display">Reject Management</div>
-                  <div className="text-xs text-[#59687A]">Total {rejects.length} reject tercatat · Klik <span className="text-[#0A6ED1] font-medium">Edit Alasan</span> untuk mengubah alasan reject</div>
+                  <div className="text-xs text-[#59687A]">Total {rejects.length} rejects recorded · Click <span className="text-[#0A6ED1] font-medium">Edit Reason</span> to modify reject reasons</div>
                 </div>
                 <Button
                   size="sm"
@@ -392,22 +392,22 @@ const QualityControl = () => {
                   onClick={openNewReject}
                   data-testid="reject-new-btn"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Tandai Reject
+                  <Plus className="w-3.5 h-3.5" /> Mark Reject
                 </Button>
               </div>
               <table className="w-full mes-table">
                 <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left">No. Reject</th>
+                    <th className="px-4 py-2 text-left">Reject No.</th>
                     <th className="px-4 py-2 text-left">Visual</th>
-                    <th className="px-4 py-2 text-left">Produk</th>
+                    <th className="px-4 py-2 text-left">Product</th>
                     <th className="px-4 py-2 text-right">Qty</th>
-                    <th className="px-4 py-2 text-left">Alasan</th>
-                    <th className="px-4 py-2 text-left">PO Asal</th>
-                    <th className="px-4 py-2 text-left">Tanggal</th>
-                    <th className="px-4 py-2 text-left">Disposisi</th>
+                    <th className="px-4 py-2 text-left">Reason</th>
+                    <th className="px-4 py-2 text-left">Source PO</th>
+                    <th className="px-4 py-2 text-left">Date</th>
+                    <th className="px-4 py-2 text-left">Disposition</th>
                     <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-right">Aksi</th>
+                    <th className="px-4 py-2 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -452,7 +452,7 @@ const QualityControl = () => {
                             className="h-7 text-[11px] gap-1 hover:bg-[#FBE6E9] hover:border-[#B00020] hover:text-[#B00020]"
                             onClick={() => openEditReject(r)}
                           >
-                            <Pencil className="w-3 h-3" /> Edit Alasan
+                            <Pencil className="w-3 h-3" /> Edit Reason
                           </Button>
                         </td>
                       </tr>
@@ -468,8 +468,8 @@ const QualityControl = () => {
             <div className="bg-white border border-[#DFE3E8] rounded-md p-4 mb-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <div className="text-base font-semibold text-[#1C252E] font-display">Galeri Cacat Referensi</div>
-                  <div className="text-xs text-[#59687A]">Standar visual untuk identifikasi defect mengacu SNI 7833:2012</div>
+                  <div className="text-base font-semibold text-[#1C252E] font-display">Defect Reference Gallery</div>
+                  <div className="text-xs text-[#59687A]">Visual standards for defect identification per SNI 7833:2012</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -489,7 +489,7 @@ const QualityControl = () => {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="bg-white border border-[#DFE3E8] rounded-md p-4">
-                <div className="text-base font-semibold text-[#1C252E] font-display mb-4">Distribusi Penyebab Reject</div>
+                <div className="text-base font-semibold text-[#1C252E] font-display mb-4">Reject Cause Distribution</div>
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie data={rejectByReason} dataKey="jumlah" nameKey="alasan" cx="50%" cy="50%" outerRadius={100} innerRadius={50}>
@@ -509,7 +509,7 @@ const QualityControl = () => {
                 </div>
               </div>
               <div className="bg-white border border-[#DFE3E8] rounded-md p-4">
-                <div className="text-base font-semibold text-[#1C252E] font-display mb-4">Jumlah Reject per Kategori</div>
+                <div className="text-base font-semibold text-[#1C252E] font-display mb-4">Reject Count by Category</div>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={rejectByReason} layout="vertical" margin={{ left: 0 }}>
                     <CartesianGrid stroke="#EEF0F2" strokeDasharray="3 3" horizontal={false} />
