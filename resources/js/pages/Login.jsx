@@ -49,8 +49,8 @@ export const Login = () => {
             <Factory className="w-5 h-5" />
           </div>
           <div>
-            <div className="font-semibold leading-tight">PrecastMES</div>
-            <div className="text-xs text-white/75 uppercase tracking-wider">Manufacturing Suite</div>
+            <div className="font-semibold leading-tight">PrecastMESSSS</div>
+            <div className="text-xs text-white/75 uppercase tracking-wider">Manufacturing Execution System</div>
           </div>
         </div>
         <div className="max-w-xl">
@@ -62,7 +62,7 @@ export const Login = () => {
             Plant operations access is controlled by role and responsibility.
           </h1>
           <p className="mt-4 text-sm leading-6 text-white/80">
-            Super admin manages the system, QC focuses on quality workflows, and standard users access daily operations.
+            Super admin manages all system, QC focuses on quality workflows, and standard users access daily operations.
           </p>
         </div>
         <div className="text-xs text-white/65">PT Megacon Bangun Perkasa</div>

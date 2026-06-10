@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -10,15 +9,8 @@ export default defineConfig({
         laravel({
             input: ['resources/js/index.jsx'],
             refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
         }),
-        react({
-            include: /\.(js|jsx|ts|tsx)$/,
-        }),
+        react(),
         tailwindcss(),
     ],
     resolve: {
@@ -34,7 +26,13 @@ export default defineConfig({
             host: '127.0.0.1',
         },
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            usePolling: true,
+            ignored: ['**/storage/framework/views/**', '**/node_modules/**'],
         },
+    },
+    build: {
+        manifest: true,
+        outDir: 'public/build',
+        manifestDir: '',
     },
 });
