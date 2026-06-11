@@ -49,13 +49,12 @@ return new class extends Migration {
         // ── Mutu Beton
         Schema::create('global.production_concrete_grades', function (Blueprint $table) {
             $table->id();
-            $table->string('grade', 20)->unique();
-            $table->decimal('fc', 6, 2)->nullable();
-            $table->string('slump', 20)->nullable();
-            $table->decimal('semen', 8, 2)->nullable();
-            $table->decimal('agregat', 8, 2)->nullable();
-            $table->decimal('air', 8, 2)->nullable();
-            $table->string('admixture', 100)->nullable();
+            $table->string('grade', 20)->unique();            // K-250, K-300, K-350, K-400
+            $table->string('nama', 200)->nullable();           // Nama mutu (deskriptif)
+            $table->decimal('fc_mpa', 6, 2)->nullable();       // Kuat tekan f'c (MPa)
+            $table->decimal('slump_min_cm', 5, 2)->nullable(); // Slump minimum (cm)
+            $table->decimal('slump_max_cm', 5, 2)->nullable(); // Slump maximum (cm)
+            $table->text('keterangan')->nullable();            // Keterangan / catatan
             $table->boolean('aktif')->default(true);
             $table->timestamps();
             $table->softDeletes();

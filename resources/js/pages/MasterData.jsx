@@ -14,9 +14,9 @@ import {
   productApi, materialApi,
   supplierApi, customerApi,
   productCategoryApi, productTypeApi, productSpecApi, concreteGradeApi,
-  materialCategoryApi, moldApi, warehouseApi, machineApi,
-  employeeApi, shiftApi, qcParameterApi, defectCategoryApi,
-  productionStatusApi, deliveryStatusApi,
+  materialCategoryApi, moldApi, warehouseApi,
+  shiftApi, qcParameterApi, defectCategoryApi,
+  batchStatusApi, userApi,
 } from "@/lib/api";
 import { formatRupiah, formatNumber } from "@/data/mockData";
 
@@ -291,29 +291,13 @@ const MasterData = () => {
   const customers    = useApiData(customerApi,   "Customer",          tab, "customers");
   const suppliers    = useApiData(supplierApi,   "Supplier",          tab, "suppliers");
   const warehouses   = useApiData(warehouseApi,  "Gudang",            tab, "warehouses");
-  const lines        = useApiData(productApi,    "Line Produksi",     tab, "never"); // uses mock fallback below
-  const machines     = useApiData(machineApi,    "Mesin",             tab, "machines");
-  const employees    = useApiData(employeeApi,   "Karyawan",          tab, ["employees", "lines", "shifts"]);
+  const users        = useApiData(userApi,       "User",              tab, ["users", "shifts"]);
   const shifts       = useApiData(shiftApi,      "Shift",             tab, "shifts");
+  const batchStatuses= useApiData(batchStatusApi,"Status Batch",      tab, "batch-status");
   const qcParams     = useApiData(qcParameterApi, "Parameter QC",    tab, "qc-params");
   const defects      = useApiData(defectCategoryApi, "Kategori Defect", tab, "defects");
-  const prodStatuses = useApiData(productionStatusApi, "Status Produksi", tab, "prod-status");
-  const delStatuses  = useApiData(deliveryStatusApi, "Status Pengiriman", tab, "del-status");
 
-  // Separate production lines hook (different key mapping)
-  const [productionLines, setProductionLines] = useState([]);
-  const [linesLoading, setLinesLoading] = useState(false);
-  useEffect(() => {
-    if (tab === "lines") {
-      setLinesLoading(true);
-      // Production lines come from work-centers endpoint
-      import("@/lib/api").then(({ workCenterApi: wcApi }) => {
-        wcApi.getAll({ per_page: 100 }).then(res => {
-          setProductionLines(res.data.data || res.data);
-        }).catch(() => {}).finally(() => setLinesLoading(false));
-      });
-    }
-  }, [tab]);
+  // Status Produksi & Pengiriman di-hardcode (bukan master data)
 
   const filteredProducts = products.data.filter((p) => {
     if (!productQuery) return true;
@@ -360,9 +344,9 @@ const MasterData = () => {
     ...materials.data.map(m => m.kategori)
   ].filter(Boolean))).map(c => ({ value: c, label: c }));
 
-  // Employee options for supervisor selects
-  const employeeOptions = employees.data.length
-    ? employees.data.map(e => ({ value: e.nama, label: e.nama }))
+  // User options for supervisor selects (name-based)
+  const userOptions = users.data.length
+    ? users.data.map(u => ({ value: u.name, label: u.name }))
     : [];
 
   return (
@@ -384,14 +368,11 @@ const MasterData = () => {
             <TabsTrigger value="customers"    className="text-xs h-8">Customer</TabsTrigger>
             <TabsTrigger value="suppliers"    className="text-xs h-8">Supplier</TabsTrigger>
             <TabsTrigger value="warehouses"   className="text-xs h-8">Gudang</TabsTrigger>
-            <TabsTrigger value="lines"        className="text-xs h-8">Line Produksi</TabsTrigger>
-            <TabsTrigger value="machines"     className="text-xs h-8">Mesin</TabsTrigger>
-            <TabsTrigger value="employees"    className="text-xs h-8">Karyawan</TabsTrigger>
+            <TabsTrigger value="users"        className="text-xs h-8">User</TabsTrigger>
             <TabsTrigger value="shifts"       className="text-xs h-8">Shift</TabsTrigger>
+            <TabsTrigger value="batch-status" className="text-xs h-8">Status Batch</TabsTrigger>
             <TabsTrigger value="qc-params"    className="text-xs h-8">Parameter QC</TabsTrigger>
             <TabsTrigger value="defects"      className="text-xs h-8">Kategori Defect</TabsTrigger>
-            <TabsTrigger value="prod-status"  className="text-xs h-8">Status Produksi</TabsTrigger>
-            <TabsTrigger value="del-status"   className="text-xs h-8">Status Pengiriman</TabsTrigger>
           </TabsList>
 
           {/* ── PRODUK ── */}
@@ -423,15 +404,16 @@ const MasterData = () => {
                       successMessage="Produk berhasil ditambahkan"
                       onSubmit={products.handleCreate}
                       fields={[
-                        { name: "kode",     label: "Kode Produk",   required: true },
-                        { name: "nama",     label: "Nama Produk",   required: true, span: 2 },
-                        { name: "kategori", label: "Kategori",      type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
-                        { name: "varian",   label: "Tipe/Varian",   type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
-                        { name: "grade",    label: "Mutu Beton",    type: "select", options: gradeOptions },
-                        { name: "spek",     label: "Spesifikasi" },
-                        { name: "berat",    label: "Berat (kg)",    type: "number" },
-                        { name: "harga",    label: "Harga (Rp)",    type: "number" },
-                        { name: "satuan",   label: "Satuan",        placeholder: "pcs, unit, m3" },
+                        { name: "kode",             label: "Kode Produk",    required: true },
+                        { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
+                        { name: "kategori",         label: "Kategori",       type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
+                        { name: "varian",           label: "Tipe/Varian",    type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
+                        { name: "grade",            label: "Mutu Beton",     type: "select", options: gradeOptions },
+                        { name: "spek",             label: "Spesifikasi" },
+                        { name: "berat",            label: "Berat (kg)",     type: "number" },
+                        { name: "volume_m3",        label: "Volume (m³)",    type: "number", placeholder: "Volume per unit" },
+                        { name: "harga",            label: "Harga (Rp)",     type: "number" },
+                        { name: "satuan",           label: "Satuan",         placeholder: "pcs, unit, m3" },
                       ]}
                       trigger={
                         <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]">
@@ -455,14 +437,15 @@ const MasterData = () => {
                 data={products.data} headerExtra={viewToggle}
                 onSubmit={products.handleCreate} onUpdate={products.handleUpdate} onDelete={products.handleDelete}
                 addFields={[
-                  { name: "kode",     label: "Kode Produk",   required: true },
-                  { name: "nama",     label: "Nama Produk",   required: true, span: 2 },
-                  { name: "kategori", label: "Kategori",      type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
-                  { name: "varian",   label: "Tipe/Varian",   type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
-                  { name: "grade",    label: "Mutu Beton",    type: "select", options: gradeOptions },
-                  { name: "spek",     label: "Spesifikasi" },
-                  { name: "berat",    label: "Berat (kg)",    type: "number" },
-                  { name: "harga",    label: "Harga (Rp)",    type: "number" },
+                  { name: "kode",             label: "Kode Produk",    required: true },
+                  { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
+                  { name: "kategori",         label: "Kategori",       type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
+                  { name: "varian",           label: "Tipe/Varian",    type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
+                  { name: "grade",            label: "Mutu Beton",     type: "select", options: gradeOptions },
+                  { name: "spek",             label: "Spesifikasi" },
+                  { name: "berat",            label: "Berat (kg)",     type: "number" },
+                  { name: "volume_m3",        label: "Volume (m³)",    type: "number", placeholder: "Volume per unit" },
+                  { name: "harga",            label: "Harga (Rp)",     type: "number" },
                 ]}
                 filterSelects={[{ name: "kategori", label: "Kategori", options: productCategoryOptions }]}
                 columns={[
@@ -473,6 +456,7 @@ const MasterData = () => {
                   { key: "spek",     label: "Spesifikasi",   cls: "text-[#59687A]" },
                   { key: "grade",    label: "Mutu",          render: (r) => <StatusBadge status={r.grade} variant="info" /> },
                   { key: "berat",    label: "Berat (kg)",    cls: "text-right font-mono-num", render: (r) => formatNumber(r.berat || 0) },
+                  { key: "volume_m3", label: "Volume (m³)", cls: "text-right font-mono-num", render: (r) => r.volume_m3 ? `${formatNumber(r.volume_m3)} m³` : "-" },
                   { key: "harga",    label: "Harga",         cls: "text-right font-mono-num", render: (r) => formatRupiah(r.harga || 0) },
                 ]}
               />
@@ -510,22 +494,20 @@ const MasterData = () => {
               data={grades.data} loading={grades.loading}
               onSubmit={grades.handleCreate} onUpdate={grades.handleUpdate} onDelete={grades.handleDelete}
               addFields={[
-                { name: "grade",     label: "Kode Mutu (K-...)", required: true },
-                { name: "fc",        label: "f'c (MPa)",         type: "number", required: true },
-                { name: "slump",     label: "Slump (cm)" },
-                { name: "semen",     label: "Semen (kg/m³)",     type: "number" },
-                { name: "agregat",   label: "Agregat (kg/m³)",   type: "number" },
-                { name: "air",       label: "Air (kg/m³)",       type: "number" },
-                { name: "admixture", label: "Admixture",         span: 2 },
+                { name: "grade",        label: "Kode Mutu",       required: true, placeholder: "K-350" },
+                { name: "nama",         label: "Nama Mutu",       required: true, span: 2, placeholder: "Beton K-350 untuk Kolom" },
+                { name: "fc_mpa",       label: "f'c (MPa)",       type: "number", required: true, placeholder: "29.05" },
+                { name: "slump_min_cm", label: "Slump Min (cm)",  type: "number", placeholder: "8" },
+                { name: "slump_max_cm", label: "Slump Max (cm)",  type: "number", placeholder: "12" },
+                { name: "keterangan",   label: "Keterangan",      type: "textarea", span: 2 },
               ]}
               columns={[
-                { key: "grade",   label: "Mutu",          render: (r) => <StatusBadge status={r.grade} variant="info" /> },
-                { key: "fc",      label: "f'c (MPa)",     cls: "text-right font-mono-num" },
-                { key: "slump",   label: "Slump (cm)" },
-                { key: "semen",   label: "Semen (kg/m³)", cls: "text-right font-mono-num" },
-                { key: "agregat", label: "Agregat (kg/m³)", cls: "text-right font-mono-num" },
-                { key: "air",     label: "Air (kg/m³)",   cls: "text-right font-mono-num" },
-                { key: "admixture", label: "Admixture" },
+                { key: "grade",        label: "Kode",            cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                { key: "nama",         label: "Nama Mutu",       cls: "font-medium" },
+                { key: "fc_mpa",       label: "f'c (MPa)",       cls: "text-right font-mono-num" },
+                { key: "slump_min_cm", label: "Slump Min (cm)",  cls: "text-right font-mono-num" },
+                { key: "slump_max_cm", label: "Slump Max (cm)",  cls: "text-right font-mono-num" },
+                { key: "keterangan",   label: "Keterangan",      cls: "text-[#59687A]" },
               ]}
             />
           </TabsContent>
@@ -545,6 +527,7 @@ const MasterData = () => {
                 { name: "stok",     label: "Stok Awal",     type: "number" },
                 { name: "min_stok", label: "Min Stok",      type: "number" },
                 { name: "harga",    label: "Harga (Rp/unit)", type: "number" },
+                { name: "lead_time_hari", label: "Lead Time (hari)", type: "number", placeholder: "Hari pengiriman dari PO" },
               ]}
               columns={[
                 { key: "nama",     label: "Nama Material", cls: "font-medium" },
@@ -553,6 +536,7 @@ const MasterData = () => {
                 { key: "stok",     label: "Stok",          cls: "text-right font-mono-num", render: (r) => formatNumber(r.stok || 0) },
                 { key: "min_stok", label: "Min Stok",      cls: "text-right font-mono-num text-[#59687A]", render: (r) => formatNumber(r.min_stok || 0) },
                 { key: "harga",    label: "Harga/Unit",    cls: "text-right font-mono-num", render: (r) => formatRupiah(r.harga || 0) },
+                { key: "lead_time_hari", label: "Lead Time", cls: "text-right font-mono-num", render: (r) => r.lead_time_hari ? `${r.lead_time_hari} hari` : "-" },
               ]}
             />
           </TabsContent>
@@ -563,22 +547,24 @@ const MasterData = () => {
               data={molds.data} loading={molds.loading}
               onSubmit={molds.handleCreate} onUpdate={molds.handleUpdate} onDelete={molds.handleDelete}
               addFields={[
-                { name: "kode",      label: "Kode Cetakan",   required: true },
-                { name: "nama",      label: "Nama Cetakan",   required: true, span: 2 },
-                { name: "produk",    label: "Produk Terkait" },
-                { name: "jumlah",    label: "Jumlah Cetakan", type: "number" },
-                { name: "kondisi",   label: "Kondisi",        type: "select", options: [
+                { name: "kode",                 label: "Kode Cetakan",        required: true },
+                { name: "nama",                 label: "Nama Cetakan",        required: true, span: 2 },
+                { name: "produk",               label: "Produk Terkait" },
+                { name: "jumlah",               label: "Jumlah Cetakan",      type: "number" },
+                { name: "kondisi",              label: "Kondisi",             type: "select", options: [
                   { value: "Baik", label: "Baik" }, { value: "Sedang", label: "Sedang" }, { value: "Perlu Perawatan", label: "Perlu Perawatan" },
                 ]},
-                { name: "utilisasi", label: "Utilisasi (%)",  type: "number" },
+                { name: "kapasitas_per_siklus", label: "Kapasitas/Siklus",    type: "number", placeholder: "Jml produk per siklus casting" },
+                { name: "siklus_per_hari",      label: "Siklus/Hari",         type: "number", placeholder: "Jml siklus casting per hari" },
               ]}
               columns={[
-                { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",      label: "Cetakan",       cls: "font-medium" },
-                { key: "produk",    label: "Produk" },
-                { key: "jumlah",    label: "Total",         cls: "text-right font-mono-num" },
-                { key: "kondisi",   label: "Kondisi",       render: (r) => <StatusBadge status={r.kondisi} /> },
-                { key: "utilisasi", label: "Utilisasi",     cls: "text-right font-mono-num", render: (r) => `${r.utilisasi || 0}%` },
+                { key: "kode",                 label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                { key: "nama",                 label: "Cetakan",       cls: "font-medium" },
+                { key: "produk",               label: "Produk" },
+                { key: "jumlah",               label: "Total",         cls: "text-right font-mono-num" },
+                { key: "kondisi",              label: "Kondisi",       render: (r) => <StatusBadge status={r.kondisi} /> },
+                { key: "kapasitas_per_siklus", label: "Kap/Siklus",   cls: "text-right font-mono-num" },
+                { key: "siklus_per_hari",      label: "Siklus/Hari",  cls: "text-right font-mono-num" },
               ]}
             />
           </TabsContent>
@@ -589,24 +575,28 @@ const MasterData = () => {
               data={customers.data} loading={customers.loading}
               onSubmit={customers.handleCreate} onUpdate={customers.handleUpdate} onDelete={customers.handleDelete}
               addFields={[
-                { name: "kode",         label: "Kode Customer",   required: true },
-                { name: "nama",         label: "Nama Perusahaan", required: true, span: 2 },
+                { name: "kode",         label: "Kode Customer",    required: true },
+                { name: "nama",         label: "Nama Perusahaan",  required: true, span: 2 },
                 { name: "kontak",       label: "Kontak Person" },
                 { name: "telepon",      label: "Telepon" },
                 { name: "email",        label: "Email" },
+                { name: "npwp",         label: "NPWP",             placeholder: "00.000.000.0-000.000" },
+                { name: "pic_proyek",   label: "PIC Proyek",       placeholder: "Nama PIC di lapangan" },
                 { name: "kota",         label: "Kota" },
-                { name: "segmen",       label: "Segmen",          type: "select", options: [
+                { name: "segmen",       label: "Segmen",           type: "select", options: [
                   { value: "BUMN Konstruksi", label: "BUMN Konstruksi" },
-                  { value: "Swasta", label: "Swasta" },
-                  { value: "Pemerintah", label: "Pemerintah" },
+                  { value: "Swasta",          label: "Swasta" },
+                  { value: "Pemerintah",      label: "Pemerintah" },
                 ]},
                 { name: "limit_kredit", label: "Limit Kredit (Rp)", type: "number" },
-                { name: "alamat",       label: "Alamat Lengkap",  type: "textarea", span: 2 },
+                { name: "alamat",       label: "Alamat Lengkap",   type: "textarea", span: 2 },
               ]}
               columns={[
                 { key: "kode",         label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
                 { key: "nama",         label: "Customer",      cls: "font-medium" },
                 { key: "kontak",       label: "Kontak" },
+                { key: "pic_proyek",   label: "PIC Proyek",  cls: "text-[#59687A]" },
+                { key: "npwp",         label: "NPWP",          cls: "font-mono-num text-[#59687A]" },
                 { key: "telepon",      label: "Telepon",       cls: "font-mono-num" },
                 { key: "kota",         label: "Kota" },
                 { key: "segmen",       label: "Segmen" },
@@ -621,20 +611,22 @@ const MasterData = () => {
               data={suppliers.data} loading={suppliers.loading}
               onSubmit={suppliers.handleCreate} onUpdate={suppliers.handleUpdate} onDelete={suppliers.handleDelete}
               addFields={[
-                { name: "nama",     label: "Nama Supplier", required: true, span: 2 },
-                { name: "materials", label: "Material Disuplai", type: "multiselect", options: materials.data.map(m => ({ value: m.id, label: m.nama })), span: 2 },
-                { name: "kontak",   label: "Telepon" },
-                { name: "email",    label: "Email" },
-                { name: "kota",     label: "Kota" },
-                { name: "rating",   label: "Rating (1-5)",  type: "number" },
-                { name: "alamat",   label: "Alamat",        type: "textarea", span: 2 },
+                { name: "nama",           label: "Nama Supplier",    required: true, span: 2 },
+                { name: "materials",      label: "Material Disuplai", type: "multiselect", options: materials.data.map(m => ({ value: m.id, label: m.nama })), span: 2 },
+                { name: "kontak",         label: "Telepon" },
+                { name: "email",          label: "Email" },
+                { name: "kota",           label: "Kota" },
+                { name: "rating",         label: "Rating (1-5)",     type: "number" },
+                { name: "lead_time_hari", label: "Lead Time (hari)", type: "number", placeholder: "Hari pengiriman dari PO" },
+                { name: "alamat",         label: "Alamat",           type: "textarea", span: 2 },
               ]}
               columns={[
-                { key: "nama",     label: "Supplier",      cls: "font-medium" },
-                { key: "materials", label: "Material",     render: (r) => r.materials?.map(m => m.nama).join(", ") || "-" },
-                { key: "kontak",   label: "Kontak",        cls: "font-mono-num" },
-                { key: "kota",     label: "Kota" },
-                { key: "rating",   label: "Rating",        render: (r) => "★".repeat(r.rating || 0) + "☆".repeat(5 - (r.rating || 0)) },
+                { key: "nama",           label: "Supplier",       cls: "font-medium" },
+                { key: "materials",      label: "Material",       render: (r) => r.materials?.map(m => m.nama).join(", ") || "-" },
+                { key: "kontak",         label: "Kontak",         cls: "font-mono-num" },
+                { key: "kota",           label: "Kota" },
+                { key: "lead_time_hari", label: "Lead Time",      cls: "text-right font-mono-num", render: (r) => r.lead_time_hari ? `${r.lead_time_hari} hari` : "-" },
+                { key: "rating",         label: "Rating",         render: (r) => "★".repeat(r.rating || 0) + "☆".repeat(5 - (r.rating || 0)) },
               ]}
             />
           </TabsContent>
@@ -650,13 +642,11 @@ const MasterData = () => {
                 { name: "tipe",      label: "Tipe",          type: "select", options: [
                   { value: "Raw Material", label: "Raw Material" },
                   { value: "Work In Progress", label: "Work In Progress" },
-                  { value: "Curing", label: "Curing" },
                   { value: "Finished Goods", label: "Finished Goods" },
                   { value: "Reject", label: "Reject" },
                 ]},
                 { name: "lokasi",    label: "Lokasi" },
                 { name: "kapasitas", label: "Kapasitas" },
-                { name: "utilisasi", label: "Utilisasi (%)", type: "number" },
               ]}
               columns={[
                 { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
@@ -664,89 +654,41 @@ const MasterData = () => {
                 { key: "tipe",      label: "Tipe" },
                 { key: "lokasi",    label: "Lokasi" },
                 { key: "kapasitas", label: "Kapasitas" },
-                { key: "utilisasi", label: "Utilisasi",     cls: "text-right font-mono-num", render: (r) => `${r.utilisasi || 0}%` },
               ]}
             />
           </TabsContent>
 
-          {/* ── LINE PRODUKSI ── */}
-          <TabsContent value="lines" className="mt-4">
-            <Section testId="lines-table" entityName="Line Produksi"
-              data={productionLines} loading={linesLoading}
+          {/* ── USER (Master User - menggantikan Karyawan) ── */}
+          <TabsContent value="users" className="mt-4">
+            <Section testId="users-table" entityName="User"
+              data={users.data} loading={users.loading}
+              onSubmit={users.handleCreate} onUpdate={users.handleUpdate} onDelete={users.handleDelete}
               addFields={[
-                { name: "kode",             label: "Kode Line",      required: true },
-                { name: "nama",             label: "Nama Line",      required: true, span: 2 },
-                { name: "produk_kategori",  label: "Produk Utama" },
-                { name: "kapasitas_harian", label: "Kapasitas/Hari", type: "number" },
-                { name: "supervisor",       label: "Supervisor",     type: "select", options: employeeOptions },
+                { name: "name",       label: "Nama Lengkap",  required: true, span: 2 },
+                { name: "username",   label: "Username",      required: true },
+                { name: "email",      label: "Email",         required: true },
+                { name: "password",   label: "Password",      type: "password", placeholder: "Min. 6 karakter" },
+                { name: "role",       label: "Role",          required: true, type: "select", options: [
+                  { value: "super_admin", label: "Super Admin" },
+                  { value: "admin",       label: "Admin" },
+                  { value: "manager",     label: "Manager" },
+                  { value: "ppic",        label: "PPIC" },
+                  { value: "production",  label: "Production" },
+                  { value: "qc",          label: "QC" },
+                  { value: "warehouse",   label: "Warehouse" },
+                  { value: "sales",       label: "Sales" },
+                ]},
+                { name: "is_active",  label: "Status",        type: "select", options: [
+                  { value: true,  label: "Aktif" },
+                  { value: false, label: "Nonaktif" },
+                ], default: true },
               ]}
               columns={[
-                { key: "kode",             label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",             label: "Line",          cls: "font-medium" },
-                { key: "produk_kategori",  label: "Produk Utama" },
-                { key: "kapasitas_harian", label: "Kapasitas/Hari", cls: "text-right font-mono-num" },
-                { key: "output_hari_ini",  label: "Output Hari Ini", cls: "text-right font-mono-num" },
-                { key: "status",           label: "Status",         render: (r) => <StatusBadge status={r.status} /> },
-                { key: "supervisor",       label: "Supervisor" },
-              ]}
-            />
-          </TabsContent>
-
-          {/* ── MESIN ── */}
-          <TabsContent value="machines" className="mt-4">
-            <Section testId="machines-table" entityName="Mesin"
-              data={machines.data} loading={machines.loading}
-              onSubmit={machines.handleCreate} onUpdate={machines.handleUpdate} onDelete={machines.handleDelete}
-              addFields={[
-                { name: "kode",             label: "Kode Mesin",           required: true },
-                { name: "nama",             label: "Nama Mesin",           required: true, span: 2 },
-                { name: "tipe",             label: "Tipe",                 type: "select", options: [
-                  { value: "Mixer", label: "Mixer" }, { value: "Casting", label: "Casting" },
-                  { value: "Curing", label: "Curing" }, { value: "Material Handling", label: "Material Handling" }, { value: "QC Lab", label: "QC Lab" },
-                ]},
-                { name: "line",             label: "Lokasi/Line" },
-                { name: "last_maintenance", label: "Maint. Terakhir",      type: "date" },
-                { name: "next_maintenance", label: "Maint. Berikutnya",    type: "date" },
-              ]}
-              columns={[
-                { key: "kode",             label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",             label: "Mesin",         cls: "font-medium" },
-                { key: "tipe",             label: "Tipe" },
-                { key: "line",             label: "Lokasi" },
-                { key: "status",           label: "Status",        render: (r) => <StatusBadge status={r.status} /> },
-                { key: "last_maintenance", label: "Maint. Terakhir", cls: "font-mono-num text-[#59687A]" },
-                { key: "next_maintenance", label: "Maint. Berikutnya", cls: "font-mono-num" },
-              ]}
-            />
-          </TabsContent>
-
-          {/* ── KARYAWAN ── */}
-          <TabsContent value="employees" className="mt-4">
-            <Section testId="employees-table" entityName="Karyawan"
-              data={employees.data} loading={employees.loading}
-              onSubmit={employees.handleCreate} onUpdate={employees.handleUpdate} onDelete={employees.handleDelete}
-              addFields={[
-                { name: "nik",        label: "NIK",           required: true },
-                { name: "nama",       label: "Nama Lengkap",  required: true, span: 2 },
-                { name: "jabatan",    label: "Jabatan" },
-                { name: "departemen", label: "Departemen",    type: "select", options: [
-                  { value: "Produksi", label: "Produksi" }, { value: "Quality", label: "Quality" },
-                  { value: "Logistik", label: "Logistik" }, { value: "Maintenance", label: "Maintenance" }, { value: "Admin", label: "Admin" },
-                ]},
-                { name: "shift",      label: "Shift",         type: "select", options: [
-                  { value: "Pagi", label: "Pagi" }, { value: "Sore", label: "Sore" }, { value: "Malam", label: "Malam" },
-                ]},
-                { name: "status",     label: "Status",        type: "select", options: [
-                  { value: "Aktif", label: "Aktif" }, { value: "Cuti", label: "Cuti" }, { value: "Nonaktif", label: "Nonaktif" },
-                ]},
-              ]}
-              columns={[
-                { key: "nik",        label: "NIK",           cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",       label: "Nama",          cls: "font-medium" },
-                { key: "jabatan",    label: "Jabatan" },
-                { key: "departemen", label: "Departemen" },
-                { key: "shift",      label: "Shift" },
-                { key: "status",     label: "Status",        render: (r) => <StatusBadge status={r.status} /> },
+                { key: "name",       label: "Nama",          cls: "font-medium" },
+                { key: "username",   label: "Username",      cls: "font-mono-num text-[#0A6ED1]" },
+                { key: "email",      label: "Email",         cls: "text-[#59687A]" },
+                { key: "role",       label: "Role",          render: (r) => <StatusBadge status={r.role} variant="info" /> },
+                { key: "is_active",  label: "Status",        render: (r) => <StatusBadge status={r.is_active ? "Aktif" : "Nonaktif"} /> },
               ]}
             />
           </TabsContent>
@@ -757,18 +699,45 @@ const MasterData = () => {
               data={shifts.data} loading={shifts.loading}
               onSubmit={shifts.handleCreate} onUpdate={shifts.handleUpdate} onDelete={shifts.handleDelete}
               addFields={[
-                { name: "kode",           label: "Kode Shift",    required: true },
-                { name: "nama",           label: "Nama Shift",    required: true },
-                { name: "jam",            label: "Jam Kerja",     placeholder: "07:00 - 15:00" },
-                { name: "supervisor",     label: "Supervisor",    type: "select", options: employeeOptions },
+                { name: "kode",           label: "Kode Shift",     required: true },
+                { name: "nama",           label: "Nama Shift",     required: true },
+                { name: "jam",            label: "Jam Kerja",      placeholder: "07:00 - 15:00" },
+                { name: "supervisor",     label: "Supervisor",     type: "select", options: userOptions, placeholder: "Pilih supervisor dari User" },
                 { name: "jumlah_pekerja", label: "Jumlah Pekerja", type: "number" },
               ]}
               columns={[
                 { key: "kode",           label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
                 { key: "nama",           label: "Shift",         cls: "font-medium" },
                 { key: "jam",            label: "Jam Kerja",     cls: "font-mono-num" },
-                { key: "supervisor",     label: "Supervisor" },
-                { key: "jumlah_pekerja", label: "Jumlah Pekerja", cls: "text-right font-mono-num" },
+                { key: "supervisor",     label: "Supervisor",    cls: "text-[#59687A]" },
+                { key: "jumlah_pekerja", label: "Jml Pekerja",  cls: "text-right font-mono-num" },
+              ]}
+            />
+          </TabsContent>
+
+          {/* ── STATUS BATCH ── */}
+          <TabsContent value="batch-status" className="mt-4">
+            <Section testId="batch-status-table" entityName="Status Batch"
+              data={batchStatuses.data} loading={batchStatuses.loading}
+              onSubmit={batchStatuses.handleCreate} onUpdate={batchStatuses.handleUpdate} onDelete={batchStatuses.handleDelete}
+              addFields={[
+                { name: "kode",      label: "Kode Status",   required: true, placeholder: "BS-01" },
+                { name: "status",    label: "Nama Status",   required: true, span: 2, placeholder: "Planning, Casting, dll" },
+                { name: "urutan",    label: "Urutan",        type: "number", placeholder: "1, 2, 3..." },
+                { name: "warna",     label: "Warna (hex)",   placeholder: "#4CAF50" },
+                { name: "deskripsi", label: "Deskripsi",     type: "textarea", span: 2 },
+                { name: "aktif",     label: "Status",        type: "select", options: [
+                  { value: true,  label: "Aktif" },
+                  { value: false, label: "Nonaktif" },
+                ], default: true },
+              ]}
+              columns={[
+                { key: "urutan",  label: "#",          cls: "text-center w-12 font-mono-num text-[#59687A]" },
+                { key: "warna",   label: "",           render: (r) => <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: r.warna || "#ccc" }} /> },
+                { key: "kode",    label: "Kode",       cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                { key: "status",  label: "Status",     cls: "font-medium" },
+                { key: "deskripsi", label: "Deskripsi", cls: "text-[#59687A]" },
+                { key: "aktif",   label: "Aktif",      render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
               ]}
             />
           </TabsContent>
@@ -825,51 +794,6 @@ const MasterData = () => {
             />
           </TabsContent>
 
-          {/* ── STATUS PRODUKSI ── */}
-          <TabsContent value="prod-status" className="mt-4">
-            <Section testId="prod-status-table" entityName="Status Produksi"
-              data={prodStatuses.data} loading={prodStatuses.loading}
-              onSubmit={prodStatuses.handleCreate} onUpdate={prodStatuses.handleUpdate} onDelete={prodStatuses.handleDelete}
-              addFields={[
-                { name: "kode",      label: "Kode Status",   required: true },
-                { name: "status",    label: "Nama Status",   required: true, span: 2 },
-                { name: "urutan",    label: "Urutan",        type: "number" },
-                { name: "warna",     label: "Warna (hex)",   placeholder: "#0A6ED1" },
-                { name: "deskripsi", label: "Deskripsi",     type: "textarea", span: 2 },
-              ]}
-              columns={[
-                { key: "urutan",    label: "#",             cls: "font-mono-num text-[#59687A] w-12" },
-                { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "warna",     label: "",              render: (r) => <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: r.warna }} /> },
-                { key: "status",    label: "Status",        cls: "font-medium" },
-                { key: "deskripsi", label: "Deskripsi",     cls: "text-[#59687A]" },
-                { key: "aktif",     label: "Aktif",         render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
-              ]}
-            />
-          </TabsContent>
-
-          {/* ── STATUS PENGIRIMAN ── */}
-          <TabsContent value="del-status" className="mt-4">
-            <Section testId="del-status-table" entityName="Status Pengiriman"
-              data={delStatuses.data} loading={delStatuses.loading}
-              onSubmit={delStatuses.handleCreate} onUpdate={delStatuses.handleUpdate} onDelete={delStatuses.handleDelete}
-              addFields={[
-                { name: "kode",      label: "Kode Status",   required: true },
-                { name: "status",    label: "Nama Status",   required: true, span: 2 },
-                { name: "urutan",    label: "Urutan",        type: "number" },
-                { name: "warna",     label: "Warna (hex)",   placeholder: "#107E3E" },
-                { name: "deskripsi", label: "Deskripsi",     type: "textarea", span: 2 },
-              ]}
-              columns={[
-                { key: "urutan",    label: "#",             cls: "font-mono-num text-[#59687A] w-12" },
-                { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "warna",     label: "",              render: (r) => <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: r.warna }} /> },
-                { key: "status",    label: "Status",        cls: "font-medium" },
-                { key: "deskripsi", label: "Deskripsi",     cls: "text-[#59687A]" },
-                { key: "aktif",     label: "Aktif",         render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
-              ]}
-            />
-          </TabsContent>
         </Tabs>
       </div>
     </div>

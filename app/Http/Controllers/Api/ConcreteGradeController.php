@@ -21,14 +21,13 @@ class ConcreteGradeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'grade'     => 'required|string|max:20|unique:global.production_concrete_grades,grade',
-            'fc'        => 'nullable|numeric|min:0',
-            'slump'     => 'nullable|string|max:20',
-            'semen'     => 'nullable|numeric|min:0',
-            'agregat'   => 'nullable|numeric|min:0',
-            'air'       => 'nullable|numeric|min:0',
-            'admixture' => 'nullable|string|max:100',
-            'aktif'     => 'boolean',
+            'grade'         => 'required|string|max:20|unique:global.production_concrete_grades,grade',
+            'nama'          => 'nullable|string|max:200',
+            'fc_mpa'        => 'nullable|numeric|min:0',
+            'slump_min_cm'  => 'nullable|numeric|min:0',
+            'slump_max_cm'  => 'nullable|numeric|min:0',
+            'keterangan'    => 'nullable|string',
+            'aktif'         => 'boolean',
         ]);
         return response()->json(ConcreteGrade::create($validated), 201);
     }
@@ -41,14 +40,13 @@ class ConcreteGradeController extends Controller
     public function update(Request $request, ConcreteGrade $concreteGrade): JsonResponse
     {
         $validated = $request->validate([
-            'grade'     => 'sometimes|string|max:20|unique:global.production_concrete_grades,grade,' . $concreteGrade->id,
-            'fc'        => 'nullable|numeric|min:0',
-            'slump'     => 'nullable|string|max:20',
-            'semen'     => 'nullable|numeric|min:0',
-            'agregat'   => 'nullable|numeric|min:0',
-            'air'       => 'nullable|numeric|min:0',
-            'admixture' => 'nullable|string|max:100',
-            'aktif'     => 'boolean',
+            'grade'         => 'sometimes|string|max:20|unique:global.production_concrete_grades,grade,' . $concreteGrade->id,
+            'nama'          => 'nullable|string|max:200',
+            'fc_mpa'        => 'nullable|numeric|min:0',
+            'slump_min_cm'  => 'nullable|numeric|min:0',
+            'slump_max_cm'  => 'nullable|numeric|min:0',
+            'keterangan'    => 'nullable|string',
+            'aktif'         => 'boolean',
         ]);
         $concreteGrade->update($validated);
         return response()->json($concreteGrade->fresh());

@@ -11,7 +11,7 @@ class ShiftController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $q = Shift::query()->whereNull('deleted_at');
+        $q = Shift::with('supervisor')->whereNull('deleted_at');
         if ($request->filled('search')) {
             $q->where(function ($qq) use ($request) {
                 $qq->where('kode', 'like', "%{$request->search}%")
@@ -27,7 +27,7 @@ class ShiftController extends Controller
             'kode'           => 'required|string|max:20|unique:global.production_shifts,kode',
             'nama'           => 'required|string|max:50',
             'jam'            => 'nullable|string|max:30',
-            'supervisor'     => 'nullable|string|max:100',
+            'supervisor_id'  => 'nullable|exists:global.users,id',
             'jumlah_pekerja' => 'nullable|integer|min:0',
             'aktif'          => 'boolean',
         ]);
@@ -45,7 +45,7 @@ class ShiftController extends Controller
             'kode'           => 'sometimes|string|max:20|unique:global.production_shifts,kode,' . $shift->id,
             'nama'           => 'sometimes|string|max:50',
             'jam'            => 'nullable|string|max:30',
-            'supervisor'     => 'nullable|string|max:100',
+            'supervisor_id'  => 'nullable|exists:global.users,id',
             'jumlah_pekerja' => 'nullable|integer|min:0',
             'aktif'          => 'boolean',
         ]);

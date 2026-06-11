@@ -14,12 +14,14 @@ class Product extends Model
 
     protected $fillable = [
         'kode', 'nama', 'kategori', 'varian', 'spek',
-        'grade', 'berat', 'harga', 'satuan', 'standar', 'aktif',
+        'grade', 'berat', 'volume_m3',
+        'harga', 'satuan', 'standar', 'aktif',
     ];
 
     protected $casts = [
         'aktif' => 'boolean',
         'berat' => 'decimal:2',
+        'volume_m3' => 'decimal:3',
         'harga' => 'integer',
     ];
 
@@ -56,5 +58,10 @@ class Product extends Model
     public function productionDemands(): HasMany
     {
         return $this->hasMany(ProductionDemand::class, 'product_id');
+    }
+
+    public function productSpecs(): HasMany
+    {
+        return $this->hasMany(ProductSpec::class, 'product_id');
     }
 }

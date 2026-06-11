@@ -12,14 +12,13 @@ class ConcreteGrade extends Model
     protected $table = 'global.production_concrete_grades';
 
     protected $fillable = [
-        'grade', 'fc', 'slump', 'semen', 'agregat', 'air', 'admixture', 'aktif',
+        'grade', 'nama', 'fc_mpa', 'slump_min_cm', 'slump_max_cm', 'keterangan', 'aktif',
     ];
 
     protected $casts = [
-        'aktif'   => 'boolean',
-        'fc'      => 'float',
-        'semen'   => 'float',
-        'agregat' => 'float',
-        'air'     => 'float',
+        'aktif'         => 'boolean',
+        'fc_mpa'        => 'float',
+        'slump_min_cm'  => 'float',
+        'slump_max_cm'  => 'float',
     ];
 }

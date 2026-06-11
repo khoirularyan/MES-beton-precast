@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->string('alamat', 300)->nullable();
             $table->string('kota', 100)->nullable();
             $table->tinyInteger('rating')->default(3); // 1-5
+            $table->integer('lead_time_hari')->default(7); // hari pengiriman dari PO
             $table->boolean('aktif')->default(true);
             $table->timestamps();
             $table->softDeletes();

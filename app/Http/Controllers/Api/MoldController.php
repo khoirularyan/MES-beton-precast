@@ -24,13 +24,15 @@ class MoldController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_molds,kode',
-            'nama'      => 'required|string|max:100',
-            'produk'    => 'nullable|string|max:100',
-            'jumlah'    => 'nullable|integer|min:0',
-            'aktif'     => 'nullable|integer|min:0',
-            'kondisi'   => 'nullable|string|max:30',
-            'utilisasi' => 'nullable|integer|min:0|max:100',
+            'kode'                 => 'required|string|max:20|unique:global.production_molds,kode',
+            'nama'                 => 'required|string|max:100',
+            'produk'               => 'nullable|string|max:100',
+            'jumlah'               => 'nullable|integer|min:0',
+            'aktif'                => 'nullable|integer|min:0',
+            'kondisi'              => 'nullable|string|max:30',
+            'utilisasi'            => 'nullable|integer|min:0|max:100',
+            'kapasitas_per_siklus' => 'nullable|integer|min:0',
+            'siklus_per_hari'      => 'nullable|integer|min:0',
         ]);
         return response()->json(Mold::create($validated), 201);
     }
@@ -43,13 +45,15 @@ class MoldController extends Controller
     public function update(Request $request, Mold $mold): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_molds,kode,' . $mold->id,
-            'nama'      => 'sometimes|string|max:100',
-            'produk'    => 'nullable|string|max:100',
-            'jumlah'    => 'nullable|integer|min:0',
-            'aktif'     => 'nullable|integer|min:0',
-            'kondisi'   => 'nullable|string|max:30',
-            'utilisasi' => 'nullable|integer|min:0|max:100',
+            'kode'                 => 'sometimes|string|max:20|unique:global.production_molds,kode,' . $mold->id,
+            'nama'                 => 'sometimes|string|max:100',
+            'produk'               => 'nullable|string|max:100',
+            'jumlah'               => 'nullable|integer|min:0',
+            'aktif'                => 'nullable|integer|min:0',
+            'kondisi'              => 'nullable|string|max:30',
+            'utilisasi'            => 'nullable|integer|min:0|max:100',
+            'kapasitas_per_siklus' => 'nullable|integer|min:0',
+            'siklus_per_hari'      => 'nullable|integer|min:0',
         ]);
         $mold->update($validated);
         return response()->json($mold->fresh());

@@ -66,9 +66,11 @@ Route::middleware('auth')->group(function () {
     Route::apiResource('material-categories', \App\Http\Controllers\Api\MaterialCategoryController::class);
     Route::apiResource('molds', \App\Http\Controllers\Api\MoldController::class);
     Route::apiResource('warehouses', \App\Http\Controllers\Api\WarehouseController::class);
-    Route::apiResource('machines', \App\Http\Controllers\Api\MachineController::class);
-    Route::apiResource('employees', \App\Http\Controllers\Api\EmployeeController::class);
+    // Route::apiResource('machines', \App\Http\Controllers\Api\MachineController::class); // REMOVED - Table dropped in refactor
+    // Route::apiResource('employees', \App\Http\Controllers\Api\EmployeeController::class); // REMOVED - Use users instead
+    Route::apiResource('users', \App\Http\Controllers\Api\UserController::class);
     Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
+    Route::apiResource('batch-statuses', \App\Http\Controllers\Api\BatchStatusController::class);
     Route::apiResource('qc-parameters', \App\Http\Controllers\Api\QcParameterController::class);
     Route::apiResource('defect-categories', \App\Http\Controllers\Api\DefectCategoryController::class);
     Route::apiResource('production-statuses', \App\Http\Controllers\Api\ProductionStatusController::class);

@@ -14,12 +14,13 @@ class Supplier extends Model
 
     protected $fillable = [
         'nama', 'kontak', 'email',
-        'alamat', 'kota', 'rating', 'aktif',
+        'alamat', 'kota', 'rating', 'lead_time_hari', 'aktif',
     ];
 
     protected $casts = [
         'aktif' => 'boolean',
         'rating' => 'integer',
+        'lead_time_hari' => 'integer',
     ];
 
     public function materials(): BelongsToMany

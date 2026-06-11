@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->string('spek', 100)->nullable();
             $table->string('grade', 20)->nullable();     // K-350, K-400, dll
             $table->decimal('berat', 10, 2)->nullable(); // kg per unit
+            $table->decimal('volume_m3', 10, 3)->nullable(); // volume per unit (m³)
             $table->bigInteger('harga')->default(0);     // harga jual per unit (IDR)
             $table->string('satuan', 20)->default('unit');
             $table->string('standar', 50)->nullable();   // SNI, ASTM, dll

@@ -14,6 +14,7 @@ class Customer extends Model
 
     protected $fillable = [
         'kode', 'nama', 'kontak', 'telepon', 'email',
+        'npwp', 'pic_proyek',
         'alamat', 'kota', 'segmen', 'limit_kredit', 'aktif',
     ];
 

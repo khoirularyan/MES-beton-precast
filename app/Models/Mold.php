@@ -13,11 +13,14 @@ class Mold extends Model
 
     protected $fillable = [
         'kode', 'nama', 'produk', 'jumlah', 'aktif', 'kondisi', 'utilisasi',
+        'kapasitas_per_siklus', 'siklus_per_hari',
     ];
 
     protected $casts = [
-        'jumlah'    => 'integer',
-        'aktif'     => 'integer',
-        'utilisasi' => 'integer',
+        'jumlah'               => 'integer',
+        'aktif'                => 'integer',
+        'utilisasi'            => 'integer',
+        'kapasitas_per_siklus' => 'integer',
+        'siklus_per_hari'      => 'integer',
     ];
 }

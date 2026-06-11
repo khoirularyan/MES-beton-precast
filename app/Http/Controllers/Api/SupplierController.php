@@ -39,6 +39,7 @@ class SupplierController extends Controller
             'alamat'   => 'nullable|string|max:300',
             'kota'     => 'nullable|string|max:100',
             'rating'   => 'nullable|integer|min:1|max:5',
+            'lead_time_hari' => 'nullable|integer|min:0',
             'aktif'    => 'boolean',
         ]);
 
@@ -65,6 +66,7 @@ class SupplierController extends Controller
             'alamat'   => 'nullable|string|max:300',
             'kota'     => 'nullable|string|max:100',
             'rating'   => 'nullable|integer|min:1|max:5',
+            'lead_time_hari' => 'nullable|integer|min:0',
             'aktif'    => 'boolean',
         ]);
 

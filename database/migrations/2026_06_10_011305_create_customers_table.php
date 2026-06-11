@@ -14,6 +14,8 @@ return new class extends Migration {
             $table->string('kontak', 100)->nullable();
             $table->string('telepon', 30)->nullable();
             $table->string('email', 100)->nullable();
+            $table->string('npwp', 30)->nullable();          // NPWP perusahaan
+            $table->string('pic_proyek', 200)->nullable();   // PIC di lapangan
             $table->string('alamat', 300)->nullable();
             $table->string('kota', 100)->nullable();
             $table->string('segmen', 50)->nullable(); // BUMN Konstruksi, Swasta, Pemerintah

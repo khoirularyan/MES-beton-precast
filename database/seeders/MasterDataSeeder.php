@@ -28,12 +28,12 @@ class MasterDataSeeder extends Seeder
 
         // ── Mutu Beton
         DB::table('global.production_concrete_grades')->insertOrIgnore([
-            ['grade' => 'K-250', 'fc' => 20.75, 'slump' => '10-15', 'semen' => 384, 'agregat' => 1152, 'air' => 192, 'admixture' => '-', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['grade' => 'K-300', 'fc' => 24.90, 'slump' => '10-15', 'semen' => 413, 'agregat' => 1152, 'air' => 185, 'admixture' => 'Sikament NN 0.6%', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['grade' => 'K-350', 'fc' => 29.05, 'slump' => '8-12',  'semen' => 448, 'agregat' => 1100, 'air' => 175, 'admixture' => 'Sikament NN 0.8%', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['grade' => 'K-400', 'fc' => 33.20, 'slump' => '8-12',  'semen' => 480, 'agregat' => 1050, 'air' => 168, 'admixture' => 'Sikament NN 1.0%', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['grade' => 'K-450', 'fc' => 37.35, 'slump' => '6-10',  'semen' => 512, 'agregat' => 1000, 'air' => 160, 'admixture' => 'Sika ViscoCrete 1.2%', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['grade' => 'K-500', 'fc' => 41.50, 'slump' => '6-10',  'semen' => 550, 'agregat' => 950,  'air' => 155, 'admixture' => 'Sika ViscoCrete 1.5%', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['grade' => 'K-250', 'nama' => 'Beton K-250 Umum',       'fc_mpa' => 20.75, 'slump_min_cm' => 10, 'slump_max_cm' => 15, 'keterangan' => 'Mutu standar untuk pekerjaan umum', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['grade' => 'K-300', 'nama' => 'Beton K-300 Struktur',   'fc_mpa' => 24.90, 'slump_min_cm' => 10, 'slump_max_cm' => 15, 'keterangan' => 'Untuk struktur kolom & balok', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['grade' => 'K-350', 'nama' => 'Beton K-350 Precast',    'fc_mpa' => 29.05, 'slump_min_cm' => 8,  'slump_max_cm' => 12, 'keterangan' => 'Mutu umum precast beton', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['grade' => 'K-400', 'nama' => 'Beton K-400 High Strength', 'fc_mpa' => 33.20, 'slump_min_cm' => 8,  'slump_max_cm' => 12, 'keterangan' => 'Untuk elemen struktural berat', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['grade' => 'K-450', 'nama' => 'Beton K-450 High Strength', 'fc_mpa' => 37.35, 'slump_min_cm' => 6,  'slump_max_cm' => 10, 'keterangan' => 'Mutu tinggi, butuh admixture', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['grade' => 'K-500', 'nama' => 'Beton K-500 Ultra High', 'fc_mpa' => 41.50, 'slump_min_cm' => 6,  'slump_max_cm' => 10, 'keterangan' => 'Mutu sangat tinggi', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // ── Kategori Material
@@ -47,44 +47,25 @@ class MasterDataSeeder extends Seeder
 
         // ── Cetakan (Molds)
         DB::table('global.production_molds')->insertOrIgnore([
-            ['kode' => 'CET-TL9',  'nama' => 'Cetakan Tiang 9m',   'produk' => 'TL-9M-K300', 'jumlah' => 20, 'aktif' => 18, 'kondisi' => 'Baik',            'utilisasi' => 90, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CET-TL12', 'nama' => 'Cetakan Tiang 12m',  'produk' => 'TL-12M-K300','jumlah' => 15, 'aktif' => 12, 'kondisi' => 'Baik',            'utilisasi' => 80, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CET-PD',   'nama' => 'Cetakan Panel Dinding','produk' => 'PD-120-K350','jumlah' => 10, 'aktif' => 8,  'kondisi' => 'Sedang',         'utilisasi' => 80, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CET-BC',   'nama' => 'Cetakan Box Culvert', 'produk' => 'BC-1010',    'jumlah' => 6,  'aktif' => 5,  'kondisi' => 'Perlu Perawatan', 'utilisasi' => 83, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-TL9',  'nama' => 'Cetakan Tiang 9m',   'produk' => 'TL-9M-K300', 'jumlah' => 20, 'aktif' => 18, 'kondisi' => 'Baik',            'utilisasi' => 90, 'kapasitas_per_siklus' => 2, 'siklus_per_hari' => 3, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-TL12', 'nama' => 'Cetakan Tiang 12m',  'produk' => 'TL-12M-K300','jumlah' => 15, 'aktif' => 12, 'kondisi' => 'Baik',            'utilisasi' => 80, 'kapasitas_per_siklus' => 1, 'siklus_per_hari' => 2, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-PD',   'nama' => 'Cetakan Panel Dinding','produk' => 'PD-120-K350','jumlah' => 10, 'aktif' => 8,  'kondisi' => 'Sedang',         'utilisasi' => 80, 'kapasitas_per_siklus' => 4, 'siklus_per_hari' => 2, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-BC',   'nama' => 'Cetakan Box Culvert', 'produk' => 'BC-1010',    'jumlah' => 6,  'aktif' => 5,  'kondisi' => 'Perlu Perawatan', 'utilisasi' => 83, 'kapasitas_per_siklus' => 1, 'siklus_per_hari' => 1, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // ── Gudang
         DB::table('global.production_warehouses')->insertOrIgnore([
             ['kode' => 'GD-01', 'nama' => 'Gudang Bahan Baku',   'tipe' => 'Raw Material',    'lokasi' => 'Area A - Selatan', 'kapasitas' => '500 ton',  'utilisasi' => 72, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'GD-02', 'nama' => 'Area Curing',         'tipe' => 'Curing',          'lokasi' => 'Area B - Tengah',  'kapasitas' => '1000 unit','utilisasi' => 85, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'GD-02', 'nama' => 'Area WIP',              'tipe' => 'Work In Progress', 'lokasi' => 'Area B - Tengah',  'kapasitas' => '1000 unit','utilisasi' => 85, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
             ['kode' => 'GD-03', 'nama' => 'Gudang Finished Goods','tipe' => 'Finished Goods', 'lokasi' => 'Area C - Utara',  'kapasitas' => '800 unit', 'utilisasi' => 60, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
             ['kode' => 'GD-04', 'nama' => 'Area Reject',         'tipe' => 'Reject',          'lokasi' => 'Area D - Timur',  'kapasitas' => '100 unit', 'utilisasi' => 15, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // ── Mesin
-        DB::table('global.production_machines')->insertOrIgnore([
-            ['kode' => 'MX-01', 'nama' => 'Batching Plant 1',    'tipe' => 'Mixer',            'line' => 'Line A', 'status' => 'Operasional', 'last_maintenance' => '2026-05-15', 'next_maintenance' => '2026-07-15', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'MX-02', 'nama' => 'Batching Plant 2',    'tipe' => 'Mixer',            'line' => 'Line B', 'status' => 'Operasional', 'last_maintenance' => '2026-05-20', 'next_maintenance' => '2026-07-20', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CS-01', 'nama' => 'Mesin Casting Tiang', 'tipe' => 'Casting',          'line' => 'Line A', 'status' => 'Operasional', 'last_maintenance' => '2026-06-01', 'next_maintenance' => '2026-08-01', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CU-01', 'nama' => 'Curing Chamber 1',   'tipe' => 'Curing',           'line' => 'Area B', 'status' => 'Operasional', 'last_maintenance' => '2026-04-10', 'next_maintenance' => '2026-07-10', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'MH-01', 'nama' => 'Crane Overhead 1',   'tipe' => 'Material Handling','line' => 'Line A', 'status' => 'Maintenance', 'last_maintenance' => '2026-06-08', 'next_maintenance' => '2026-06-22', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-        ]);
-
-        // ── Karyawan
-        DB::table('global.production_employees')->insertOrIgnore([
-            ['nik' => 'EMP-001', 'nama' => 'Budi Santoso',      'jabatan' => 'Kepala Produksi',    'departemen' => 'Produksi',    'shift' => 'Pagi',  'status' => 'Aktif', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nik' => 'EMP-002', 'nama' => 'Andi Wijaya',       'jabatan' => 'Operator Mixer',     'departemen' => 'Produksi',    'shift' => 'Pagi',  'status' => 'Aktif', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nik' => 'EMP-003', 'nama' => 'Siti Rahayu',       'jabatan' => 'QC Inspector',       'departemen' => 'Quality',     'shift' => 'Pagi',  'status' => 'Aktif', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nik' => 'EMP-004', 'nama' => 'Rudi Hartono',      'jabatan' => 'Teknisi Mesin',      'departemen' => 'Maintenance', 'shift' => 'Sore',  'status' => 'Aktif', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nik' => 'EMP-005', 'nama' => 'Dewi Kusuma',       'jabatan' => 'Staff Logistik',     'departemen' => 'Logistik',    'shift' => 'Pagi',  'status' => 'Aktif', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nik' => 'EMP-006', 'nama' => 'Agus Prabowo',      'jabatan' => 'Supervisor Malam',   'departemen' => 'Produksi',    'shift' => 'Malam', 'status' => 'Aktif', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-        ]);
-
-        // ── Shift
+        // ── Shift (NOTE: supervisor_id akan diisi setelah user dibuat)
         DB::table('global.production_shifts')->insertOrIgnore([
-            ['kode' => 'SH-01', 'nama' => 'Shift Pagi',  'jam' => '07:00 - 15:00', 'supervisor' => 'Budi Santoso', 'jumlah_pekerja' => 25, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'SH-02', 'nama' => 'Shift Sore',  'jam' => '15:00 - 23:00', 'supervisor' => 'Rudi Hartono', 'jumlah_pekerja' => 20, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'SH-03', 'nama' => 'Shift Malam', 'jam' => '23:00 - 07:00', 'supervisor' => 'Agus Prabowo', 'jumlah_pekerja' => 15, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'SH-01', 'nama' => 'Shift Pagi',  'jam' => '07:00 - 15:00', 'supervisor_id' => null, 'jumlah_pekerja' => 25, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'SH-02', 'nama' => 'Shift Sore',  'jam' => '15:00 - 23:00', 'supervisor_id' => null, 'jumlah_pekerja' => 20, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'SH-03', 'nama' => 'Shift Malam', 'jam' => '23:00 - 07:00', 'supervisor_id' => null, 'jumlah_pekerja' => 15, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // ── Parameter QC
@@ -126,22 +107,42 @@ class MasterDataSeeder extends Seeder
             ['kode' => 'DS-06', 'status' => 'Returned',    'urutan' => 6, 'warna' => '#F44336', 'deskripsi' => 'Dikembalikan karena masalah', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
+        // ── Status Batch Produksi
+        DB::table('global.production_batch_statuses')->insertOrIgnore([
+            ['kode' => 'BS-01', 'status' => 'Planning',       'urutan' => 1, 'warna' => '#9E9E9E', 'deskripsi' => 'Batch sedang direncanakan', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'BS-02', 'status' => 'Ready Material', 'urutan' => 2, 'warna' => '#2196F3', 'deskripsi' => 'Material sudah siap', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'BS-03', 'status' => 'Casting',        'urutan' => 3, 'warna' => '#FF9800', 'deskripsi' => 'Proses casting sedang berjalan', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'BS-04', 'status' => 'QC',             'urutan' => 4, 'warna' => '#9C27B0', 'deskripsi' => 'Quality control inspection', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'BS-05', 'status' => 'Finished',       'urutan' => 5, 'warna' => '#4CAF50', 'deskripsi' => 'Batch selesai, produk ready', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'BS-06', 'status' => 'Delivered',      'urutan' => 6, 'warna' => '#00E676', 'deskripsi' => 'Batch sudah dikirim ke customer', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // ── Status Pengiriman
+        DB::table('global.production_delivery_statuses')->insertOrIgnore([
+            ['kode' => 'DS-01', 'status' => 'Pending',     'urutan' => 1, 'warna' => '#9E9E9E', 'deskripsi' => 'Menunggu konfirmasi pengiriman', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'DS-02', 'status' => 'Confirmed',   'urutan' => 2, 'warna' => '#2196F3', 'deskripsi' => 'Pengiriman dikonfirmasi', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'DS-03', 'status' => 'Loading',     'urutan' => 3, 'warna' => '#FF9800', 'deskripsi' => 'Sedang proses muat ke kendaraan', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'DS-04', 'status' => 'In Transit',  'urutan' => 4, 'warna' => '#00BCD4', 'deskripsi' => 'Dalam perjalanan ke lokasi', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'DS-05', 'status' => 'Delivered',   'urutan' => 5, 'warna' => '#4CAF50', 'deskripsi' => 'Sudah diterima pelanggan', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'DS-06', 'status' => 'Returned',    'urutan' => 6, 'warna' => '#F44336', 'deskripsi' => 'Dikembalikan karena masalah', 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
         // ── Supplier
         DB::table('global.production_suppliers')->insertOrIgnore([
-            ['nama' => 'PT Semen Indonesia (Persero) Tbk', 'kontak' => '031-981-8000', 'email' => 'sales@semenindonesia.com', 'kota' => 'Gresik',    'rating' => 5, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nama' => 'PT Holcim Indonesia Tbk',          'kontak' => '021-570-6828', 'email' => 'info@holcim.co.id',       'kota' => 'Jakarta',   'rating' => 4, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nama' => 'CV Maju Jaya Agregat',             'kontak' => '0271-123-456', 'email' => 'maju.jaya@email.com',     'kota' => 'Surakarta', 'rating' => 4, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nama' => 'PT Krakatau Steel',                'kontak' => '0254-571-200','email' => 'sales@krakatausteel.com', 'kota' => 'Cilegon',   'rating' => 5, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['nama' => 'PT Sika Indonesia',                'kontak' => '021-890-3737', 'email' => 'sika@sika.co.id',         'kota' => 'Cibitung',  'rating' => 5, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nama' => 'PT Semen Indonesia (Persero) Tbk', 'kontak' => '031-981-8000', 'email' => 'sales@semenindonesia.com', 'kota' => 'Gresik',    'rating' => 5, 'lead_time_hari' => 3, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nama' => 'PT Holcim Indonesia Tbk',          'kontak' => '021-570-6828', 'email' => 'info@holcim.co.id',       'kota' => 'Jakarta',   'rating' => 4, 'lead_time_hari' => 5, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nama' => 'CV Maju Jaya Agregat',             'kontak' => '0271-123-456', 'email' => 'maju.jaya@email.com',     'kota' => 'Surakarta', 'rating' => 4, 'lead_time_hari' => 2, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nama' => 'PT Krakatau Steel',                'kontak' => '0254-571-200','email' => 'sales@krakatausteel.com', 'kota' => 'Cilegon',   'rating' => 5, 'lead_time_hari' => 7, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nama' => 'PT Sika Indonesia',                'kontak' => '021-890-3737', 'email' => 'sika@sika.co.id',         'kota' => 'Cibitung',  'rating' => 5, 'lead_time_hari' => 5, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // ── Customer
         DB::table('global.production_customers')->insertOrIgnore([
-            ['kode' => 'CUS-001', 'nama' => 'PT PLN (Persero)',           'kontak' => 'Ir. Hendra Pratama', 'telepon' => '021-725-1234', 'email' => 'procurement@pln.co.id',   'kota' => 'Jakarta',   'segmen' => 'BUMN Konstruksi', 'limit_kredit' => 5000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CUS-002', 'nama' => 'PT Pembangunan Perumahan Tbk','kontak' => 'Bapak Agus Wibowo', 'telepon' => '021-319-3000', 'email' => 'pp@ptpp.co.id',           'kota' => 'Jakarta',   'segmen' => 'BUMN Konstruksi', 'limit_kredit' => 3000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CUS-003', 'nama' => 'PT Waskita Karya (Persero)', 'kontak' => 'Bapak Irwan Susilo', 'telepon' => '021-850-0008', 'email' => 'waskita@waskita.co.id',   'kota' => 'Jakarta',   'segmen' => 'BUMN Konstruksi', 'limit_kredit' => 4000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CUS-004', 'nama' => 'Dinas PU Kabupaten Sragen',  'kontak' => 'Bapak Bambang Eko', 'telepon' => '0271-891-234', 'email' => 'pu.sragen@sragen.go.id',  'kota' => 'Sragen',    'segmen' => 'Pemerintah',      'limit_kredit' => 1000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CUS-005', 'nama' => 'PT Mitra Konstruksi Mandiri','kontak' => 'Ibu Citra Lestari',  'telepon' => '024-760-5678', 'email' => 'mkm@mkm.co.id',           'kota' => 'Semarang',  'segmen' => 'Swasta',          'limit_kredit' => 500000000,  'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CUS-001', 'nama' => 'PT PLN (Persero)',           'kontak' => 'Ir. Hendra Pratama', 'telepon' => '021-725-1234', 'email' => 'procurement@pln.co.id',   'npwp' => '01.000.000.0-000.000', 'pic_proyek' => 'Agus Santoso', 'kota' => 'Jakarta',   'segmen' => 'BUMN Konstruksi', 'limit_kredit' => 5000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CUS-002', 'nama' => 'PT Pembangunan Perumahan Tbk','kontak' => 'Bapak Agus Wibowo', 'telepon' => '021-319-3000', 'email' => 'pp@ptpp.co.id',           'npwp' => '01.000.001.0-000.000', 'pic_proyek' => 'Budi Raharjo', 'kota' => 'Jakarta',   'segmen' => 'BUMN Konstruksi', 'limit_kredit' => 3000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CUS-003', 'nama' => 'PT Waskita Karya (Persero)', 'kontak' => 'Bapak Irwan Susilo', 'telepon' => '021-850-0008', 'email' => 'waskita@waskita.co.id',   'npwp' => '01.000.002.0-000.000', 'pic_proyek' => 'Eko Prabowo', 'kota' => 'Jakarta',   'segmen' => 'BUMN Konstruksi', 'limit_kredit' => 4000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CUS-004', 'nama' => 'Dinas PU Kabupaten Sragen',  'kontak' => 'Bapak Bambang Eko', 'telepon' => '0271-891-234', 'email' => 'pu.sragen@sragen.go.id',  'npwp' => '00.000.000.0-000.001', 'pic_proyek' => 'Hadi Susanto', 'kota' => 'Sragen',    'segmen' => 'Pemerintah',      'limit_kredit' => 1000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CUS-005', 'nama' => 'PT Mitra Konstruksi Mandiri','kontak' => 'Ibu Citra Lestari',  'telepon' => '024-760-5678', 'email' => 'mkm@mkm.co.id',           'npwp' => '02.000.000.0-000.000', 'pic_proyek' => 'Dewi Kusuma', 'kota' => 'Semarang',  'segmen' => 'Swasta',          'limit_kredit' => 500000000,  'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }

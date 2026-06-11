@@ -14,8 +14,8 @@ class Material extends Model
     protected $table = 'global.production_materials';
 
     protected $fillable = [
-        'nama', 'satuan', 'kategori', 'stok',
-        'min_stok', 'harga', 'lead_time_hari', 'aktif',
+        'kode', 'nama', 'satuan', 'kategori', 'stok',
+        'min_stok', 'harga', 'lead_time_hari', 'supplier_id', 'aktif',
     ];
 
     protected $casts = [
