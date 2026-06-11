@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesOrderItem extends Model
 {
-    protected $table = 'production_sales_order_items';
+    protected $table = 'public.production_sales_order_items';
 
     protected $fillable = [
         'sales_order_id', 'product_id', 'qty_ordered', 'qty_reserved',

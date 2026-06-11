@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BomItem extends Model
 {
-    protected $table = 'production_bom_items';
+    protected $table = 'global.production_bom_items';
 
     protected $fillable = [
         'bom_header_id', 'material_id', 'qty_per_unit',

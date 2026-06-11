@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('production_bom_headers', function (Blueprint $table) {
+        Schema::create('global.production_bom_headers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('product_id')
-                ->constrained('production_products')
+                ->constrained('global.production_products')
                 ->cascadeOnDelete();
             $table->string('versi', 10)->default('V1.0');
             $table->boolean('is_active')->default(true);
@@ -28,6 +28,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('production_bom_headers');
+        Schema::dropIfExists('global.production_bom_headers');
     }
 };

@@ -10,7 +10,7 @@ class Product extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_products';
+    protected $table = 'global.production_products';
 
     protected $fillable = [
         'kode', 'nama', 'kategori', 'varian', 'spek',

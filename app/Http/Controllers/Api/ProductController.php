@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\ProductType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,7 +36,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'     => 'required|string|max:30|unique:production_products,kode',
+            'kode'     => 'required|string|max:30|unique:global.production_products,kode',
             'nama'     => 'required|string|max:200',
             'kategori' => 'nullable|string|max:50',
             'varian'   => 'nullable|string|max:50',
@@ -46,6 +48,13 @@ class ProductController extends Controller
             'standar'  => 'nullable|string|max:50',
             'aktif'    => 'boolean',
         ]);
+
+        if (!empty($validated['kategori'])) {
+            ProductCategory::firstOrCreate(['nama' => $validated['kategori']]);
+        }
+        if (!empty($validated['varian'])) {
+            ProductType::firstOrCreate(['nama' => $validated['varian']]);
+        }
 
         $product = Product::create($validated);
         return response()->json($product, 201);
@@ -70,6 +79,13 @@ class ProductController extends Controller
             'standar'  => 'nullable|string|max:50',
             'aktif'    => 'boolean',
         ]);
+
+        if (!empty($validated['kategori'])) {
+            ProductCategory::firstOrCreate(['nama' => $validated['kategori']]);
+        }
+        if (!empty($validated['varian'])) {
+            ProductType::firstOrCreate(['nama' => $validated['varian']]);
+        }
 
         $product->update($validated);
         return response()->json($product->fresh());

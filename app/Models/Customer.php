@@ -10,7 +10,7 @@ class Customer extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_customers';
+    protected $table = 'global.production_customers';
 
     protected $fillable = [
         'kode', 'nama', 'kontak', 'telepon', 'email',

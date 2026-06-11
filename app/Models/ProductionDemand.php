@@ -10,7 +10,7 @@ class ProductionDemand extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_demands';
+    protected $table = 'public.production_demands';
 
     protected $fillable = [
         'demand_number', 'source_type', 'sales_order_id', 'sales_order_item_id',

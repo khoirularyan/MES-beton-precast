@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BomHeader extends Model
 {
-    protected $table = 'production_bom_headers';
+    protected $table = 'global.production_bom_headers';
 
     protected $fillable = [
         'product_id', 'versi', 'is_active', 'catatan',

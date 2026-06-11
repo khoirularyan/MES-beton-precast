@@ -11,7 +11,7 @@ class ProductionPlan extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_plans';
+    protected $table = 'public.production_plans';
 
     protected $fillable = [
         'plan_number', 'plan_level', 'period_start', 'period_end',

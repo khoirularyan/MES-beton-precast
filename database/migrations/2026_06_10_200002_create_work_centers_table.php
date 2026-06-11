@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('production_work_centers', function (Blueprint $table) {
+        Schema::create('global.production_work_centers', function (Blueprint $table) {
             $table->id();
             $table->string('code', 30)->unique();
             $table->string('name', 100);
@@ -22,6 +22,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('production_work_centers');
+        Schema::dropIfExists('global.production_work_centers');
     }
 };

@@ -11,7 +11,7 @@ class InventoryBatch extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_inventory_batches';
+    protected $table = 'public.production_inventory_batches';
 
     protected $fillable = [
         'batch_number', 'product_id', 'warehouse', 'location',

@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('production_sales_order_items', function (Blueprint $table) {
+        Schema::create('public.production_sales_order_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('sales_order_id')
-                ->constrained('production_sales_orders')
+                ->constrained('public.production_sales_orders')
                 ->cascadeOnDelete();
             $table->foreignId('product_id')
-                ->constrained('production_products')
+                ->constrained('global.production_products')
                 ->restrictOnDelete();
             $table->decimal('qty_ordered', 10, 2);
             $table->decimal('qty_reserved', 10, 2)->default(0);
@@ -29,6 +29,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('production_sales_order_items');
+        Schema::dropIfExists('public.production_sales_order_items');
     }
 };

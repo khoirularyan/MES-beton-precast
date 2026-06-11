@@ -2,11 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 const AuthContext = createContext(null);
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (window.location.port === '5173' ? 'http://127.0.0.1:8000' : window.location.origin);
+
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? "";
 
 const authRequest = async (url, options = {}) => {
-  const response = await fetch(url, {
-    credentials: "same-origin",
+  const response = await fetch(`${API_BASE_URL}${url}`, { // Use full URL
+    credentials: "include", // FIXED: Use "include" for cross-origin requests
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",

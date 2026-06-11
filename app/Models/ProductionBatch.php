@@ -11,7 +11,7 @@ class ProductionBatch extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_batches';
+    protected $table = 'public.production_batches';
 
     protected $fillable = [
         'batch_number', 'production_plan_id', 'demand_id', 'source_type',

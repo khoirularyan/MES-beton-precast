@@ -19,7 +19,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
 
-    // Master Data
+    // Master Data - Products & Materials
     Route::apiResource('products', ProductController::class);
     Route::apiResource('materials', MaterialController::class);
     Route::apiResource('work-centers', WorkCenterController::class);
@@ -53,4 +53,24 @@ Route::middleware('auth')->group(function () {
 
     // Delivery
     Route::apiResource('delivery-orders', DeliveryOrderController::class);
+
+    // ============================================================
+    // EXTENDED MASTER DATA
+    // ============================================================
+    Route::apiResource('suppliers', \App\Http\Controllers\Api\SupplierController::class);
+    Route::apiResource('customers', \App\Http\Controllers\Api\CustomerController::class);
+    Route::apiResource('product-categories', \App\Http\Controllers\Api\ProductCategoryController::class);
+    Route::apiResource('product-types', \App\Http\Controllers\Api\ProductTypeController::class);
+    Route::apiResource('product-specs', \App\Http\Controllers\Api\ProductSpecController::class);
+    Route::apiResource('concrete-grades', \App\Http\Controllers\Api\ConcreteGradeController::class);
+    Route::apiResource('material-categories', \App\Http\Controllers\Api\MaterialCategoryController::class);
+    Route::apiResource('molds', \App\Http\Controllers\Api\MoldController::class);
+    Route::apiResource('warehouses', \App\Http\Controllers\Api\WarehouseController::class);
+    Route::apiResource('machines', \App\Http\Controllers\Api\MachineController::class);
+    Route::apiResource('employees', \App\Http\Controllers\Api\EmployeeController::class);
+    Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
+    Route::apiResource('qc-parameters', \App\Http\Controllers\Api\QcParameterController::class);
+    Route::apiResource('defect-categories', \App\Http\Controllers\Api\DefectCategoryController::class);
+    Route::apiResource('production-statuses', \App\Http\Controllers\Api\ProductionStatusController::class);
+    Route::apiResource('delivery-statuses', \App\Http\Controllers\Api\DeliveryStatusController::class);
 });

@@ -40,14 +40,14 @@ class ProductionPlanController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'plan_number'       => 'required|string|max:30|unique:production_plans,plan_number',
+            'plan_number'       => 'required|string|max:30|unique:public.production_plans,plan_number',
             'plan_level'        => ['required', Rule::in(['MPS', 'Weekly', 'Daily'])],
             'period_start'      => 'required|date',
             'period_end'        => 'required|date|after_or_equal:period_start',
-            'product_id'        => 'required|exists:production_products,id',
+            'product_id'        => 'required|exists:global.production_products,id',
             'planned_qty'       => 'required|numeric|min:0.01',
             'planned_volume_m3' => 'nullable|numeric|min:0',
-            'work_center_id'    => 'nullable|exists:production_work_centers,id',
+            'work_center_id'    => 'nullable|exists:global.production_work_centers,id',
             'material_status'   => ['nullable', Rule::in(['Ready', 'Partial', 'Not Ready'])],
             'capacity_status'   => ['nullable', Rule::in(['Available', 'Overload'])],
             'notes'             => 'nullable|string',
@@ -69,7 +69,7 @@ class ProductionPlanController extends Controller
         $validated = $request->validate([
             'planned_qty'       => 'sometimes|numeric|min:0.01',
             'planned_volume_m3' => 'nullable|numeric|min:0',
-            'work_center_id'    => 'nullable|exists:production_work_centers,id',
+            'work_center_id'    => 'nullable|exists:global.production_work_centers,id',
             'material_status'   => ['nullable', Rule::in(['Ready', 'Partial', 'Not Ready'])],
             'capacity_status'   => ['nullable', Rule::in(['Available', 'Overload'])],
             'status'            => ['nullable', Rule::in(['Draft', 'Approved', 'Released', 'Closed'])],

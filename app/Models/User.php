@@ -17,7 +17,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    protected $table = 'production_users';
+    protected $table = 'global.production_users';
 
     /**
      * Get the attributes that should be cast.

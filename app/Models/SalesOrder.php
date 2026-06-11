@@ -11,7 +11,7 @@ class SalesOrder extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_sales_orders';
+    protected $table = 'public.production_sales_orders';
 
     protected $fillable = [
         'no', 'so_type', 'customer_id', 'product_id', 'qty',

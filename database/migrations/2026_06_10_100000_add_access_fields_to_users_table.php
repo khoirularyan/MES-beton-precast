@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('production_users', function (Blueprint $table) {
+        Schema::table('global.production_users', function (Blueprint $table) {
             $table->string('role')->default('user')->after('password');
             $table->string('department')->nullable()->after('role');
             $table->string('plant')->default('Plant Bekasi')->after('department');
@@ -24,7 +24,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('production_users', function (Blueprint $table) {
+        Schema::table('global.production_users', function (Blueprint $table) {
             $table->dropColumn(['role', 'department', 'plant', 'is_active']);
         });
     }

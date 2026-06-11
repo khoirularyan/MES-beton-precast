@@ -44,16 +44,14 @@ export const Login = () => {
   return (
     <main className="min-h-screen bg-[#F4F6F8] grid lg:grid-cols-[1.05fr_0.95fr]">
       <section className="hidden lg:flex flex-col justify-between bg-[#0A6ED1] text-white p-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded bg-white/15 flex items-center justify-center">
-            <Factory className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-semibold leading-tight">PrecastMESSSS</div>
-            <div className="text-xs text-white/75 uppercase tracking-wider">Manufacturing Execution System</div>
-          </div>
+        <div>
+          <div className="font-semibold leading-tight text-xl">PrecastMES</div>
+          <div className="text-xs text-white/75 uppercase tracking-wider">Manufacturing Execution System</div>
         </div>
-        <div className="max-w-xl">
+        <div className="max-w-xl flex flex-col items-start text-left">
+          <div className="mb-8 bg-white p-4 rounded-xl shadow-sm inline-block">
+            <img src="/uploads/logo-megacon.png" alt="Megacon Logo" className="h-16 object-contain" />
+          </div>
           <div className="inline-flex items-center gap-2 rounded bg-white/12 px-3 py-1.5 text-xs font-medium mb-5">
             <ShieldCheck className="w-4 h-4" />
             Authentication & RBAC
@@ -70,9 +68,9 @@ export const Login = () => {
 
       <section className="flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-white border border-[#DFE3E8] rounded-lg shadow-sm">
-          <div className="p-6 border-b border-[#DFE3E8]">
-            <div className="lg:hidden w-10 h-10 rounded bg-[#0A6ED1] text-white flex items-center justify-center mb-4">
-              <Factory className="w-5 h-5" />
+          <div className="p-6 border-b border-[#DFE3E8] flex flex-col items-center lg:items-start text-center lg:text-left">
+            <div className="lg:hidden mb-6 bg-white p-3 rounded-xl border border-gray-100 shadow-sm inline-block">
+              <img src="/uploads/logo-megacon.png" alt="Megacon Logo" className="h-14 object-contain" />
             </div>
             <h2 className="text-xl font-semibold text-[#1C252E]">Sign in to MES</h2>
             <p className="text-sm text-[#59687A] mt-1">Use a registered account to open modules based on your role.</p>

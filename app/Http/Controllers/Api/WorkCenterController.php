@@ -23,7 +23,7 @@ class WorkCenterController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'code'                   => 'required|string|max:30|unique:production_work_centers,code',
+            'code'                   => 'required|string|max:30|unique:global.production_work_centers,code',
             'name'                   => 'required|string|max:100',
             'description'            => 'nullable|string|max:255',
             'capacity_qty_per_shift' => 'nullable|numeric|min:0',

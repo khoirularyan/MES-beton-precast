@@ -95,7 +95,8 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
+            // Master data (global) + transactional (public)
+            'search_path' => '"global","public"',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
@@ -130,6 +131,7 @@ return [
     'migrations' => [
         'table' => env('DB_MIGRATIONS_TABLE', 'production_migrations'),
         'update_date_on_publish' => true,
+        // Migrations tracking table lives in public schema
     ],
 
     /*
