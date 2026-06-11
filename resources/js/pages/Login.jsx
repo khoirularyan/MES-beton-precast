@@ -15,6 +15,7 @@ export const Login = () => {
   const [form, setForm] = useState({ email: "", password: "", remember: true });
   const [submitting, setSubmitting] = useState(false);
 
+  // Still loading initial session check
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
@@ -23,6 +24,7 @@ export const Login = () => {
     );
   }
 
+  // Already logged in — go to dashboard
   if (user) {
     return <Navigate to={location.state?.from?.pathname ?? "/"} replace />;
   }
@@ -32,11 +34,11 @@ export const Login = () => {
     setSubmitting(true);
     try {
       await login(form);
-      toast.success("Login successful", { description: "Your session and module access are active." });
+      // login() sets user state synchronously, Navigate above will trigger on re-render
+      // But also call navigate as a safety net
       navigate(location.state?.from?.pathname ?? "/", { replace: true });
     } catch (error) {
       toast.error("Login failed", { description: error.message });
-    } finally {
       setSubmitting(false);
     }
   };

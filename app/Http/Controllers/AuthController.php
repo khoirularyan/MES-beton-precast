@@ -36,6 +36,14 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
+        // If already authenticated, just return the current user
+        if (Auth::check()) {
+            return response()->json([
+                'user' => $this->serializeUser($request->user()),
+                'message' => 'Already authenticated.',
+            ]);
+        }
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
