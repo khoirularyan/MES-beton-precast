@@ -13,7 +13,7 @@ class Product extends Model
     protected $table = 'global.production_products';
 
     protected $fillable = [
-        'kode', 'nama', 'kategori', 'varian', 'spek',
+        'kode', 'nama', 'foto', 'kategori', 'varian', 'spek',
         'grade', 'berat', 'volume_m3',
         'harga', 'satuan', 'standar', 'aktif',
     ];

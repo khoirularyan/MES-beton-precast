@@ -42,11 +42,44 @@ api.interceptors.response.use(
 // MASTER DATA - PRODUCTS
 // ============================================
 
+const buildFormData = (data) => {
+  const formData = new FormData();
+  Object.keys(data).forEach(key => {
+    let value = data[key];
+    if (value === null || value === undefined) {
+      return;
+    }
+    if (value instanceof File) {
+      formData.append(key, value);
+    } else if (Array.isArray(value)) {
+      value.forEach(item => {
+        formData.append(`${key}[]`, item);
+      });
+    } else if (typeof value === 'boolean') {
+      formData.append(key, value ? '1' : '0');
+    } else {
+      formData.append(key, value);
+    }
+  });
+  return formData;
+};
+
 export const productApi = {
   getAll: (params = {}) => api.get('/products', { params }),
   getOne: (id)          => api.get(`/products/${id}`),
-  create: (data)        => api.post('/products', data),
-  update: (id, data)    => api.put(`/products/${id}`, data),
+  create: (data)        => {
+    const formData = buildFormData(data);
+    return api.post('/products', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  update: (id, data)    => {
+    const formData = buildFormData(data);
+    formData.append('_method', 'PUT');
+    return api.post(`/products/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   delete: (id)          => api.delete(`/products/${id}`),
 };
 

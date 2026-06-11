@@ -169,6 +169,7 @@ const ProductGridCard = ({ p, i }) => (
     status={p.grade}
     sections={[
       { title: "Informasi Produk", items: [
+        { label: "Foto", value: p.foto, render: (v) => v ? <img src={v} alt="Foto Produk" className="w-24 h-24 object-cover rounded border border-[#DFE3E8] bg-white" /> : "-" },
         { label: "Kode Produk", value: p.kode },
         { label: "Nama Produk", value: p.nama },
         { label: "Kategori", value: p.kategori },
@@ -189,8 +190,12 @@ const ProductGridCard = ({ p, i }) => (
         className="bg-white border border-[#DFE3E8] rounded-md overflow-hidden hover:border-[#0A6ED1] hover:shadow-sm transition-all cursor-pointer group"
       >
         <div className="aspect-[16/10] bg-gradient-to-br from-[#F8FAFC] to-[#EEF0F2] p-4 flex items-center justify-center relative">
-          <div className="w-full max-w-[160px]">
-            <ProductIcon name={p.nama} size="lg" className="w-full !h-24" />
+          <div className="w-full h-full max-h-[120px] flex items-center justify-center">
+            {p.foto ? (
+              <img src={p.foto} alt={p.nama} className="max-h-full max-w-full object-contain rounded" />
+            ) : (
+              <ProductIcon name={p.nama} size="lg" className="w-full !h-24" />
+            )}
           </div>
           <div className="absolute top-2 right-2">
             <StatusBadge status={p.grade} variant="info" />
@@ -278,7 +283,7 @@ const MasterData = () => {
   const [productQuery, setProductQuery] = useState("");
 
   // Products
-  const products     = useApiData(productApi,    "Produk",           tab, "products");
+  const products     = useApiData(productApi,    "Produk",           tab, ["products", "specs"]);
   const categories   = useApiData(productCategoryApi, "Kategori Produk", tab, "products");
   const types        = useApiData(productTypeApi, "Tipe Produk",      tab, "products");
   const specs        = useApiData(productSpecApi, "Spesifikasi",      tab, "specs");
@@ -338,6 +343,11 @@ const MasterData = () => {
     ...types.data.map(t => t.nama),
     ...products.data.map(p => p.varian)
   ].filter(Boolean))).map(t => ({ value: t, label: t }));
+
+  const productOptions = products.data.map(p => ({
+    value: p.id,
+    label: `${p.kode} - ${p.nama}`
+  }));
 
   const materialCategoryOptions = Array.from(new Set([
     ...matCats.data.map(c => c.nama),
@@ -406,6 +416,7 @@ const MasterData = () => {
                       fields={[
                         { name: "kode",             label: "Kode Produk",    required: true },
                         { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
+                        { name: "foto",             label: "Foto Produk",    type: "file", span: 2 },
                         { name: "kategori",         label: "Kategori",       type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
                         { name: "varian",           label: "Tipe/Varian",    type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
                         { name: "grade",            label: "Mutu Beton",     type: "select", options: gradeOptions },
@@ -439,6 +450,7 @@ const MasterData = () => {
                 addFields={[
                   { name: "kode",             label: "Kode Produk",    required: true },
                   { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
+                  { name: "foto",             label: "Foto Produk",    type: "file", span: 2 },
                   { name: "kategori",         label: "Kategori",       type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
                   { name: "varian",           label: "Tipe/Varian",    type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
                   { name: "grade",            label: "Mutu Beton",     type: "select", options: gradeOptions },
@@ -449,7 +461,7 @@ const MasterData = () => {
                 ]}
                 filterSelects={[{ name: "kategori", label: "Kategori", options: productCategoryOptions }]}
                 columns={[
-                  { key: "thumb",    label: "",              render: (r) => <ProductIcon name={r.nama} size="sm" /> },
+                  { key: "thumb",    label: "",              render: (r) => r.foto ? <img src={r.foto} alt={r.nama} className="w-8 h-8 object-cover rounded" /> : <ProductIcon name={r.nama} size="sm" /> },
                   { key: "kode",     label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
                   { key: "nama",     label: "Nama Produk",   cls: "font-medium" },
                   { key: "kategori", label: "Kategori" },
@@ -470,7 +482,7 @@ const MasterData = () => {
               onSubmit={specs.handleCreate} onUpdate={specs.handleUpdate} onDelete={specs.handleDelete}
               addFields={[
                 { name: "kode",      label: "Kode Spec",     required: true },
-                { name: "produk",    label: "Produk",        required: true, span: 2 },
+                { name: "product_id", label: "Produk",       required: true, type: "select", options: productOptions, span: 2 },
                 { name: "dimensi",   label: "Dimensi" },
                 { name: "toleransi", label: "Toleransi" },
                 { name: "berat",     label: "Berat" },

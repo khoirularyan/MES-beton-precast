@@ -41,7 +41,10 @@ class MaterialController extends Controller
         ]);
 
         if (!empty($validated['kategori'])) {
-            MaterialCategory::firstOrCreate(['nama' => $validated['kategori']]);
+            MaterialCategory::firstOrCreate(
+                ['nama' => $validated['kategori']],
+                ['kode' => 'MAT-' . strtoupper(substr(str_shuffle("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"), 0, 5))]
+            );
         }
 
         return response()->json(Material::create($validated), 201);
@@ -66,7 +69,10 @@ class MaterialController extends Controller
         ]);
 
         if (!empty($validated['kategori'])) {
-            MaterialCategory::firstOrCreate(['nama' => $validated['kategori']]);
+            MaterialCategory::firstOrCreate(
+                ['nama' => $validated['kategori']],
+                ['kode' => 'MAT-' . strtoupper(substr(str_shuffle("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"), 0, 5))]
+            );
         }
 
         $material->update($validated);

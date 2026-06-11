@@ -212,16 +212,26 @@ export const FormDialog = ({
                     className="text-sm min-h-[72px]"
                   />
                 ) : f.type === "select" ? (
-                  <Select value={values[f.name] || ""} onValueChange={(v) => handleChange(f.name, v)}>
+                  <Select 
+                    value={values[f.name] !== undefined ? String(values[f.name]) : ""} 
+                    onValueChange={(v) => {
+                      const opt = f.options.find(o => String(o.value !== undefined ? o.value : o) === v);
+                      const parsedValue = opt && typeof opt.value === 'boolean' ? (v === 'true') : v;
+                      handleChange(f.name, parsedValue);
+                    }}
+                  >
                     <SelectTrigger className="h-9 text-sm" data-testid={`${testId}-field-${f.name}`}>
                       <SelectValue placeholder={f.placeholder || "Pilih..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      {f.options.map((o) => (
-                        <SelectItem key={o.value || o} value={o.value || o} className="text-sm">
-                          {o.label || o}
-                        </SelectItem>
-                      ))}
+                      {f.options.map((o) => {
+                        const val = o.value !== undefined ? String(o.value) : String(o);
+                        return (
+                          <SelectItem key={val} value={val} className="text-sm">
+                            {o.label || o}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 ) : f.type === "datalist" ? (
@@ -254,15 +264,40 @@ export const FormDialog = ({
                     })}
                   </div>
                 ) : (
-                  <Input
-                    id={f.name}
-                    data-testid={`${testId}-field-${f.name}`}
-                    type={f.type || "text"}
-                    placeholder={f.placeholder}
-                    value={values[f.name] || ""}
-                    onChange={(e) => handleChange(f.name, e.target.value)}
-                    className="h-9 text-sm"
-                  />
+                  f.type === "file" ? (
+                    <div className="space-y-2">
+                      {values[f.name] && typeof values[f.name] === "string" && (
+                        <div className="flex items-center gap-2 border border-[#DFE3E8] rounded p-2 bg-[#F8FAFC]">
+                          <img
+                            src={values[f.name]}
+                            alt="Current Preview"
+                            className="w-12 h-12 object-cover rounded border border-[#DFE3E8]"
+                          />
+                          <span className="text-xs text-[#59687A] truncate max-w-[200px]">
+                            Gambar Saat Ini
+                          </span>
+                        </div>
+                      )}
+                      <Input
+                        id={f.name}
+                        data-testid={`${testId}-field-${f.name}`}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleChange(f.name, e.target.files[0])}
+                        className="h-9 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#F0F7FF] file:text-[#0A6ED1] hover:file:bg-[#E0F0FF]"
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      id={f.name}
+                      data-testid={`${testId}-field-${f.name}`}
+                      type={f.type || "text"}
+                      placeholder={f.placeholder}
+                      value={values[f.name] || ""}
+                      onChange={(e) => handleChange(f.name, e.target.value)}
+                      className="h-9 text-sm"
+                    />
+                  )
                 )}
               </div>
             ))}
