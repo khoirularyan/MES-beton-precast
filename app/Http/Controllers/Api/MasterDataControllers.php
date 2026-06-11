@@ -40,7 +40,7 @@ class ProductCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_product_categories,kode',
+            'kode'      => 'required|string|max:20|unique:production_product_categories,kode',
             'nama'      => 'required|string|max:100',
             'deskripsi' => 'nullable|string',
             'aktif'     => 'boolean',
@@ -56,7 +56,7 @@ class ProductCategoryController extends Controller
     public function update(Request $request, ProductCategory $productCategory): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_product_categories,kode,' . $productCategory->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_product_categories,kode,' . $productCategory->id,
             'nama'      => 'sometimes|string|max:100',
             'deskripsi' => 'nullable|string',
             'aktif'     => 'boolean',
@@ -92,7 +92,7 @@ class ProductTypeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'        => 'required|string|max:20|unique:global.production_product_types,kode',
+            'kode'        => 'required|string|max:20|unique:production_product_types,kode',
             'kategori'    => 'nullable|string|max:100',
             'nama'        => 'required|string|max:100',
             'kode_prefix' => 'nullable|string|max:10',
@@ -110,7 +110,7 @@ class ProductTypeController extends Controller
     public function update(Request $request, ProductType $productType): JsonResponse
     {
         $validated = $request->validate([
-            'kode'        => 'sometimes|string|max:20|unique:global.production_product_types,kode,' . $productType->id,
+            'kode'        => 'sometimes|string|max:20|unique:production_product_types,kode,' . $productType->id,
             'kategori'    => 'nullable|string|max:100',
             'nama'        => 'sometimes|string|max:100',
             'kode_prefix' => 'nullable|string|max:10',
@@ -148,7 +148,7 @@ class ProductSpecController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:30|unique:global.production_product_specs,kode',
+            'kode'      => 'required|string|max:30|unique:production_product_specs,kode',
             'produk'    => 'required|string|max:200',
             'dimensi'   => 'nullable|string|max:100',
             'toleransi' => 'nullable|string|max:50',
@@ -167,7 +167,7 @@ class ProductSpecController extends Controller
     public function update(Request $request, ProductSpec $productSpec): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:30|unique:global.production_product_specs,kode,' . $productSpec->id,
+            'kode'      => 'sometimes|string|max:30|unique:production_product_specs,kode,' . $productSpec->id,
             'produk'    => 'sometimes|string|max:200',
             'dimensi'   => 'nullable|string|max:100',
             'toleransi' => 'nullable|string|max:50',
@@ -203,7 +203,7 @@ class ConcreteGradeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'grade'     => 'required|string|max:20|unique:global.production_concrete_grades,grade',
+            'grade'     => 'required|string|max:20|unique:production_concrete_grades,grade',
             'fc'        => 'nullable|numeric|min:0',
             'slump'     => 'nullable|string|max:20',
             'semen'     => 'nullable|numeric|min:0',
@@ -223,7 +223,7 @@ class ConcreteGradeController extends Controller
     public function update(Request $request, ConcreteGrade $concreteGrade): JsonResponse
     {
         $validated = $request->validate([
-            'grade'     => 'sometimes|string|max:20|unique:global.production_concrete_grades,grade,' . $concreteGrade->id,
+            'grade'     => 'sometimes|string|max:20|unique:production_concrete_grades,grade,' . $concreteGrade->id,
             'fc'        => 'nullable|numeric|min:0',
             'slump'     => 'nullable|string|max:20',
             'semen'     => 'nullable|numeric|min:0',
@@ -263,7 +263,7 @@ class MaterialCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_material_categories,kode',
+            'kode'      => 'required|string|max:20|unique:production_material_categories,kode',
             'nama'      => 'required|string|max:100',
             'deskripsi' => 'nullable|string',
             'contoh'    => 'nullable|string|max:300',
@@ -280,7 +280,7 @@ class MaterialCategoryController extends Controller
     public function update(Request $request, MaterialCategory $materialCategory): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_material_categories,kode,' . $materialCategory->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_material_categories,kode,' . $materialCategory->id,
             'nama'      => 'sometimes|string|max:100',
             'deskripsi' => 'nullable|string',
             'contoh'    => 'nullable|string|max:300',
@@ -317,7 +317,7 @@ class MoldController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_molds,kode',
+            'kode'      => 'required|string|max:20|unique:production_molds,kode',
             'nama'      => 'required|string|max:100',
             'produk'    => 'nullable|string|max:100',
             'jumlah'    => 'nullable|integer|min:0',
@@ -336,7 +336,7 @@ class MoldController extends Controller
     public function update(Request $request, Mold $mold): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_molds,kode,' . $mold->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_molds,kode,' . $mold->id,
             'nama'      => 'sometimes|string|max:100',
             'produk'    => 'nullable|string|max:100',
             'jumlah'    => 'nullable|integer|min:0',
@@ -378,7 +378,7 @@ class WarehouseController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_warehouses,kode',
+            'kode'      => 'required|string|max:20|unique:production_warehouses,kode',
             'nama'      => 'required|string|max:100',
             'tipe'      => 'nullable|string|max:50',
             'lokasi'    => 'nullable|string|max:200',
@@ -397,7 +397,7 @@ class WarehouseController extends Controller
     public function update(Request $request, Warehouse $warehouse): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_warehouses,kode,' . $warehouse->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_warehouses,kode,' . $warehouse->id,
             'nama'      => 'sometimes|string|max:100',
             'tipe'      => 'nullable|string|max:50',
             'lokasi'    => 'nullable|string|max:200',
@@ -439,7 +439,7 @@ class MachineController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'             => 'required|string|max:20|unique:global.production_machines,kode',
+            'kode'             => 'required|string|max:20|unique:production_machines,kode',
             'nama'             => 'required|string|max:100',
             'tipe'             => 'nullable|string|max:50',
             'line'             => 'nullable|string|max:50',
@@ -459,7 +459,7 @@ class MachineController extends Controller
     public function update(Request $request, Machine $machine): JsonResponse
     {
         $validated = $request->validate([
-            'kode'             => 'sometimes|string|max:20|unique:global.production_machines,kode,' . $machine->id,
+            'kode'             => 'sometimes|string|max:20|unique:production_machines,kode,' . $machine->id,
             'nama'             => 'sometimes|string|max:100',
             'tipe'             => 'nullable|string|max:50',
             'line'             => 'nullable|string|max:50',
@@ -505,7 +505,7 @@ class EmployeeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'nik'        => 'required|string|max:20|unique:global.production_employees,nik',
+            'nik'        => 'required|string|max:20|unique:production_employees,nik',
             'nama'       => 'required|string|max:200',
             'jabatan'    => 'nullable|string|max:100',
             'departemen' => 'nullable|string|max:50',
@@ -524,7 +524,7 @@ class EmployeeController extends Controller
     public function update(Request $request, Employee $employee): JsonResponse
     {
         $validated = $request->validate([
-            'nik'        => 'sometimes|string|max:20|unique:global.production_employees,nik,' . $employee->id,
+            'nik'        => 'sometimes|string|max:20|unique:production_employees,nik,' . $employee->id,
             'nama'       => 'sometimes|string|max:200',
             'jabatan'    => 'nullable|string|max:100',
             'departemen' => 'nullable|string|max:50',
@@ -563,7 +563,7 @@ class ShiftController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'           => 'required|string|max:20|unique:global.production_shifts,kode',
+            'kode'           => 'required|string|max:20|unique:production_shifts,kode',
             'nama'           => 'required|string|max:50',
             'jam'            => 'nullable|string|max:30',
             'supervisor'     => 'nullable|string|max:100',
@@ -581,7 +581,7 @@ class ShiftController extends Controller
     public function update(Request $request, Shift $shift): JsonResponse
     {
         $validated = $request->validate([
-            'kode'           => 'sometimes|string|max:20|unique:global.production_shifts,kode,' . $shift->id,
+            'kode'           => 'sometimes|string|max:20|unique:production_shifts,kode,' . $shift->id,
             'nama'           => 'sometimes|string|max:50',
             'jam'            => 'nullable|string|max:30',
             'supervisor'     => 'nullable|string|max:100',
@@ -619,7 +619,7 @@ class QcParameterController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:30|unique:global.production_qc_parameters,kode',
+            'kode'      => 'required|string|max:30|unique:production_qc_parameters,kode',
             'parameter' => 'required|string|max:200',
             'satuan'    => 'nullable|string|max:30',
             'min'       => 'nullable|string|max:30',
@@ -638,7 +638,7 @@ class QcParameterController extends Controller
     public function update(Request $request, QcParameter $qcParameter): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:30|unique:global.production_qc_parameters,kode,' . $qcParameter->id,
+            'kode'      => 'sometimes|string|max:30|unique:production_qc_parameters,kode,' . $qcParameter->id,
             'parameter' => 'sometimes|string|max:200',
             'satuan'    => 'nullable|string|max:30',
             'min'       => 'nullable|string|max:30',
@@ -680,7 +680,7 @@ class DefectCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'          => 'required|string|max:20|unique:global.production_defect_categories,kode',
+            'kode'          => 'required|string|max:20|unique:production_defect_categories,kode',
             'nama'          => 'required|string|max:100',
             'warna'         => 'nullable|string|max:10',
             'tingkat'       => 'nullable|in:Kritis,Mayor,Minor',
@@ -699,7 +699,7 @@ class DefectCategoryController extends Controller
     public function update(Request $request, DefectCategory $defectCategory): JsonResponse
     {
         $validated = $request->validate([
-            'kode'          => 'sometimes|string|max:20|unique:global.production_defect_categories,kode,' . $defectCategory->id,
+            'kode'          => 'sometimes|string|max:20|unique:production_defect_categories,kode,' . $defectCategory->id,
             'nama'          => 'sometimes|string|max:100',
             'warna'         => 'nullable|string|max:10',
             'tingkat'       => 'nullable|in:Kritis,Mayor,Minor',
@@ -738,7 +738,7 @@ class ProductionStatusController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_statuses,kode',
+            'kode'      => 'required|string|max:20|unique:production_statuses,kode',
             'status'    => 'required|string|max:100',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',
@@ -756,7 +756,7 @@ class ProductionStatusController extends Controller
     public function update(Request $request, ProductionStatus $productionStatus): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_statuses,kode,' . $productionStatus->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_statuses,kode,' . $productionStatus->id,
             'status'    => 'sometimes|string|max:100',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',
@@ -794,7 +794,7 @@ class DeliveryStatusController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_delivery_statuses,kode',
+            'kode'      => 'required|string|max:20|unique:production_delivery_statuses,kode',
             'status'    => 'required|string|max:100',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',
@@ -812,7 +812,7 @@ class DeliveryStatusController extends Controller
     public function update(Request $request, DeliveryStatus $deliveryStatus): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_delivery_statuses,kode,' . $deliveryStatus->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_delivery_statuses,kode,' . $deliveryStatus->id,
             'status'    => 'sometimes|string|max:100',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',

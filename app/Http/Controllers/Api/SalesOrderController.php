@@ -41,10 +41,10 @@ class SalesOrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'no'          => 'required|string|max:30|unique:public.production_sales_orders,no',
+            'no'          => 'required|string|max:30|unique:production_sales_orders,no',
             'so_type'     => ['required', Rule::in(['MTO', 'MTS'])],
-            'customer_id' => 'required|exists:global.production_customers,id',
-            'product_id'  => 'required|exists:global.production_products,id',
+            'customer_id' => 'required|exists:production_customers,id',
+            'product_id'  => 'required|exists:production_products,id',
             'qty'         => 'required|integer|min:1',
             'nilai'       => 'nullable|integer|min:0',
             'tgl_order'   => 'required|date',
@@ -52,7 +52,7 @@ class SalesOrderController extends Controller
             'prioritas'   => ['nullable', Rule::in(['Rendah', 'Sedang', 'Tinggi'])],
             'catatan'     => 'nullable|string',
             'items'       => 'nullable|array',
-            'items.*.product_id'    => 'required|exists:global.production_products,id',
+            'items.*.product_id'    => 'required|exists:production_products,id',
             'items.*.qty_ordered'   => 'required|numeric|min:0.01',
             'items.*.unit_price'    => 'nullable|numeric|min:0',
             'items.*.delivery_date' => 'nullable|date',

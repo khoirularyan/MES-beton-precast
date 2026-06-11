@@ -33,7 +33,7 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'nama'     => 'required|string|max:200',
             'materials'=> 'nullable|array',
-            'materials.*' => 'exists:global.production_materials,id',
+            'materials.*' => 'exists:production_materials,id',
             'kontak'   => 'nullable|string|max:30',
             'email'    => 'nullable|email|max:100',
             'alamat'   => 'nullable|string|max:300',
@@ -60,7 +60,7 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'nama'     => 'sometimes|string|max:200',
             'materials'=> 'nullable|array',
-            'materials.*' => 'exists:global.production_materials,id',
+            'materials.*' => 'exists:production_materials,id',
             'kontak'   => 'nullable|string|max:30',
             'email'    => 'nullable|email|max:100',
             'alamat'   => 'nullable|string|max:300',

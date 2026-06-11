@@ -24,7 +24,7 @@ class MoldController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'                 => 'required|string|max:20|unique:global.production_molds,kode',
+            'kode'                 => 'required|string|max:20|unique:production_molds,kode',
             'nama'                 => 'required|string|max:100',
             'produk'               => 'nullable|string|max:100',
             'jumlah'               => 'nullable|integer|min:0',
@@ -45,7 +45,7 @@ class MoldController extends Controller
     public function update(Request $request, Mold $mold): JsonResponse
     {
         $validated = $request->validate([
-            'kode'                 => 'sometimes|string|max:20|unique:global.production_molds,kode,' . $mold->id,
+            'kode'                 => 'sometimes|string|max:20|unique:production_molds,kode,' . $mold->id,
             'nama'                 => 'sometimes|string|max:100',
             'produk'               => 'nullable|string|max:100',
             'jumlah'               => 'nullable|integer|min:0',

@@ -27,7 +27,7 @@ class WarehouseController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_warehouses,kode',
+            'kode'      => 'required|string|max:20|unique:production_warehouses,kode',
             'nama'      => 'required|string|max:100',
             'tipe'      => 'nullable|string|max:50',
             'lokasi'    => 'nullable|string|max:200',
@@ -46,7 +46,7 @@ class WarehouseController extends Controller
     public function update(Request $request, Warehouse $warehouse): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_warehouses,kode,' . $warehouse->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_warehouses,kode,' . $warehouse->id,
             'nama'      => 'sometimes|string|max:100',
             'tipe'      => 'nullable|string|max:50',
             'lokasi'    => 'nullable|string|max:200',

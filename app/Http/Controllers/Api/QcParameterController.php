@@ -24,7 +24,7 @@ class QcParameterController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:30|unique:global.production_qc_parameters,kode',
+            'kode'      => 'required|string|max:30|unique:production_qc_parameters,kode',
             'parameter' => 'required|string|max:200',
             'satuan'    => 'nullable|string|max:30',
             'min'       => 'nullable|string|max:30',
@@ -43,7 +43,7 @@ class QcParameterController extends Controller
     public function update(Request $request, QcParameter $qcParameter): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:30|unique:global.production_qc_parameters,kode,' . $qcParameter->id,
+            'kode'      => 'sometimes|string|max:30|unique:production_qc_parameters,kode,' . $qcParameter->id,
             'parameter' => 'sometimes|string|max:200',
             'satuan'    => 'nullable|string|max:30',
             'min'       => 'nullable|string|max:30',

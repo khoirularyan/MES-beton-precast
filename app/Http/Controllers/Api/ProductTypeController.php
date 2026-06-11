@@ -24,7 +24,7 @@ class ProductTypeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'        => 'required|string|max:20|unique:global.production_product_types,kode',
+            'kode'        => 'required|string|max:20|unique:production_product_types,kode',
             'kategori'    => 'nullable|string|max:100',
             'nama'        => 'required|string|max:100',
             'kode_prefix' => 'nullable|string|max:10',
@@ -42,7 +42,7 @@ class ProductTypeController extends Controller
     public function update(Request $request, ProductType $productType): JsonResponse
     {
         $validated = $request->validate([
-            'kode'        => 'sometimes|string|max:20|unique:global.production_product_types,kode,' . $productType->id,
+            'kode'        => 'sometimes|string|max:20|unique:production_product_types,kode,' . $productType->id,
             'kategori'    => 'nullable|string|max:100',
             'nama'        => 'sometimes|string|max:100',
             'kode_prefix' => 'nullable|string|max:10',

@@ -39,8 +39,8 @@ class ProductSpecController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'product_id' => 'nullable|exists:global.production_products,id',
-            'kode'       => 'required|string|max:30|unique:global.production_product_specs,kode',
+            'product_id' => 'nullable|exists:production_products,id',
+            'kode'       => 'required|string|max:30|unique:production_product_specs,kode',
             'produk'     => 'nullable|string|max:200',
             'dimensi'    => 'nullable|string|max:100',
             'toleransi'  => 'nullable|string|max:50',
@@ -62,8 +62,8 @@ class ProductSpecController extends Controller
     public function update(Request $request, ProductSpec $productSpec): JsonResponse
     {
         $validated = $request->validate([
-            'product_id' => 'nullable|exists:global.production_products,id',
-            'kode'       => 'sometimes|string|max:30|unique:global.production_product_specs,kode,' . $productSpec->id,
+            'product_id' => 'nullable|exists:production_products,id',
+            'kode'       => 'sometimes|string|max:30|unique:production_product_specs,kode,' . $productSpec->id,
             'produk'     => 'nullable|string|max:200',
             'dimensi'    => 'nullable|string|max:100',
             'toleransi'  => 'nullable|string|max:50',

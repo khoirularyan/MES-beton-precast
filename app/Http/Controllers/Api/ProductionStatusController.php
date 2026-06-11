@@ -24,7 +24,7 @@ class ProductionStatusController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_statuses,kode',
+            'kode'      => 'required|string|max:20|unique:production_statuses,kode',
             'status'    => 'required|string|max:100',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',
@@ -42,7 +42,7 @@ class ProductionStatusController extends Controller
     public function update(Request $request, ProductionStatus $productionStatus): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_statuses,kode,' . $productionStatus->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_statuses,kode,' . $productionStatus->id,
             'status'    => 'sometimes|string|max:100',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',

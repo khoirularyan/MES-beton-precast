@@ -207,5 +207,23 @@ export const defectCategoryApi   = crudApi('defect-categories');
 export const productionStatusApi = crudApi('production-statuses');
 export const deliveryStatusApi   = crudApi('delivery-statuses');
 
+// ============================================
+// ROLE & PERMISSION MANAGEMENT
+// ============================================
+
+export const roleApi = {
+  getAll: (params = {}) => api.get('/roles', { params }),
+  getOne: (id)          => api.get(`/roles/${id}`),
+  create: (data)        => api.post('/roles', data),
+  update: (id, data)    => api.put(`/roles/${id}`, data),
+  delete: (id)          => api.delete(`/roles/${id}`),
+  getPermissions: (id)  => api.get(`/roles/${id}/permissions`),
+  updatePermissions: (id, data) => api.put(`/roles/${id}/permissions`, data),
+};
+
+export const moduleApi = {
+  getAll: (params = {}) => api.get('/modules', { params }),
+};
+
 // Export default api instance for custom calls
 export default api;

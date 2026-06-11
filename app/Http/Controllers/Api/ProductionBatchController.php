@@ -41,17 +41,17 @@ class ProductionBatchController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'batch_number'       => 'required|string|max:50|unique:public.production_batches,batch_number',
-            'production_plan_id' => 'nullable|exists:public.production_plans,id',
-            'demand_id'          => 'nullable|exists:public.production_demands,id',
+            'batch_number'       => 'required|string|max:50|unique:production_batches,batch_number',
+            'production_plan_id' => 'nullable|exists:production_plans,id',
+            'demand_id'          => 'nullable|exists:production_demands,id',
             'source_type'        => ['required', Rule::in(['SO', 'MTS'])],
-            'product_id'         => 'required|exists:global.production_products,id',
+            'product_id'         => 'required|exists:production_products,id',
             'routing_version'    => 'nullable|string|max:30',
             'target_qty'         => 'required|numeric|min:0.01',
             'target_volume_m3'   => 'nullable|numeric|min:0',
             'planned_start'      => 'nullable|date',
             'planned_end'        => 'nullable|date|after_or_equal:planned_start',
-            'work_center_id'     => 'nullable|exists:global.production_work_centers,id',
+            'work_center_id'     => 'nullable|exists:production_work_centers,id',
             'notes'              => 'nullable|string',
             // Optional cost estimates on creation
             'estimated_material_cost'  => 'nullable|numeric|min:0',
@@ -108,7 +108,7 @@ class ProductionBatchController extends Controller
             'target_volume_m3' => 'nullable|numeric|min:0',
             'planned_start'    => 'nullable|date',
             'planned_end'      => 'nullable|date',
-            'work_center_id'   => 'nullable|exists:global.production_work_centers,id',
+            'work_center_id'   => 'nullable|exists:production_work_centers,id',
             'notes'            => 'nullable|string',
             // Cost updates
             'actual_material_cost'  => 'nullable|numeric|min:0',

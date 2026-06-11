@@ -38,7 +38,7 @@ class CustomerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'         => 'required|string|max:20|unique:global.production_customers,kode',
+            'kode'         => 'required|string|max:20|unique:production_customers,kode',
             'nama'         => 'required|string|max:200',
             'kontak'       => 'nullable|string|max:100',
             'telepon'      => 'nullable|string|max:30',
@@ -64,7 +64,7 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer): JsonResponse
     {
         $validated = $request->validate([
-            'kode'         => 'sometimes|string|max:20|unique:global.production_customers,kode,' . $customer->id,
+            'kode'         => 'sometimes|string|max:20|unique:production_customers,kode,' . $customer->id,
             'nama'         => 'sometimes|string|max:200',
             'kontak'       => 'nullable|string|max:100',
             'telepon'      => 'nullable|string|max:30',

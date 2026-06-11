@@ -24,7 +24,7 @@ class ProductCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_product_categories,kode',
+            'kode'      => 'required|string|max:20|unique:production_product_categories,kode',
             'nama'      => 'required|string|max:100',
             'deskripsi' => 'nullable|string',
             'aktif'     => 'boolean',
@@ -40,7 +40,7 @@ class ProductCategoryController extends Controller
     public function update(Request $request, ProductCategory $productCategory): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_product_categories,kode,' . $productCategory->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_product_categories,kode,' . $productCategory->id,
             'nama'      => 'sometimes|string|max:100',
             'deskripsi' => 'nullable|string',
             'aktif'     => 'boolean',

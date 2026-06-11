@@ -27,7 +27,7 @@ class DefectCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'          => 'required|string|max:20|unique:global.production_defect_categories,kode',
+            'kode'          => 'required|string|max:20|unique:production_defect_categories,kode',
             'nama'          => 'required|string|max:100',
             'warna'         => 'nullable|string|max:10',
             'tingkat'       => 'nullable|in:Kritis,Mayor,Minor',
@@ -46,7 +46,7 @@ class DefectCategoryController extends Controller
     public function update(Request $request, DefectCategory $defectCategory): JsonResponse
     {
         $validated = $request->validate([
-            'kode'          => 'sometimes|string|max:20|unique:global.production_defect_categories,kode,' . $defectCategory->id,
+            'kode'          => 'sometimes|string|max:20|unique:production_defect_categories,kode,' . $defectCategory->id,
             'nama'          => 'sometimes|string|max:100',
             'warna'         => 'nullable|string|max:10',
             'tingkat'       => 'nullable|in:Kritis,Mayor,Minor',

@@ -24,10 +24,10 @@ class ShiftController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'           => 'required|string|max:20|unique:global.production_shifts,kode',
+            'kode'           => 'required|string|max:20|unique:production_shifts,kode',
             'nama'           => 'required|string|max:50',
             'jam'            => 'nullable|string|max:30',
-            'supervisor_id'  => 'nullable|exists:global.users,id',
+            'supervisor_id'  => 'nullable|exists:production_users,id',
             'jumlah_pekerja' => 'nullable|integer|min:0',
             'aktif'          => 'boolean',
         ]);
@@ -42,10 +42,10 @@ class ShiftController extends Controller
     public function update(Request $request, Shift $shift): JsonResponse
     {
         $validated = $request->validate([
-            'kode'           => 'sometimes|string|max:20|unique:global.production_shifts,kode,' . $shift->id,
+            'kode'           => 'sometimes|string|max:20|unique:production_shifts,kode,' . $shift->id,
             'nama'           => 'sometimes|string|max:50',
             'jam'            => 'nullable|string|max:30',
-            'supervisor_id'  => 'nullable|exists:global.users,id',
+            'supervisor_id'  => 'nullable|exists:production_users,id',
             'jumlah_pekerja' => 'nullable|integer|min:0',
             'aktif'          => 'boolean',
         ]);

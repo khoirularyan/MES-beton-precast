@@ -29,6 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
         
         // Trust proxies for local development
         $middleware->trustProxies(at: '*');
+
+        // RBAC middleware aliases
+        $middleware->alias([
+            'active'     => \App\Http\Middleware\EnsureUserActive::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

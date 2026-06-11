@@ -21,7 +21,7 @@ class ConcreteGradeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'grade'         => 'required|string|max:20|unique:global.production_concrete_grades,grade',
+            'grade'         => 'required|string|max:20|unique:production_concrete_grades,grade',
             'nama'          => 'nullable|string|max:200',
             'fc_mpa'        => 'nullable|numeric|min:0',
             'slump_min_cm'  => 'nullable|numeric|min:0',
@@ -40,7 +40,7 @@ class ConcreteGradeController extends Controller
     public function update(Request $request, ConcreteGrade $concreteGrade): JsonResponse
     {
         $validated = $request->validate([
-            'grade'         => 'sometimes|string|max:20|unique:global.production_concrete_grades,grade,' . $concreteGrade->id,
+            'grade'         => 'sometimes|string|max:20|unique:production_concrete_grades,grade,' . $concreteGrade->id,
             'nama'          => 'nullable|string|max:200',
             'fc_mpa'        => 'nullable|numeric|min:0',
             'slump_min_cm'  => 'nullable|numeric|min:0',

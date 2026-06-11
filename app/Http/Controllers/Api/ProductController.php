@@ -36,7 +36,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'     => 'required|string|max:30|unique:global.production_products,kode',
+            'kode'     => 'required|string|max:30|unique:production_products,kode',
             'nama'     => 'required|string|max:200',
             'kategori' => 'nullable|string|max:50',
             'varian'   => 'nullable|string|max:50',

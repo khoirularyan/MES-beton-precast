@@ -24,7 +24,7 @@ class MaterialCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_material_categories,kode',
+            'kode'      => 'required|string|max:20|unique:production_material_categories,kode',
             'nama'      => 'required|string|max:100',
             'deskripsi' => 'nullable|string',
             'contoh'    => 'nullable|string|max:300',
@@ -41,7 +41,7 @@ class MaterialCategoryController extends Controller
     public function update(Request $request, MaterialCategory $materialCategory): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_material_categories,kode,' . $materialCategory->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_material_categories,kode,' . $materialCategory->id,
             'nama'      => 'sometimes|string|max:100',
             'deskripsi' => 'nullable|string',
             'contoh'    => 'nullable|string|max:300',

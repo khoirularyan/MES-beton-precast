@@ -27,7 +27,7 @@ class MachineController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'             => 'required|string|max:20|unique:global.production_machines,kode',
+            'kode'             => 'required|string|max:20|unique:production_machines,kode',
             'nama'             => 'required|string|max:100',
             'tipe'             => 'nullable|string|max:50',
             'line'             => 'nullable|string|max:50',
@@ -47,7 +47,7 @@ class MachineController extends Controller
     public function update(Request $request, Machine $machine): JsonResponse
     {
         $validated = $request->validate([
-            'kode'             => 'sometimes|string|max:20|unique:global.production_machines,kode,' . $machine->id,
+            'kode'             => 'sometimes|string|max:20|unique:production_machines,kode,' . $machine->id,
             'nama'             => 'sometimes|string|max:100',
             'tipe'             => 'nullable|string|max:50',
             'line'             => 'nullable|string|max:50',

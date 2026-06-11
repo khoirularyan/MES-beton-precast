@@ -30,7 +30,7 @@ class EmployeeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'nik'        => 'required|string|max:20|unique:global.production_employees,nik',
+            'nik'        => 'required|string|max:20|unique:production_employees,nik',
             'nama'       => 'required|string|max:200',
             'jabatan'    => 'nullable|string|max:100',
             'departemen' => 'nullable|string|max:50',
@@ -49,7 +49,7 @@ class EmployeeController extends Controller
     public function update(Request $request, Employee $employee): JsonResponse
     {
         $validated = $request->validate([
-            'nik'        => 'sometimes|string|max:20|unique:global.production_employees,nik,' . $employee->id,
+            'nik'        => 'sometimes|string|max:20|unique:production_employees,nik,' . $employee->id,
             'nama'       => 'sometimes|string|max:200',
             'jabatan'    => 'nullable|string|max:100',
             'departemen' => 'nullable|string|max:50',

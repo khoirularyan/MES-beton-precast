@@ -30,7 +30,7 @@ class BatchStatusController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'required|string|max:20|unique:global.production_batch_statuses,kode',
+            'kode'      => 'required|string|max:20|unique:production_batch_statuses,kode',
             'status'    => 'required|string|max:50',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',
@@ -49,7 +49,7 @@ class BatchStatusController extends Controller
     public function update(Request $request, BatchStatus $batchStatus): JsonResponse
     {
         $validated = $request->validate([
-            'kode'      => 'sometimes|string|max:20|unique:global.production_batch_statuses,kode,' . $batchStatus->id,
+            'kode'      => 'sometimes|string|max:20|unique:production_batch_statuses,kode,' . $batchStatus->id,
             'status'    => 'sometimes|string|max:50',
             'urutan'    => 'nullable|integer|min:0',
             'warna'     => 'nullable|string|max:10',

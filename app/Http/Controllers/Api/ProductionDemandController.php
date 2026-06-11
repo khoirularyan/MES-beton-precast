@@ -34,11 +34,11 @@ class ProductionDemandController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'demand_number'       => 'required|string|max:30|unique:public.production_demands,demand_number',
+            'demand_number'       => 'required|string|max:30|unique:production_demands,demand_number',
             'source_type'         => ['required', Rule::in(['Sales Order', 'MTS'])],
-            'sales_order_id'      => 'nullable|exists:public.production_sales_orders,id',
-            'sales_order_item_id' => 'nullable|exists:public.production_sales_order_items,id',
-            'product_id'          => 'required|exists:global.production_products,id',
+            'sales_order_id'      => 'nullable|exists:production_sales_orders,id',
+            'sales_order_item_id' => 'nullable|exists:production_sales_order_items,id',
+            'product_id'          => 'required|exists:production_products,id',
             'demand_qty'          => 'required|numeric|min:0.01',
             'required_date'       => 'required|date',
             'priority'            => 'nullable|integer|min:1|max:10',
