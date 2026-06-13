@@ -166,7 +166,14 @@ class MaterialInventoryController extends Controller
     public function adjustment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'material_id' => 'required|exists:global.production_materials,id',
+            'material_id' => [
+                'required',
+                function ($attribute, $value, $fail) {
+                    if (!\App\Models\Material::where('id', $value)->exists()) {
+                        $fail('Material yang dipilih tidak valid.');
+                    }
+                }
+            ],
             'qty'         => 'required|numeric|min:0.01',
             'type'        => 'required|in:add,subtract',
             'notes'       => 'nullable|string|max:500',

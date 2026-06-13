@@ -95,7 +95,7 @@ class InventoryController extends Controller
 
         // 4. Calculate warehouse levels
         // Total Finished Goods stock quantity
-        $totalFgQty = $finishedGoods->sum('stok');
+        $totalFgQty = DB::table('public.production_inventory')->whereIn('gudang', ['WH-FG', 'GD-03'])->sum('stok');
 
         // Total WIP (Casting batches)
         $wipStatus = DB::table('global.production_batch_statuses')->where('status', 'Casting')->first();
@@ -107,51 +107,95 @@ class InventoryController extends Controller
         $curStatusId = $curStatus ? $curStatus->id : null;
         $totalCurQty = $curStatusId ? DB::table('public.production_batches')->where('batch_status_id', $curStatusId)->whereNull('deleted_at')->sum('target_qty') : 0;
 
-        // Total Reject (from WH-REJ in inventory)
-        $totalRejQty = DB::table('public.production_inventory')->where('gudang', 'WH-REJ')->sum('stok');
+        // Total Reject (from WH-REJ/GD-04 in inventory)
+        $totalRejQty = DB::table('public.production_inventory')->whereIn('gudang', ['WH-REJ', 'GD-04'])->sum('stok');
 
-        $warehouses = [
-            [
-                'kode'      => 'WH-RM',
-                'nama'      => 'Gudang Bahan Baku',
-                'tipe'      => 'Raw Material',
-                'lokasi'    => 'Area Utara',
-                'kapasitas' => '8.500 ton',
-                'utilisasi' => min(100, round(($totalRmWeightTons / 8500) * 100))
-            ],
-            [
-                'kode'      => 'WH-WIP',
-                'nama'      => 'Area WIP Casting',
-                'tipe'      => 'Work In Progress',
-                'lokasi'    => 'Area Produksi',
-                'kapasitas' => '400 unit',
-                'utilisasi' => min(100, $totalWipQty > 0 ? round(($totalWipQty / 400) * 100) : 34) // default 34% if empty
-            ],
-            [
-                'kode'      => 'WH-CUR',
-                'nama'      => 'Area Curing',
-                'tipe'      => 'Work In Progress',
-                'lokasi'    => 'Area Tengah',
-                'kapasitas' => '350 unit',
-                'utilisasi' => min(100, $totalCurQty > 0 ? round(($totalCurQty / 350) * 100) : 48) // default 48% if empty
-            ],
-            [
-                'kode'      => 'WH-FG',
-                'nama'      => 'Gudang Produk Jadi',
-                'tipe'      => 'Finished Goods',
-                'lokasi'    => 'Area Selatan',
-                'kapasitas' => '2.500 unit',
-                'utilisasi' => min(100, $totalFgQty > 0 ? round(($totalFgQty / 2500) * 100) : 60) // default 60% if empty
-            ],
-            [
-                'kode'      => 'WH-REJ',
-                'nama'      => 'Area Reject',
-                'tipe'      => 'Reject',
-                'lokasi'    => 'Area Timur',
-                'kapasitas' => '100 unit',
-                'utilisasi' => min(100, $totalRejQty > 0 ? round(($totalRejQty / 100) * 100) : 8) // default 8% if empty
-            ]
-        ];
+        $warehousesFromDb = DB::table('global.production_warehouses')
+            ->where('aktif', true)
+            ->whereNull('deleted_at')
+            ->orderBy('kode')
+            ->get();
+
+        $warehouses = [];
+        foreach ($warehousesFromDb as $w) {
+            // Extract numeric capacity
+            preg_match('/\d+[\.,]?\d*/', $w->kapasitas, $matches);
+            $capacityVal = !empty($matches) ? (float) str_replace(',', '', $matches[0]) : 100.0;
+            if ($capacityVal <= 0) $capacityVal = 100.0;
+
+            $stock = 0.0;
+            $tipeLower = strtolower($w->tipe);
+
+            if ($tipeLower === 'raw material' || $w->kode === 'GD-01') {
+                $stock = $totalRmWeightTons;
+            } elseif ($tipeLower === 'work in progress' || $w->kode === 'GD-02') {
+                $stock = $totalWipQty + $totalCurQty;
+            } elseif ($tipeLower === 'finished goods' || $w->kode === 'GD-03') {
+                $stock = $totalFgQty;
+            } elseif ($tipeLower === 'reject' || $w->kode === 'GD-04') {
+                $stock = $totalRejQty;
+            }
+
+            $utilisasi = min(100, round(($stock / $capacityVal) * 100));
+
+            // Format capacity string to show real stock and total capacity
+            $displayKapasitas = number_format($stock, $tipeLower === 'raw material' ? 1 : 0) . ' / ' . $w->kapasitas;
+
+            $warehouses[] = [
+                'kode'      => $w->kode,
+                'nama'      => $w->nama,
+                'tipe'      => $w->tipe,
+                'lokasi'    => $w->lokasi,
+                'kapasitas' => $displayKapasitas,
+                'utilisasi' => (int) $utilisasi
+            ];
+        }
+
+        // Fallback default warehouses if table not seeded or empty
+        if (empty($warehouses)) {
+            $warehouses = [
+                [
+                    'kode'      => 'WH-RM',
+                    'nama'      => 'Gudang Bahan Baku',
+                    'tipe'      => 'Raw Material',
+                    'lokasi'    => 'Area Utara',
+                    'kapasitas' => number_format($totalRmWeightTons, 1) . ' / 8.500 ton',
+                    'utilisasi' => min(100, round(($totalRmWeightTons / 8500) * 100))
+                ],
+                [
+                    'kode'      => 'WH-WIP',
+                    'nama'      => 'Area WIP Casting',
+                    'tipe'      => 'Work In Progress',
+                    'lokasi'    => 'Area Produksi',
+                    'kapasitas' => number_format($totalWipQty) . ' / 400 unit',
+                    'utilisasi' => min(100, $totalWipQty > 0 ? round(($totalWipQty / 400) * 100) : 34)
+                ],
+                [
+                    'kode'      => 'WH-CUR',
+                    'nama'      => 'Area Curing',
+                    'tipe'      => 'Work In Progress',
+                    'lokasi'    => 'Area Tengah',
+                    'kapasitas' => number_format($totalCurQty) . ' / 350 unit',
+                    'utilisasi' => min(100, $totalCurQty > 0 ? round(($totalCurQty / 350) * 100) : 48)
+                ],
+                [
+                    'kode'      => 'WH-FG',
+                    'nama'      => 'Gudang Produk Jadi',
+                    'tipe'      => 'Finished Goods',
+                    'lokasi'    => 'Area Selatan',
+                    'kapasitas' => number_format($totalFgQty) . ' / 2.500 unit',
+                    'utilisasi' => min(100, $totalFgQty > 0 ? round(($totalFgQty / 2500) * 100) : 60)
+                ],
+                [
+                    'kode'      => 'WH-REJ',
+                    'nama'      => 'Area Reject',
+                    'tipe'      => 'Reject',
+                    'lokasi'    => 'Area Timur',
+                    'kapasitas' => number_format($totalRejQty) . ' / 100 unit',
+                    'utilisasi' => min(100, $totalRejQty > 0 ? round(($totalRejQty / 100) * 100) : 8)
+                ]
+            ];
+        }
 
         // 5. Fetch Stock Movements (Real transactions + Audit logs)
         $stockMovements = [];

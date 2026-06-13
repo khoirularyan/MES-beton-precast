@@ -7,36 +7,120 @@ import { Progress } from "@/components/ui/progress";
 import { formatNumber, formatRupiah } from "@/data/mockData";
 import { Package, Boxes, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { CementSilo, AggregateStockpile, WarehouseFill } from "@/components/visuals/IndustrialVisuals";
+import { CementSilo, AggregateStockpile, WarehouseFill, LiquidTank, SteelRack } from "@/components/visuals/IndustrialVisuals";
 import ProductIcon from "@/components/visuals/ProductIcon";
 import { materialInventoryApi, inventoryApi } from "@/lib/api";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-// Visual storage indicators (cement silos & aggregate stockpiles)
+// Visual storage indicators (silos, stockpiles, tanks, racks)
 const StorageStrip = ({ materialsList = [] }) => {
-  // Find real levels or fallback to 0
-  const getLevel = (kode) => {
-    const mat = materialsList.find(m => m.kode === kode);
-    if (!mat) return 0;
-    const qty = mat.qty_on_hand;
-    const minStok = mat.min_stock;
-    const maxStok = minStok * 5; // Assume max capacity is 5x min stock
-    return Math.min(Math.round((qty / maxStok) * 100), 100);
-  };
+  // Group and sum materials by category
+  const categoriesData = materialsList.reduce((acc, m) => {
+    const cat = m.kategori;
+    if (!cat) return acc;
+    if (!acc[cat]) {
+      acc[cat] = {
+        qty: 0,
+        min_stock: 0,
+        satuan: m.satuan || (cat === "Semen" ? "Kg" : "Kubik")
+      };
+    }
+    acc[cat].qty += m.qty_on_hand || 0;
+    acc[cat].min_stock += m.min_stock || 0;
+    return acc;
+  }, {});
 
-  const getCapacityText = (kode) => {
-    const mat = materialsList.find(m => m.kode === kode);
-    if (!mat) return "0";
-    return `${formatNumber(mat.qty_on_hand)} ${mat.satuan}`;
+  const renderVisuals = () => {
+    const items = [];
+    
+    // Semen Group
+    if (categoriesData["Semen"]) {
+      const sem = categoriesData["Semen"];
+      const maxStok = sem.min_stock * 5 || 50000;
+      const level = Math.min(Math.round((sem.qty / maxStok) * 100), 100);
+      items.push(
+        <CementSilo
+          key="cat-semen"
+          label="Total Semen"
+          level={level}
+          capacity={`${formatNumber(sem.qty)} ${sem.satuan}`}
+        />
+      );
+    }
+    
+    // Agregat Group
+    if (categoriesData["Agregat"]) {
+      const agr = categoriesData["Agregat"];
+      const maxStok = agr.min_stock * 5 || 2000;
+      const level = Math.min(Math.round((agr.qty / maxStok) * 100), 100);
+      items.push(
+        <AggregateStockpile
+          key="cat-agregat"
+          label="Total Agregat"
+          level={level}
+          capacity={`${formatNumber(agr.qty)} ${agr.satuan}`}
+          color="#9C4F00"
+        />
+      );
+    }
+
+    // Admixture Group
+    if (categoriesData["Admixture"]) {
+      const adm = categoriesData["Admixture"];
+      const maxStok = adm.min_stock * 5 || 2000;
+      const level = Math.min(Math.round((adm.qty / maxStok) * 100), 100);
+      items.push(
+        <LiquidTank
+          key="cat-admixture"
+          label="Total Admixture"
+          level={level}
+          capacity={`${formatNumber(adm.qty)} ${adm.satuan}`}
+          color="#8E24AA"
+        />
+      );
+    }
+
+    // Besi & Baja Group
+    if (categoriesData["Besi & Baja"]) {
+      const bes = categoriesData["Besi & Baja"];
+      const maxStok = bes.min_stock * 5 || 20000;
+      const level = Math.min(Math.round((bes.qty / maxStok) * 100), 100);
+      items.push(
+        <SteelRack
+          key="cat-besi"
+          label="Total Besi & Baja"
+          level={level}
+          capacity={`${formatNumber(bes.qty)} ${bes.satuan}`}
+        />
+      );
+    }
+
+    // Air Group
+    if (categoriesData["Air"]) {
+      const air = categoriesData["Air"];
+      const maxStok = air.min_stock * 5 || 20000;
+      const level = Math.min(Math.round((air.qty / maxStok) * 100), 100);
+      items.push(
+        <LiquidTank
+          key="cat-air"
+          label="Total Air"
+          level={level}
+          capacity={`${formatNumber(air.qty)} ${air.satuan}`}
+          color="#0A6ED1"
+        />
+      );
+    }
+    
+    return items;
   };
 
   return (
-    <div className="bg-white border border-[#DFE3E8] rounded-md p-5" data-testid="storage-strip">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white border border-[#DFE3E8] rounded-md p-4" data-testid="storage-strip">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <div className="text-base font-semibold text-[#1C252E] font-display">Penyimpanan Material Curah</div>
-          <div className="text-xs text-[#59687A]">Silo semen & stockpile agregat — pemantauan level real-time</div>
+          <div className="text-sm font-semibold text-[#1C252E] font-display">Penyimpanan Material Curah & Kategori</div>
+          <div className="text-xs text-[#59687A]">Pemantauan level real-time penyimpanan material berdasarkan kategori</div>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-[#59687A]">
           <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0A6ED1]" />Aman</span>
@@ -44,13 +128,11 @@ const StorageStrip = ({ materialsList = [] }) => {
           <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#B00020]" />Kritis</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-end">
-        <CementSilo label="Silo Semen 1" level={getLevel("MAT-SEM-OPC")} capacity={getCapacityText("MAT-SEM-OPC")} />
-        <CementSilo label="Silo Semen 2" level={getLevel("MAT-SEM-PPC")} capacity={getCapacityText("MAT-SEM-PPC")} />
-        <CementSilo label="Silo Semen 3" level={getLevel("MAT-SEM-SRC")} capacity={getCapacityText("MAT-SEM-SRC")} />
-        <AggregateStockpile label="Pasir Lumajang" level={getLevel("MAT-AGR-PASIR05")} capacity={getCapacityText("MAT-AGR-PASIR05")} color="#9C4F00" />
-        <AggregateStockpile label="Batu Split 1-2" level={getLevel("MAT-AGR-SPLIT10")} capacity={getCapacityText("MAT-AGR-SPLIT10")} color="#5A5A5A" />
-        <AggregateStockpile label="Batu Split 2-3" level={getLevel("MAT-AGR-SPLIT20")} capacity={getCapacityText("MAT-AGR-SPLIT20")} color="#6E6E6E" />
+      <div className="flex flex-wrap gap-12 items-end justify-center py-2">
+        {renderVisuals()}
+        {Object.keys(categoriesData).length === 0 && (
+          <div className="py-4 text-xs text-[#59687A]">Tidak ada data material curah.</div>
+        )}
       </div>
     </div>
   );
@@ -233,6 +315,7 @@ const Inventory = () => {
                   <tr>
                     <th className="px-4 py-2 text-left">Code</th>
                     <th className="px-4 py-2 text-left">Material</th>
+                    <th className="px-4 py-2 text-left">Kategori</th>
                     <th className="px-4 py-2 text-left">Unit</th>
                     <th className="px-4 py-2 text-right">Current Stock</th>
                     <th className="px-4 py-2 text-right">Min Stock</th>
@@ -261,6 +344,7 @@ const Inventory = () => {
                       <tr key={m.kode} data-testid={`rm-row-${i}`}>
                         <td className="px-4 font-mono-num text-[#0A6ED1] font-medium">{m.kode}</td>
                         <td className="px-4 font-medium">{m.nama}</td>
+                        <td className="px-4 text-[#59687A]">{m.kategori}</td>
                         <td className="px-4 text-[#59687A]">{m.satuan}</td>
                         <td className="px-4 text-right font-mono-num font-semibold">{formatNumber(qty)}</td>
                         <td className="px-4 text-right font-mono-num text-[#59687A]">{formatNumber(minStockVal)}</td>
@@ -290,7 +374,7 @@ const Inventory = () => {
                   })}
                   {!loading && materialsList.length === 0 && (
                     <tr>
-                      <td colSpan="8" className="px-4 py-8 text-center text-xs text-[#59687A]">Tidak ada data material.</td>
+                      <td colSpan="9" className="px-4 py-8 text-center text-xs text-[#59687A]">Tidak ada data material.</td>
                     </tr>
                   )}
                 </tbody>

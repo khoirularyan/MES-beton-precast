@@ -10,7 +10,7 @@ export const CementSilo = ({ level = 70, label = "Silo Semen", capacity = "200 t
   const color = level < 25 ? "#B00020" : level < 50 ? "#E9730C" : "#0A6ED1";
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <svg viewBox="0 0 80 140" className="w-full max-w-[110px]">
+      <svg viewBox="0 0 80 140" className="h-20 w-auto">
         {/* Conical top */}
         <polygon points="40,4 16,28 64,28" fill="#9AA5B1" stroke="#59687A" strokeWidth="1" />
         <polygon points="40,4 16,28 40,28" fill="#B5BCC4" />
@@ -54,10 +54,10 @@ export const CementSilo = ({ level = 70, label = "Silo Semen", capacity = "200 t
         <line x1="20" y1="132" x2="14" y2="140" stroke="#455468" strokeWidth="2.5" strokeLinecap="round" />
         <line x1="60" y1="132" x2="66" y2="140" stroke="#455468" strokeWidth="2.5" strokeLinecap="round" />
       </svg>
-      <div className="mt-2 text-center">
-        <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">{label}</div>
-        <div className="text-xl font-semibold font-mono-num" style={{ color }}>{level}%</div>
-        <div className="text-[10px] text-[#59687A] font-mono-num">{capacity}</div>
+      <div className="mt-1 text-center max-w-[90px]">
+        <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold truncate" title={label}>{label}</div>
+        <div className="text-base font-semibold font-mono-num" style={{ color }}>{level}%</div>
+        <div className="text-[9px] text-[#59687A] font-mono-num">{capacity}</div>
       </div>
     </div>
   );
@@ -75,7 +75,7 @@ export const AggregateStockpile = ({ level = 60, label = "Pasir Lumajang", capac
   const apexY = 80 - pileHeight;
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <svg viewBox="0 0 120 90" className="w-full max-w-[140px]">
+      <svg viewBox="0 0 120 90" className="h-14 w-auto">
         {/* Ground line */}
         <line x1="6" y1="80" x2="114" y2="80" stroke="#59687A" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.5" />
         {/* Pile shadow */}
@@ -97,14 +97,107 @@ export const AggregateStockpile = ({ level = 60, label = "Pasir Lumajang", capac
         {/* Top granular detail */}
         <circle cx="60" cy={apexY + 1} r="1" fill="#FFFFFF" opacity="0.5" />
       </svg>
-      <div className="mt-1 text-center">
-        <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold truncate max-w-[140px]">{label}</div>
-        <div className="text-lg font-semibold font-mono-num text-[#1C252E]">{level}%</div>
-        <div className="text-[10px] text-[#59687A] font-mono-num">{capacity}</div>
+      <div className="mt-1 text-center max-w-[95px]">
+        <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold truncate" title={label}>{label}</div>
+        <div className="text-base font-semibold font-mono-num text-[#1C252E]">{level}%</div>
+        <div className="text-[9px] text-[#59687A] font-mono-num">{capacity}</div>
       </div>
     </div>
   );
 };
+
+// ===== Liquid Tank (for Air and Admixtures) =====
+export const LiquidTank = ({ level = 50, label = "Tangki Cairan", capacity = "1.000 L", color = "#0A6ED1", className = "" }) => {
+  const fillHeight = Math.min(100, Math.max(0, level));
+  return (
+    <div className={`flex flex-col items-center ${className}`}>
+      <svg viewBox="0 0 80 140" className="h-20 w-auto">
+        {/* Flat cap */}
+        <rect x="22" y="8" width="36" height="4" fill="#9AA5B1" stroke="#59687A" strokeWidth="0.8" rx="1" />
+        {/* Cylinder body */}
+        <rect x="18" y="12" width="44" height="92" rx="12" fill="#F4F6F8" stroke="#59687A" strokeWidth="1" />
+        {/* Fill */}
+        <clipPath id={`liquid-clip-${label.replace(/[^a-zA-Z0-9]/g,'')}`}>
+          <rect x="18" y="12" width="44" height="92" rx="12" />
+        </clipPath>
+        <rect
+          x="18"
+          y={12 + (92 - (92 * fillHeight / 100))}
+          width="44"
+          height={(92 * fillHeight / 100)}
+          fill={color}
+          opacity="0.8"
+          clipPath={`url(#liquid-clip-${label.replace(/[^a-zA-Z0-9]/g,'')})`}
+        />
+        {/* Level marks on the right side */}
+        {[25, 50, 75].map((pct) => (
+          <line key={pct} x1="56" y1={12 + (92 * (100 - pct) / 100)} x2="60" y2={12 + (92 * (100 - pct) / 100)} stroke="#59687A" strokeWidth="0.8" />
+        ))}
+        {/* Left vertical shading line */}
+        <rect x="18" y="12" width="5" height="92" fill="#FFFFFF" opacity="0.35" clipPath={`url(#liquid-clip-${label.replace(/[^a-zA-Z0-9]/g,'')})`} />
+        {/* Bottom support base */}
+        <rect x="14" y="104" width="52" height="6" fill="#59687A" rx="1" />
+        {/* Legs */}
+        <line x1="24" y1="110" x2="24" y2="128" stroke="#455468" strokeWidth="2.5" />
+        <line x1="56" y1="110" x2="56" y2="128" stroke="#455468" strokeWidth="2.5" />
+      </svg>
+      <div className="mt-1 text-center max-w-[95px]">
+        <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold truncate" title={label}>{label}</div>
+        <div className="text-base font-semibold font-mono-num" style={{ color }}>{level}%</div>
+        <div className="text-[9px] text-[#59687A] font-mono-num">{capacity}</div>
+      </div>
+    </div>
+  );
+};
+
+// ===== Steel Rack (for Besi & Baja) =====
+export const SteelRack = ({ level = 60, label = "Rak Besi", capacity = "5.000 Kg", className = "" }) => {
+  const fillHeight = Math.min(100, Math.max(0, level));
+  const activeBars = Math.round((fillHeight / 100) * 12);
+  const color = fillHeight < 25 ? "#B00020" : fillHeight < 50 ? "#E9730C" : "#107E3E";
+  return (
+    <div className={`flex flex-col items-center ${className}`}>
+      <svg viewBox="0 0 100 140" className="h-20 w-auto">
+        {/* Rack frame */}
+        <rect x="15" y="14" width="70" height="96" fill="none" stroke="#59687A" strokeWidth="2" />
+        {/* Shelves */}
+        <line x1="15" y1="46" x2="85" y2="46" stroke="#59687A" strokeWidth="1.5" />
+        <line x1="15" y1="78" x2="85" y2="78" stroke="#59687A" strokeWidth="1.5" />
+        <line x1="15" y1="110" x2="85" y2="110" stroke="#59687A" strokeWidth="1.5" />
+        
+        {/* Steel bars/rebar representation inside shelves */}
+        {/* Shelf 1 (Bottom) */}
+        {activeBars >= 1 && <circle cx="28" cy="102" r="5" fill="#788896" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 2 && <circle cx="40" cy="102" r="5" fill="#788896" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 3 && <circle cx="52" cy="102" r="5" fill="#788896" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 4 && <circle cx="64" cy="102" r="5" fill="#788896" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 5 && <circle cx="76" cy="102" r="5" fill="#788896" stroke="#455468" strokeWidth="0.8" />}
+        
+        {/* Shelf 2 (Middle) */}
+        {activeBars >= 6 && <circle cx="28" cy="70" r="5" fill="#8C9BA5" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 7 && <circle cx="40" cy="70" r="5" fill="#8C9BA5" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 8 && <circle cx="52" cy="70" r="5" fill="#8C9BA5" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 9 && <circle cx="64" cy="70" r="5" fill="#8C9BA5" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 10 && <circle cx="76" cy="70" r="5" fill="#8C9BA5" stroke="#455468" strokeWidth="0.8" />}
+        
+        {/* Shelf 3 (Top) */}
+        {activeBars >= 11 && <circle cx="34" cy="38" r="5" fill="#A0AFBA" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 12 && <circle cx="48" cy="38" r="5" fill="#A0AFBA" stroke="#455468" strokeWidth="0.8" />}
+        {activeBars >= 13 && <circle cx="62" cy="38" r="5" fill="#A0AFBA" stroke="#455468" strokeWidth="0.8" />}
+
+        {/* Legs */}
+        <line x1="20" y1="110" x2="20" y2="128" stroke="#455468" strokeWidth="2.5" />
+        <line x1="80" y1="110" x2="80" y2="128" stroke="#455468" strokeWidth="2.5" />
+      </svg>
+      <div className="mt-1 text-center max-w-[95px]">
+        <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold truncate" title={label}>{label}</div>
+        <div className="text-base font-semibold font-mono-num" style={{ color }}>{level}%</div>
+        <div className="text-[9px] text-[#59687A] font-mono-num">{capacity}</div>
+      </div>
+    </div>
+  );
+};
+
 
 // ===== Warehouse Utilization 3D Bar =====
 export const WarehouseFill = ({ level = 74, label = "Gudang Produk Jadi", code = "WH-FG", capacity = "2.500 unit", className = "" }) => {
