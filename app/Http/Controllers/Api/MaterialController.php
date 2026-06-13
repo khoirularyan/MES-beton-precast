@@ -12,7 +12,7 @@ class MaterialController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Material::with('suppliers')->whereNull('deleted_at');
+        $query = Material::with(['suppliers', 'inventory'])->whereNull('deleted_at');
 
         if ($request->filled('search')) {
             $query->where('nama', 'ilike', "%{$request->search}%");
@@ -21,7 +21,11 @@ class MaterialController extends Controller
             $query->where('kategori', $request->kategori);
         }
         if ($request->boolean('low_stock')) {
-            $query->whereRaw('stok <= min_stok');
+            $query->where(function ($q) {
+                $q->whereHas('inventory', function ($sub) {
+                    $sub->whereRaw('qty_on_hand <= global.production_materials.min_stok');
+                })->orWhereDoesntHave('inventory'); // If no inventory record, stock is 0 (which is <= min_stok)
+            });
         }
 
         return response()->json($query->orderBy('nama')->paginate($request->get('per_page', 20)));
@@ -30,6 +34,7 @@ class MaterialController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'kode'          => 'nullable|string|max:20|unique:global.production_materials,kode',
             'nama'          => 'required|string|max:200',
             'satuan'        => 'nullable|string|max:20',
             'kategori'      => 'nullable|string|max:50',
@@ -39,6 +44,10 @@ class MaterialController extends Controller
             'lead_time_hari' => 'nullable|integer|min:0',
             'aktif'         => 'boolean',
         ]);
+
+        if (empty($validated['kode'])) {
+            $validated['kode'] = 'MAT-' . strtoupper(substr(str_shuffle("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"), 0, 5));
+        }
 
         if (!empty($validated['kategori'])) {
             MaterialCategory::firstOrCreate(
@@ -52,12 +61,13 @@ class MaterialController extends Controller
 
     public function show(Material $material): JsonResponse
     {
-        return response()->json($material);
+        return response()->json($material->load(['suppliers', 'inventory']));
     }
 
     public function update(Request $request, Material $material): JsonResponse
     {
         $validated = $request->validate([
+            'kode'          => 'sometimes|string|max:20|unique:global.production_materials,kode,' . $material->id,
             'nama'          => 'sometimes|string|max:200',
             'satuan'        => 'nullable|string|max:20',
             'kategori'      => 'nullable|string|max:50',
@@ -76,7 +86,7 @@ class MaterialController extends Controller
         }
 
         $material->update($validated);
-        return response()->json($material->fresh());
+        return response()->json($material->fresh(['suppliers', 'inventory']));
     }
 
     public function destroy(Material $material): JsonResponse

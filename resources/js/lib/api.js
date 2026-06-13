@@ -96,6 +96,24 @@ export const materialApi = {
 };
 
 // ============================================
+// INVENTORY OVERVIEW (FINISHED GOODS, MOVEMENTS, WAREHOUSES)
+// ============================================
+
+export const inventoryApi = {
+  getOverview: () => api.get('/inventory'),
+};
+
+// ============================================
+// MATERIAL INVENTORY
+// ============================================
+
+export const materialInventoryApi = {
+  getAll: (params = {}) => api.get('/material-inventory', { params }),
+  getDashboard: ()      => api.get('/material-inventory/dashboard'),
+  adjust: (data)        => api.post('/material-inventory/adjustment', data),
+};
+
+// ============================================
 // MASTER DATA - BOM
 // ============================================
 
@@ -224,6 +242,7 @@ export const deliveryOrderApi = {
   create: (data)        => api.post('/delivery-orders', data),
   update: (id, data)    => api.put(`/delivery-orders/${id}`, data),
   delete: (id)          => api.delete(`/delivery-orders/${id}`),
+  checkFifo: (soId)     => api.get('/delivery-orders/fifo-check', { params: { sales_order_id: soId } }),
 };
 
 // ============================================

@@ -1,4 +1,4 @@
-﻿// Industrial visualizations: Cement silo, Aggregate stockpile, Warehouse fill,
+// Industrial visualizations: Cement silo, Aggregate stockpile, Warehouse fill,
 // Truck illustration, Curing chamber, OEE gauge, Dashboard hero banner.
 
 import { Truck } from "lucide-react";
@@ -122,7 +122,7 @@ export const WarehouseFill = ({ level = 74, label = "Gudang Produk Jadi", code =
           <div className="text-xl font-semibold font-mono-num" style={{ color }}>{level}%</div>
         </div>
       </div>
-      <svg viewBox="0 0 160 64" className="w-full">
+      <svg viewBox="0 0 160 64" className="h-14 md:h-16 mx-auto my-1">
         {/* Warehouse outline (isometric box) */}
         <polygon points="6,52 130,52 154,36 30,36" fill="#F4F6F8" stroke="#59687A" strokeWidth="0.8" />
         <polygon points="6,52 130,52 130,16 6,16" fill="#FAFBFC" stroke="#59687A" strokeWidth="0.8" />

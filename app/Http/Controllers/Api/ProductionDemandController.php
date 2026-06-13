@@ -98,8 +98,18 @@ class ProductionDemandController extends Controller
 
         try {
             $plan = $this->planningService->scheduleProduction($productionDemand, $validated);
+            
+            // Check material shortage
+            $reqService = new \App\Services\MaterialRequirementService();
+            $requirements = $reqService->calculateRequirements($productionDemand->product_id, (float) $productionDemand->demand_qty);
+            $hasShortage = $requirements->contains(function ($r) {
+                return $r['shortage_qty'] > 0;
+            });
+            $warning = $hasShortage ? "Material tidak mencukupi untuk memenuhi demand." : null;
+
             return response()->json([
                 'message' => 'Production scheduled successfully. Batches auto-generated based on mold capacity.',
+                'warning' => $warning,
                 'plan'    => $plan->load(['product', 'mold', 'batches', 'salesOrder.customer']),
                 'demand'  => $productionDemand->fresh(['product', 'salesOrder.customer'])
             ], 201);
@@ -138,6 +148,20 @@ class ProductionDemandController extends Controller
 
         try {
             $preview = $this->planningService->previewSchedule($productionDemand, $validated['start_date']);
+            
+            // Check material shortage
+            $reqService = new \App\Services\MaterialRequirementService();
+            $requirements = $reqService->calculateRequirements($productionDemand->product_id, (float) $productionDemand->demand_qty);
+            $hasShortage = $requirements->contains(function ($r) {
+                return $r['shortage_qty'] > 0;
+            });
+            
+            $preview['material_shortage'] = $hasShortage;
+            $preview['material_requirements'] = $requirements->toArray();
+            if ($hasShortage) {
+                $preview['warning'] = "Material tidak mencukupi untuk memenuhi demand.";
+            }
+
             return response()->json($preview);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);

@@ -211,11 +211,31 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ============================================================
 
     Route::middleware('permission:delivery.view')->group(function () {
-        Route::apiResource('delivery-orders', DeliveryOrderController::class)->only(['index', 'show']);
+        Route::get('delivery-orders', [\App\Http\Controllers\Api\DeliveryOrderController::class, 'index']);
+        Route::get('delivery-orders/fifo-check', [\App\Http\Controllers\Api\DeliveryOrderController::class, 'fifoCheck']);
+        Route::get('delivery-orders/{delivery_order}', [\App\Http\Controllers\Api\DeliveryOrderController::class, 'show']);
     });
 
     Route::middleware('permission:delivery.manage')->group(function () {
-        Route::apiResource('delivery-orders', DeliveryOrderController::class)->except(['index', 'show']);
+        Route::post('delivery-orders', [\App\Http\Controllers\Api\DeliveryOrderController::class, 'store']);
+        Route::put('delivery-orders/{delivery_order}', [\App\Http\Controllers\Api\DeliveryOrderController::class, 'update']);
+        Route::delete('delivery-orders/{delivery_order}', [\App\Http\Controllers\Api\DeliveryOrderController::class, 'destroy']);
+    });
+
+    // ============================================================
+    // MATERIAL INVENTORY
+    // View   : ppic, warehouse, manager, admin, super_admin (inventory.view)
+    // Manage : ppic, warehouse, admin, super_admin (inventory.manage)
+    // ============================================================
+
+    Route::middleware('permission:inventory.view')->group(function () {
+        Route::get('inventory', [\App\Http\Controllers\Api\InventoryController::class, 'index']);
+        Route::get('material-inventory', [\App\Http\Controllers\Api\MaterialInventoryController::class, 'index']);
+        Route::get('material-inventory/dashboard', [\App\Http\Controllers\Api\MaterialInventoryController::class, 'dashboard']);
+    });
+
+    Route::middleware('permission:inventory.manage')->group(function () {
+        Route::post('material-inventory/adjustment', [\App\Http\Controllers\Api\MaterialInventoryController::class, 'adjustment']);
     });
 
     // ============================================================
