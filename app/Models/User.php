@@ -7,17 +7,18 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'department', 'plant', 'is_active'])]
+#[Fillable(['name', 'username', 'email', 'password', 'role', 'role_id', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
-    protected $table = 'production_users';
+    protected $table = 'global.production_users';
 
     /**
      * Get the attributes that should be cast.
@@ -31,5 +32,12 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
+    }
+
+    // ─── Relationships ────────────────────────────────────────────────────────
+
+    public function roleModel()
+    {
+        return $this->belongsTo(\App\Models\Role::class, 'role_id');
     }
 }

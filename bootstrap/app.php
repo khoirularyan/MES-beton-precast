@@ -13,7 +13,28 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // API routes need session and cookies for web-based auth (WITHOUT CSRF for cross-origin)
+        $middleware->api([
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            // REMOVED: \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        ]);
+        
+        // Enable CORS
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+        
+        // Trust proxies for local development
+        $middleware->trustProxies(at: '*');
+
+        // RBAC middleware aliases
+        $middleware->alias([
+            'active'     => \App\Http\Middleware\EnsureUserActive::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

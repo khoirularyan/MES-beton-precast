@@ -5,17 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Material extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_materials';
+    protected $table = 'global.production_materials';
 
     protected $fillable = [
         'kode', 'nama', 'satuan', 'kategori', 'stok',
-        'min_stok', 'supplier_id', 'harga', 'lead_time_hari', 'aktif',
+        'min_stok', 'harga', 'lead_time_hari', 'supplier_id', 'aktif',
     ];
 
     protected $casts = [
@@ -26,9 +26,9 @@ class Material extends Model
         'lead_time_hari' => 'integer',
     ];
 
-    public function supplier(): BelongsTo
+    public function suppliers(): BelongsToMany
     {
-        return $this->belongsTo(Supplier::class, 'supplier_id');
+        return $this->belongsToMany(Supplier::class, 'global.production_supplier_materials', 'material_id', 'supplier_id')->withTimestamps();
     }
 
     public function bomItems(): HasMany

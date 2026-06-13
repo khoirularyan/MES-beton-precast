@@ -1,0 +1,980 @@
+import PageHeader from "@/components/shared/PageHeader";
+import KPICard from "@/components/shared/KPICard";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { Plus, RefreshCw, Play, CheckCircle, AlertTriangle, Calendar, ChevronLeft, ChevronRight, Ban, Eye, Zap, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import api from "@/lib/api";
+
+const ProductionPlanning = () => {
+  // Lists
+  const [demands, setDemands] = useState([]);
+  const [planningBoardDemands, setPlanningBoardDemands] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [molds, setMolds] = useState([]);
+  const [workCenters, setWorkCenters] = useState([]);
+  
+  // States
+  const [loading, setLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState("demand"); // demand, planning, gantt
+  
+  // Calendar states
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [daysToShow, setDaysToShow] = useState(7);
+  const [calendarData, setCalendarData] = useState({ work_centers: [], molds: [], batches: [] });
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [showBatchDetailsDialog, setShowBatchDetailsDialog] = useState(false);
+
+  // Dialog states
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectingDemand, setRejectingDemand] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [schedulingDemand, setSchedulingDemand] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    work_center_id: '',
+    mold_id: '',
+    start_date: '',
+    end_date: '',
+    shift: 'Shift 1',
+    notes: ''
+  });
+
+  // KPIs
+  const [stats, setStats] = useState({
+    demand_open: 0,
+    demand_approved: 0,
+    demand_planned: 0,
+    batch_planning: 0,
+    batch_active: 0,
+    batch_finished: 0,
+    batch_delivered: 0,
+    total_scheduled_qty: 0,
+    mold_utilization_pct: 0,
+    line_utilization_pct: 0,
+    late_demand_count: 0,
+  });
+  const formatDateToYYYYMMDD = (date) => {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
+  };
+
+  const getDatesRange = () => {
+    const dates = [];
+    const start = new Date(currentDate);
+    for (let i = 0; i < daysToShow; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  };
+
+  const dates = getDatesRange();
+
+  // Load all data
+  useEffect(() => {
+    loadAllData();
+  }, []);
+
+  // Sync calendar when dates change
+  useEffect(() => {
+    loadCalendarData();
+  }, [currentDate, daysToShow]);
+
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      // Load Open Demands
+      const openRes = await api.get('/production-demands', { params: { status: 'Open', per_page: 100 } });
+      setDemands(openRes.data.data || []);
+
+      // Load Approved Demands for Planning Board
+      const approvedRes = await api.get('/production-demands', { params: { status: 'Approved', per_page: 100 } });
+      setPlanningBoardDemands(approvedRes.data.data || []);
+
+      // Load Batches
+      const batchesRes = await api.get('/production-batches', { params: { per_page: 100 } });
+      setBatches(batchesRes.data.data || []);
+
+      // Load Molds & Lines
+      const moldsRes = await api.get('/molds');
+      // Molds API returns paginated response
+      setMolds(moldsRes.data?.data || moldsRes.data || []);
+
+      const wcRes = await api.get('/work-centers');
+      // Work Centers API returns direct array
+      setWorkCenters(wcRes.data || []);
+
+      // Load Stats
+      const statsRes = await api.get('/production-plans/stats');
+      setStats(statsRes.data);
+
+      // Load Calendar
+      await loadCalendarData();
+    } catch (error) {
+      toast.error('Failed to load production planning data');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCalendarData = async () => {
+    try {
+      const fromDate = formatDateToYYYYMMDD(dates[0]);
+      const toDate = formatDateToYYYYMMDD(dates[dates.length - 1]);
+      const calRes = await api.get('/production-plans/calendar', { params: { from: fromDate, to: toDate } });
+      setCalendarData(calRes.data);
+    } catch (error) {
+      console.error('Failed to load calendar', error);
+    }
+  };
+
+  // PPIC Actions
+  const handleConfirmReady = async (demandId) => {
+    try {
+      setLoading(true);
+      const res = await api.post(`/production-demands/${demandId}/approve`);
+      toast.success(res.data.message);
+      loadAllData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to approve demand');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenReject = (demand) => {
+    setRejectingDemand(demand);
+    setRejectReason("");
+    setShowRejectDialog(true);
+  };
+
+  const handleRejectDemand = async () => {
+    if (!rejectReason.trim()) {
+      toast.error("Please enter a rejection reason");
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await api.post(`/production-demands/${rejectingDemand.id}/reject`, { reason: rejectReason });
+      toast.success(res.data.message);
+      setShowRejectDialog(false);
+      setRejectingDemand(null);
+      setRejectReason("");
+      loadAllData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject demand');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenSchedule = (demand) => {
+    setSchedulingDemand(demand);
+    // Auto-select first matching mold or generic if available
+    const moldsList = Array.isArray(molds) ? molds : [];
+    const matchingMold = moldsList.find(m => m.aktif === 1 && m.produk === demand.product?.nama);
+    
+    const wcList = Array.isArray(workCenters) ? workCenters : [];
+    setScheduleForm({
+      work_center_id: wcList[0]?.id || '',
+      mold_id: matchingMold?.id || moldsList.find(m => m.aktif === 1)?.id || '',
+      start_date: formatDateToYYYYMMDD(new Date()),
+      end_date: demand.required_date || formatDateToYYYYMMDD(new Date()),
+      shift: 'Shift 1',
+      notes: ''
+    });
+    setShowScheduleDialog(true);
+  };
+
+  const handleScheduleProduction = async () => {
+    if (!scheduleForm.work_center_id || !scheduleForm.mold_id || !scheduleForm.start_date || !scheduleForm.end_date || !scheduleForm.shift) {
+      toast.error("Please fill in all required scheduling fields");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await api.post(`/production-demands/${schedulingDemand.id}/schedule`, scheduleForm);
+      toast.success(res.data.message);
+      setShowScheduleDialog(false);
+      setSchedulingDemand(null);
+      loadAllData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to schedule production');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartBatch = async (batch) => {
+    try {
+      setLoading(true);
+      const res = await api.post(`/production-batches/${batch.id}/start`);
+      toast.success(res.data.message);
+      loadAllData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to start batch');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Status mapping colors
+  const getStatusColor = (status) => {
+    const colorMap = {
+      'Open': 'bg-blue-100 text-blue-800',
+      'Approved': 'bg-green-100 text-green-800',
+      'Planned': 'bg-sky-100 text-sky-800',
+      'Scheduled': 'bg-indigo-100 text-indigo-800',
+      'In Progress': 'bg-amber-100 text-amber-800',
+      'QC Pending': 'bg-purple-100 text-purple-800',
+      'Completed': 'bg-emerald-100 text-emerald-800',
+      'Closed': 'bg-slate-100 text-slate-800',
+      'Cancelled': 'bg-red-100 text-red-800',
+    };
+    return colorMap[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getBatchColorClass = (status) => {
+    switch (status) {
+      case 'Planned':
+        return 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100/70';
+      case 'In Progress':
+        return 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70';
+      case 'QC Pending':
+        return 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100/70';
+      case 'Completed':
+        return 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70';
+      case 'Closed':
+        return 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200/70';
+      default:
+        return 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100';
+    }
+  };
+
+  // Calculation helpers
+  const getMoldAvailabilityText = (demand) => {
+    const moldsList = Array.isArray(molds) ? molds : [];
+    const activeMolds = moldsList.filter(m => m.aktif === 1);
+    const specificMolds = activeMolds.filter(m => m.produk === demand.product?.nama);
+    if (specificMolds.length > 0) {
+      return `Specific Mold Ready (${specificMolds.length})`;
+    }
+    return activeMolds.length > 0 ? `Available (${activeMolds.length} active)` : 'None Active';
+  };
+
+  const getEstimatedBatchCount = (demand) => {
+    const moldsList = Array.isArray(molds) ? molds : [];
+    const activeMolds = moldsList.filter(m => m.aktif === 1);
+    const specificMold = activeMolds.find(m => m.produk === demand.product?.nama) || activeMolds[0];
+    if (!specificMold) return '-';
+    const cap = specificMold.kapasitas_per_siklus || 1;
+    return Math.ceil(demand.demand_qty / cap);
+  };
+
+  const getBatchesForResourceAndDate = (resourceType, resourceId, date) => {
+    const dStr = formatDateToYYYYMMDD(date);
+    return (calendarData.batches || []).filter(b => {
+      const startStr = b.planned_start ? b.planned_start.substring(0, 10) : '';
+      const endStr = b.planned_end ? b.planned_end.substring(0, 10) : '';
+      
+      const matchResource = resourceType === 'line' 
+        ? b.work_center_id === resourceId 
+        : b.mold_id === resourceId;
+        
+      if (!matchResource) return false;
+      
+      return dStr >= startStr && dStr <= endStr;
+    });
+  };
+
+  // Live modal calculation variables
+  const moldsList = Array.isArray(molds) ? molds : [];
+  const selectedMold = moldsList.find(m => m.id === parseInt(scheduleForm.mold_id));
+  const liveCapacity = selectedMold?.kapasitas_per_siklus || 1;
+  const liveRequiredBatches = schedulingDemand ? Math.ceil(schedulingDemand.demand_qty / liveCapacity) : 0;
+
+  // Render sub-components
+  const renderGanttBatchCard = (b) => {
+    const isOverdue = ['Planned', 'In Progress'].includes(b.status) && new Date(b.planned_end) < new Date();
+    
+    return (
+      <div 
+        key={b.id} 
+        className={`p-2 mb-1.5 text-xs rounded border shadow-sm transition-all hover:shadow hover:scale-[1.02] cursor-pointer ${getBatchColorClass(b.status)}`}
+        onClick={() => {
+          setSelectedBatch(b);
+          setShowBatchDetailsDialog(true);
+        }}
+      >
+        <div className="flex items-center justify-between font-semibold gap-1">
+          <span className="truncate">{b.batch_number}</span>
+          {isOverdue && (
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-slate-500 font-normal truncate mt-0.5">{b.product_name}</div>
+        <div className="flex items-center justify-between text-[9px] font-mono mt-1 text-slate-600">
+          <span>{b.target_qty} pcs</span>
+          <span className="capitalize px-1 rounded-sm bg-black/5 font-semibold text-[8px]">{b.status}</span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <PageHeader
+        title="Production Planning Dashboard"
+        subtitle="Real-time production scheduling and capacity management"
+        breadcrumbs={["Home", "Production Planning"]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={loadAllData}
+              disabled={loading}
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />
+              Refresh
+            </Button>
+            <Button 
+              size="sm" 
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Create Schedule
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="p-6 space-y-6">
+        {/* ROW 1: KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <KPICard label="Demand Open" value={stats.demand_open} accent="info" size="compact" />
+          <KPICard label="Demand Approved" value={stats.demand_approved} accent="warning" size="compact" />
+          <KPICard label="Scheduled Plans" value={stats.demand_planned} accent="success" size="compact" />
+          <KPICard label="Active Batches" value={stats.batch_active} accent="warning" size="compact" />
+          <KPICard label="Finished" value={stats.batch_finished} accent="success" size="compact" />
+          <KPICard label="Delivered" value={stats.batch_delivered} accent="default" size="compact" />
+        </div>
+
+        {/* ROW 2: Left (Demand Queue) + Right (Capacity Charts) */}
+        <div className="grid grid-cols-3 gap-6">
+          {/* LEFT: Demand Queue - 30% */}
+          <div className="col-span-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-blue-600" />
+                <div>
+                  <div className="font-semibold text-sm text-slate-900">Demand Queue</div>
+                  <div className="text-xs text-slate-600">Pending PPIC action</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-2 p-3">
+              {demands.length === 0 ? (
+                <div className="py-8 text-center text-sm text-slate-500">
+                  No open demands
+                </div>
+              ) : (
+                demands.map((demand) => (
+                  <div key={demand.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="font-semibold text-sm text-slate-900">{demand.product?.nama || 'N/A'}</div>
+                        <div className="text-xs text-slate-600">{demand.sales_order?.customer?.nama || '-'}</div>
+                      </div>
+                      <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{demand.demand_qty}</span>
+                    </div>
+                    <div className="text-xs text-slate-600 mb-2">
+                      Due: {demand.required_date ? new Date(demand.required_date).toLocaleDateString() : '-'}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 h-7 bg-green-600 hover:bg-green-700 text-white text-xs"
+                        onClick={() => handleConfirmReady(demand.id)}
+                        disabled={loading}
+                      >
+                        Confirm
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-7 text-xs"
+                        onClick={() => handleOpenReject(demand)}
+                        disabled={loading}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT: Capacity Dashboard - 70% */}
+          <div className="col-span-2 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="font-semibold text-base text-slate-900">Capacity</div>
+                <div className="text-xs text-slate-600">Utilization overview</div>
+              </div>
+              <TrendingUp className="w-4 h-4 text-slate-400" />
+            </div>
+
+            {/* Capacity Chart Data */}
+            {(() => {
+              const capacityData = [
+                { name: 'Mold Util', utilized: stats.mold_utilization_pct || 0, available: 100 - (stats.mold_utilization_pct || 0) },
+                { name: 'Line Util', utilized: stats.line_utilization_pct || 0, available: 100 - (stats.line_utilization_pct || 0) },
+              ];
+              
+              return (
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart
+                    data={capacityData}
+                    margin={{ top: 10, right: 20, left: -20, bottom: 40 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-30}
+                      textAnchor="end"
+                      height={60}
+                      tick={{ fill: '#64748b', fontSize: 11 }}
+                    />
+                    <YAxis 
+                      domain={[0, 100]}
+                      tick={{ fill: '#64748b', fontSize: 10 }}
+                      width={35}
+                    />
+                    <Tooltip 
+                      formatter={(value) => `${value}%`}
+                      contentStyle={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                      iconType="square"
+                    />
+                    <Bar dataKey="utilized" fill="#3b82f6" name="Used" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="available" fill="#e2e8f0" name="Free" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-200">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <div className="text-[10px] font-semibold text-blue-600 uppercase mb-0.5">Scheduled</div>
+                <div className="text-xl font-bold text-blue-900">{stats.total_scheduled_qty}</div>
+                <div className="text-[9px] text-blue-600">pcs</div>
+              </div>
+              <div className={`p-2 rounded-lg ${stats.late_demand_count > 0 ? 'bg-red-50' : 'bg-emerald-50'}`}>
+                <div className={`text-[10px] font-semibold uppercase mb-0.5 ${stats.late_demand_count > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                  {stats.late_demand_count > 0 ? 'Late' : 'On Time'}
+                </div>
+                <div className={`text-xl font-bold ${stats.late_demand_count > 0 ? 'text-red-900' : 'text-emerald-900'}`}>
+                  {stats.late_demand_count}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ROW 3: Gantt Calendar - Main Planning Area (60-70% height) */}
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col" style={{ height: 'calc(70vh - 100px)' }}>
+          <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-slate-100 p-4 border-b border-slate-200">
+            <div>
+              <div className="font-semibold text-lg text-slate-900">Production Gantt Calendar</div>
+              <div className="text-sm text-slate-600">Batch scheduling on production lines and molds</div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const newD = new Date(currentDate);
+                    newD.setDate(newD.getDate() - daysToShow);
+                    setCurrentDate(newD);
+                  }}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setCurrentDate(new Date())}
+                >
+                  Today
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const newD = new Date(currentDate);
+                    newD.setDate(newD.getDate() + daysToShow);
+                    setCurrentDate(newD);
+                  }}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant={daysToShow === 7 ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setDaysToShow(7)}
+                  className="text-xs"
+                >
+                  7 Days
+                </Button>
+                <Button 
+                  variant={daysToShow === 14 ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setDaysToShow(14)}
+                  className="text-xs"
+                >
+                  14 Days
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-x-auto overflow-y-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                  <th className="sticky left-0 bg-slate-50 z-20 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-56 border-r border-slate-200">
+                    Resource
+                  </th>
+                  {dates.map((date, idx) => (
+                    <th key={idx} className="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[140px] border-r border-slate-200">
+                      <div className="font-semibold">{date.toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                      <div className="text-slate-400 font-normal text-[10px]">{date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Production Lines Section */}
+                <tr className="bg-blue-50 border-b border-slate-200">
+                  <td colSpan={dates.length + 1} className="sticky left-0 bg-blue-50 z-10 px-4 py-2 text-xs font-bold text-blue-900 uppercase border-r border-slate-200">
+                    📊 Production Lines
+                  </td>
+                </tr>
+                {workCenters.map(wc => {
+                  return (
+                    <tr key={`wc-${wc.id}`} className="border-b border-slate-200 hover:bg-slate-50/50">
+                      <td className="sticky left-0 bg-white z-10 px-4 py-3 text-sm font-semibold text-slate-700 border-r border-slate-200">
+                        <div className="truncate">{wc.name}</div>
+                        <div className="text-[10px] text-slate-500 font-normal">{wc.code}</div>
+                      </td>
+                      {dates.map((date, idx) => {
+                        const cellBatches = getBatchesForResourceAndDate('line', wc.id, date);
+                        const hasOverlap = cellBatches.length > 1;
+                        return (
+                          <td key={idx} className={`px-2 py-2 vertical-align-top border-r border-slate-200 min-h-[80px] ${hasOverlap ? 'bg-amber-50/30' : ''}`}>
+                            {hasOverlap && (
+                              <div className="mb-1 text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold text-center flex items-center justify-center gap-0.5 border border-amber-200">
+                                <AlertTriangle className="w-2 h-2" /> Overlap
+                              </div>
+                            )}
+                            {cellBatches.map(b => renderGanttBatchCard(b))}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+
+                {/* Molds Section */}
+                <tr className="bg-orange-50 border-b border-slate-200">
+                  <td colSpan={dates.length + 1} className="sticky left-0 bg-orange-50 z-10 px-4 py-2 text-xs font-bold text-orange-900 uppercase border-r border-slate-200">
+                    🔧 Molds (Cetakan)
+                  </td>
+                </tr>
+                {molds.map(mold => {
+                  return (
+                    <tr key={`mold-${mold.id}`} className="border-b border-slate-200 hover:bg-slate-50/50">
+                      <td className="sticky left-0 bg-white z-10 px-4 py-3 text-sm font-semibold text-slate-700 border-r border-slate-200">
+                        <div className="truncate">{mold.nama}</div>
+                        <div className="text-[10px] text-slate-500 font-normal">{mold.kode}</div>
+                      </td>
+                      {dates.map((date, idx) => {
+                        const cellBatches = getBatchesForResourceAndDate('mold', mold.id, date);
+                        const hasConflict = cellBatches.length > 1;
+                        return (
+                          <td key={idx} className={`px-2 py-2 vertical-align-top border-r border-slate-200 min-h-[80px] ${hasConflict ? 'bg-red-50/30' : ''}`}>
+                            {hasConflict && (
+                              <div className="mb-1 text-[9px] bg-red-100 text-red-800 px-1 py-0.5 rounded font-bold text-center flex items-center justify-center gap-0.5 border border-red-200">
+                                <Ban className="w-2 h-2" /> Conflict
+                              </div>
+                            )}
+                            {cellBatches.map(b => renderGanttBatchCard(b))}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ROW 4: Upcoming Scheduled Production - Compact */}
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-emerald-100">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-600" />
+              <div>
+                <div className="font-semibold text-sm text-slate-900">Upcoming Scheduled Production</div>
+                <div className="text-xs text-slate-600">Next 10 batches</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Batch</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Product</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Mold</th>
+                  <th className="px-4 py-2 text-center text-xs font-semibold text-slate-500 uppercase">Qty</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Start</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Finish</th>
+                  <th className="px-4 py-2 text-center text-xs font-semibold text-slate-500 uppercase">Status</th>
+                  <th className="px-4 py-2 text-center text-xs font-semibold text-slate-500 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.slice(0, 10).length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="px-4 py-6 text-center text-sm text-slate-500">
+                      No batches scheduled
+                    </td>
+                  </tr>
+                ) : (
+                  batches.slice(0, 10).map((batch) => (
+                    <tr key={batch.id} className="border-t border-slate-200 hover:bg-slate-50">
+                      <td className="px-4 py-2 text-sm font-semibold text-slate-900">{batch.batch_number}</td>
+                      <td className="px-4 py-2 text-sm text-slate-700">{batch.product_name || batch.product?.nama || '-'}</td>
+                      <td className="px-4 py-2 text-sm text-slate-700">{batch.mold_name || '-'}</td>
+                      <td className="px-4 py-2 text-sm font-mono text-center font-semibold text-slate-900">{batch.target_qty}</td>
+                      <td className="px-4 py-2 text-sm text-slate-600">
+                        {batch.planned_start ? new Date(batch.planned_start).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-slate-600">
+                        {batch.planned_end ? new Date(batch.planned_end).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getStatusColor(batch.status)}`}>
+                          {batch.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {(batch.status === 'Planned' || batch.status === 'Released') && (
+                          <Button
+                            size="sm"
+                            className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-7"
+                            onClick={() => handleStartBatch(batch)}
+                            disabled={loading}
+                          >
+                            <Play className="w-3 h-3 mr-1" />
+                            Start
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+
+      {/* Reject Demand Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Demand Readiness</DialogTitle>
+            <DialogDescription>
+              Cancel the scheduling readiness for demand: {rejectingDemand?.demand_number}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Rejection Reason</label>
+              <textarea
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                rows="4"
+                placeholder="Enter explanation for rejecting readiness..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowRejectDialog(false); setRejectingDemand(null); }}>
+              Cancel
+            </Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleRejectDemand} disabled={loading}>
+              Reject Demand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Production Dialog */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule Production</DialogTitle>
+            <DialogDescription>
+              PPIC scheduling and batch generation setup
+            </DialogDescription>
+          </DialogHeader>
+
+          {schedulingDemand && (
+            <div className="space-y-4 py-2 text-sm">
+              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Product</div>
+                  <div className="font-semibold text-slate-800 truncate">{schedulingDemand.product?.nama}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Customer</div>
+                  <div className="font-semibold text-slate-800 truncate">{schedulingDemand.sales_order?.customer?.nama || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Demand Qty</div>
+                  <div className="font-semibold text-slate-800 font-mono">{schedulingDemand.demand_qty} pcs</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Due Date</div>
+                  <div className="font-semibold text-slate-800">
+                    {schedulingDemand.required_date ? new Date(schedulingDemand.required_date).toLocaleDateString() : '-'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Form fields */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Production Line (Work Center)</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    value={scheduleForm.work_center_id}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, work_center_id: e.target.value })}
+                  >
+                    {workCenters.map(wc => (
+                      <option key={wc.id} value={wc.id}>{wc.name} ({wc.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Mold Allocation</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    value={scheduleForm.mold_id}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, mold_id: e.target.value })}
+                  >
+                    {molds.filter(m => m.aktif === 1).map(m => (
+                      <option key={m.id} value={m.id}>{m.nama} ({m.kode} - Cap: {m.kapasitas_per_siklus} pcs)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                      value={scheduleForm.start_date}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, start_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                      value={scheduleForm.end_date}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, end_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Shift</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    value={scheduleForm.shift}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, shift: e.target.value })}
+                  >
+                    <option value="Shift 1">Shift 1 (Morning)</option>
+                    <option value="Shift 2">Shift 2 (Evening)</option>
+                    <option value="Shift 3">Shift 3 (Night)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Notes</label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    rows="2"
+                    placeholder="Optional scheduling remarks..."
+                    value={scheduleForm.notes}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Live batch count calculation */}
+              <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 mt-2 space-y-1">
+                <div className="font-bold text-blue-950 flex items-center gap-1">
+                  <CheckCircle className="w-3.5 h-3.5 text-blue-600" /> Live Scheduling Calculations
+                </div>
+                <div className="grid grid-cols-2 gap-y-1 mt-1 font-medium">
+                  <div>Mold Cycle Capacity:</div>
+                  <div className="font-semibold text-blue-950">{liveCapacity} pcs/cycle</div>
+                  <div>Required Batches:</div>
+                  <div className="font-semibold text-blue-950">{liveRequiredBatches} batch(es)</div>
+                  <div className="text-[10px] text-blue-500 italic col-span-2 mt-1">
+                    CEIL({schedulingDemand.demand_qty} / {liveCapacity}) = {liveRequiredBatches} batches generated automatically.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setSchedulingDemand(null); }}>
+              Cancel
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleScheduleProduction} disabled={loading}>
+              Confirm Schedule & Generate Batches
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Details Dialog */}
+      <Dialog open={showBatchDetailsDialog} onOpenChange={setShowBatchDetailsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Batch Details: {selectedBatch?.batch_number}</DialogTitle>
+            <DialogDescription>
+              Execution and scheduling information for production batch
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedBatch && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="font-semibold text-slate-500 text-xs uppercase">Product</div>
+                  <div className="text-slate-800 font-medium">{selectedBatch.product_name}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500 text-xs uppercase">Target Qty</div>
+                  <div className="text-slate-800 font-mono font-medium">{selectedBatch.target_qty} pcs</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500 text-xs uppercase">Production Line</div>
+                  <div className="text-slate-800 font-medium">{selectedBatch.work_center_name || 'Not assigned'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500 text-xs uppercase">Mold allocated</div>
+                  <div className="text-slate-800 font-medium">{selectedBatch.mold_name || 'Not allocated'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500 text-xs uppercase">Planned Start</div>
+                  <div className="text-slate-800 text-xs">{selectedBatch.planned_start ? new Date(selectedBatch.planned_start).toLocaleString() : '-'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500 text-xs uppercase">Planned End</div>
+                  <div className="text-slate-800 text-xs">{selectedBatch.planned_end ? new Date(selectedBatch.planned_end).toLocaleString() : '-'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500 text-xs uppercase">Status</div>
+                  <div className="mt-0.5">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${getStatusColor(selectedBatch.status)}`}>
+                      {selectedBatch.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedBatch.notes && (
+                <div className="bg-slate-50 p-2 rounded border text-xs text-slate-600">
+                  <span className="font-semibold block text-slate-700 mb-1">Notes:</span>
+                  {selectedBatch.notes}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            {selectedBatch && ['Planned', 'Released'].includes(selectedBatch.status) && (
+              <Button 
+                onClick={async () => {
+                  await handleStartBatch(selectedBatch);
+                  setShowBatchDetailsDialog(false);
+                }}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Play className="w-3.5 h-3.5 mr-1" />
+                Start Production
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowBatchDetailsDialog(false);
+                setSelectedBatch(null);
+              }}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default ProductionPlanning;

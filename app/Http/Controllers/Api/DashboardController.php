@@ -18,33 +18,49 @@ class DashboardController extends Controller
     {
         // Open Sales Orders
         $openSalesOrders = SalesOrder::query()
-            ->whereNotIn('status', ['Selesai'])
+            ->whereNotIn('status', ['Completed', 'Delivered', 'Cancelled'])
             ->whereNull('deleted_at')
             ->count();
 
-        // Pending Delivery (SO yang sudah Siap Kirim)
+        // Pending Delivery (SO yang sudah Completed tapi belum Delivered)
         $pendingDelivery = SalesOrder::query()
-            ->where('status', 'Siap Kirim')
+            ->where('status', 'Completed')
             ->whereNull('deleted_at')
             ->count();
 
         // Overdue delivery
         $overdueDelivery = SalesOrder::query()
-            ->whereNotIn('status', ['Selesai'])
+            ->whereNotIn('status', ['Completed', 'Delivered', 'Cancelled'])
             ->where('tgl_kirim', '<', now()->toDateString())
             ->whereNull('deleted_at')
             ->count();
 
-        // Production Batches by status
+        // Production Batches by status ID
         $batchStats = ProductionBatch::query()
             ->whereNull('deleted_at')
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+            ->selectRaw('batch_status_id, count(*) as total')
+            ->groupBy('batch_status_id')
+            ->pluck('total', 'batch_status_id');
 
-        // Active Batches (In Progress)
-        $activeBatches = $batchStats->get('In Progress', 0);
-        $qcPendingBatches = $batchStats->get('QC Pending', 0);
+        // Map status ID to status name for dashboard response
+        $dbStatuses = DB::table('global.production_batch_statuses')->get();
+        
+        $activeBatches = 0;
+        $qcPendingBatches = 0;
+        $batchStatsSummary = [];
+        
+        foreach ($dbStatuses as $s) {
+            $count = $batchStats->get($s->id, 0);
+            $batchStatsSummary[$s->status] = $count;
+            
+            $nameLower = strtolower(trim($s->status));
+            if (strpos($nameLower, 'casting') !== false || strpos($nameLower, 'cetak') !== false) {
+                $activeBatches = $count;
+            }
+            if (strpos($nameLower, 'qc') !== false || strpos($nameLower, 'quality') !== false) {
+                $qcPendingBatches = $count;
+            }
+        }
 
         // Open Demands
         $openDemands = ProductionDemand::query()
@@ -98,8 +114,16 @@ class DashboardController extends Controller
             ]);
 
         // Production Batch progress
-        $batchProgress = ProductionBatch::with('product', 'workCenter')
-            ->whereIn('status', ['Released', 'In Progress', 'QC Pending'])
+        $progressStatusIds = DB::table('global.production_batch_statuses')
+            ->where('aktif', true)
+            ->whereRaw('LOWER(status) NOT LIKE ?', ['%finished%'])
+            ->whereRaw('LOWER(status) NOT LIKE ?', ['%selesai%'])
+            ->whereRaw('LOWER(status) NOT LIKE ?', ['%delivered%'])
+            ->whereRaw('LOWER(status) NOT LIKE ?', ['%kirim%'])
+            ->pluck('id');
+
+        $batchProgress = ProductionBatch::with(['product', 'workCenter', 'statusModel'])
+            ->whereIn('batch_status_id', $progressStatusIds)
             ->whereNull('deleted_at')
             ->orderBy('planned_start')
             ->limit(10)
@@ -110,7 +134,7 @@ class DashboardController extends Controller
                 'product'       => $b->product?->nama,
                 'target_qty'    => $b->target_qty,
                 'actual_qty'    => $b->actual_qty,
-                'status'        => $b->status,
+                'status'        => $b->statusModel?->status,
                 'planned_start' => $b->planned_start?->toDateTimeString(),
                 'planned_end'   => $b->planned_end?->toDateTimeString(),
                 'work_center'   => $b->workCenter?->name,
@@ -127,7 +151,7 @@ class DashboardController extends Controller
                 'aging_stock_batches' => $agingStock,
             ],
             'plan_material_status'  => $planMaterialStatus,
-            'batch_status_summary'  => $batchStats,
+            'batch_status_summary'  => $batchStatsSummary,
             'cost_this_month'       => [
                 'total_estimated' => (float) ($costVariance->total_estimated ?? 0),
                 'total_actual'    => (float) ($costVariance->total_actual ?? 0),

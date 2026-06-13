@@ -4,17 +4,21 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SalesOrder;
-use App\Models\SalesOrderItem;
-use App\Models\InventoryBatch;
-use App\Models\ProductionDemand;
-use App\Models\StockReservation;
+use App\Models\AuditLog;
+use App\Services\SalesOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class SalesOrderController extends Controller
 {
+    protected SalesOrderService $salesOrderService;
+
+    public function __construct(SalesOrderService $salesOrderService)
+    {
+        $this->salesOrderService = $salesOrderService;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = SalesOrder::with(['customer', 'product', 'items.product'])
@@ -41,53 +45,27 @@ class SalesOrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'no'          => 'required|string|max:30|unique:production_sales_orders,no',
-            'so_type'     => ['required', Rule::in(['MTO', 'MTS'])],
-            'customer_id' => 'required|exists:production_customers,id',
-            'product_id'  => 'required|exists:production_products,id',
-            'qty'         => 'required|integer|min:1',
-            'nilai'       => 'nullable|integer|min:0',
-            'tgl_order'   => 'required|date',
-            'tgl_kirim'   => 'required|date|after_or_equal:tgl_order',
-            'prioritas'   => ['nullable', Rule::in(['Rendah', 'Sedang', 'Tinggi'])],
-            'catatan'     => 'nullable|string',
-            'items'       => 'nullable|array',
+            'no'                    => 'nullable|string|max:30|unique:production_sales_orders,no',
+            'so_type'               => ['required', Rule::in(['MTO', 'MTS'])],
+            'customer_id'           => 'required|exists:production_customers,id',
+            'product_id'            => 'nullable|exists:production_products,id',
+            'qty'                   => 'nullable|integer|min:1',
+            'nilai'                 => 'required|integer|min:0',
+            'tgl_order'             => 'required|date',
+            'tgl_kirim'             => 'required|date|after_or_equal:tgl_order',
+            'prioritas'             => ['nullable', Rule::in(['Rendah', 'Sedang', 'Tinggi'])],
+            'catatan'               => 'nullable|string',
+            'items'                 => 'nullable|array',
             'items.*.product_id'    => 'required|exists:production_products,id',
             'items.*.qty_ordered'   => 'required|numeric|min:0.01',
             'items.*.unit_price'    => 'nullable|numeric|min:0',
             'items.*.delivery_date' => 'nullable|date',
+            'items.*.notes'         => 'nullable|string',
         ]);
 
-        $so = DB::transaction(function () use ($validated) {
-            $so = SalesOrder::create([
-                'no'          => $validated['no'],
-                'so_type'     => $validated['so_type'],
-                'customer_id' => $validated['customer_id'],
-                'product_id'  => $validated['product_id'],
-                'qty'         => $validated['qty'],
-                'nilai'       => $validated['nilai'] ?? 0,
-                'tgl_order'   => $validated['tgl_order'],
-                'tgl_kirim'   => $validated['tgl_kirim'],
-                'prioritas'   => $validated['prioritas'] ?? 'Sedang',
-                'catatan'     => $validated['catatan'] ?? null,
-                'status'      => 'Draft',
-            ]);
+        $so = $this->salesOrderService->createSalesOrder($validated);
 
-            if (!empty($validated['items'])) {
-                foreach ($validated['items'] as $item) {
-                    $so->items()->create([
-                        'product_id'    => $item['product_id'],
-                        'qty_ordered'   => $item['qty_ordered'],
-                        'unit_price'    => $item['unit_price'] ?? 0,
-                        'delivery_date' => $item['delivery_date'] ?? $validated['tgl_kirim'],
-                    ]);
-                }
-            }
-
-            return $so;
-        });
-
-        return response()->json($so->load(['customer', 'product', 'items.product']), 201);
+        return response()->json($so, 201);
     }
 
     public function show(SalesOrder $salesOrder): JsonResponse
@@ -99,25 +77,27 @@ class SalesOrderController extends Controller
 
     public function update(Request $request, SalesOrder $salesOrder): JsonResponse
     {
-        if (in_array($salesOrder->status, ['Produksi', 'Siap Kirim', 'Selesai'])) {
-            return response()->json(['message' => 'Cannot edit SO with status: ' . $salesOrder->status], 422);
-        }
-
         $validated = $request->validate([
-            'tgl_kirim' => 'nullable|date',
-            'nilai'     => 'nullable|integer|min:0',
-            'prioritas' => ['nullable', Rule::in(['Rendah', 'Sedang', 'Tinggi'])],
-            'catatan'   => 'nullable|string',
+            'nilai'                 => 'sometimes|required|integer|min:0',
+            'tgl_kirim'             => 'sometimes|required|date',
+            'prioritas'             => ['sometimes', 'nullable', Rule::in(['Rendah', 'Sedang', 'Tinggi'])],
+            'catatan'               => 'nullable|string',
+            'items'                 => 'sometimes|required|array',
+            'items.*.product_id'    => 'required|exists:production_products,id',
+            'items.*.qty_ordered'   => 'required|numeric|min:0.01',
+            'items.*.unit_price'    => 'nullable|numeric|min:0',
+            'items.*.delivery_date' => 'nullable|date',
+            'items.*.notes'         => 'nullable|string',
         ]);
 
-        $salesOrder->update($validated);
+        $so = $this->salesOrderService->updateSalesOrder($salesOrder, $validated);
 
-        return response()->json($salesOrder->fresh(['customer', 'product']));
+        return response()->json($so);
     }
 
     public function destroy(SalesOrder $salesOrder): JsonResponse
     {
-        if (!in_array($salesOrder->status, ['Draft'])) {
+        if ($salesOrder->status !== 'Draft') {
             return response()->json(['message' => 'Only Draft SO can be deleted'], 422);
         }
 
@@ -132,46 +112,73 @@ class SalesOrderController extends Controller
         );
     }
 
-    public function confirm(SalesOrder $salesOrder): JsonResponse
+    public function submit(SalesOrder $salesOrder): JsonResponse
     {
-        if ($salesOrder->status !== 'Draft') {
-            return response()->json(['message' => 'Only Draft SO can be confirmed'], 422);
-        }
-
-        $salesOrder->update(['status' => 'Approved']);
-
-        return response()->json(['message' => 'SO confirmed', 'status' => 'Approved']);
+        $so = $this->salesOrderService->submit($salesOrder);
+        return response()->json(['message' => 'Sales Order submitted', 'so' => $so]);
     }
 
-    public function checkStock(SalesOrder $salesOrder): JsonResponse
+    public function confirm(SalesOrder $salesOrder): JsonResponse
     {
-        $product = $salesOrder->product;
-        $qtyNeeded = $salesOrder->qty;
+        $so = $this->salesOrderService->approve($salesOrder);
+        return response()->json(['message' => 'SO approved', 'so' => $so]);
+    }
 
-        // Get available stock batches (FIFO - oldest first)
-        $batches = InventoryBatch::where('product_id', $product->id)
-            ->where('status', 'Available')
-            ->whereNull('deleted_at')
-            ->orderBy('production_date')
-            ->get();
+    public function reject(Request $request, SalesOrder $salesOrder): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
 
-        $totalAvailable = $batches->sum(fn ($b) => max(0, $b->qty_on_hand - $b->qty_reserved));
-        $qtyFromStock   = min($totalAvailable, $qtyNeeded);
-        $qtyToProduce   = max(0, $qtyNeeded - $qtyFromStock);
+        $so = $this->salesOrderService->reject($salesOrder, $validated['reason']);
+        return response()->json(['message' => 'SO rejected', 'so' => $so]);
+    }
+
+    public function cancel(Request $request, SalesOrder $salesOrder): JsonResponse
+    {
+        if (!\App\Support\Rbac::userCan($request->user(), 'sales.manage') && !\App\Support\Rbac::userCan($request->user(), 'sales.approve')) {
+            return response()->json([
+                'message' => 'You do not have permission to perform this action.',
+                'required' => 'sales.manage or sales.approve'
+            ], 403);
+        }
+
+        $so = $this->salesOrderService->cancel($salesOrder);
+        return response()->json(['message' => 'SO cancelled', 'so' => $so]);
+    }
+
+    public function generateDemands(SalesOrder $salesOrder): JsonResponse
+    {
+        $so = $this->salesOrderService->generateDemands($salesOrder);
+        return response()->json(['message' => 'Demands generated successfully', 'so' => $so]);
+    }
+
+    public function lockBom(SalesOrder $salesOrder): JsonResponse
+    {
+        $result = $this->salesOrderService->lockBom($salesOrder);
+
+        $so = $salesOrder->fresh()->load(['customer', 'product', 'items.product', 'demands']);
+
+        $message = count($result['missing']) === 0
+            ? 'BOM berhasil dikunci untuk semua item.'
+            : 'BOM dikunci sebagian. Item berikut tidak memiliki BOM aktif: ' . implode(', ', $result['missing']);
 
         return response()->json([
-            'product_id'       => $product->id,
-            'product_name'     => $product->nama,
-            'qty_ordered'      => $qtyNeeded,
-            'qty_available'    => $totalAvailable,
-            'qty_from_stock'   => $qtyFromStock,
-            'qty_to_produce'   => $qtyToProduce,
-            'available_batches' => $batches->map(fn ($b) => [
-                'batch_number'   => $b->batch_number,
-                'production_date' => $b->production_date?->toDateString(),
-                'qty_available'  => max(0, $b->qty_on_hand - $b->qty_reserved),
-                'aging_days'     => $b->aging_days,
-            ]),
+            'message' => $message,
+            'locked'  => $result['locked'],
+            'missing' => $result['missing'],
+            'so'      => $so,
         ]);
+    }
+
+    public function auditLogs(SalesOrder $salesOrder): JsonResponse
+    {
+        $logs = AuditLog::where('entity_type', 'sales_order')
+            ->where('entity_id', $salesOrder->id)
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($logs);
     }
 }

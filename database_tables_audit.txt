@@ -1,0 +1,93 @@
+=== Database Tables Audit & Schema Duplication Report ===
+Generated at: 2026-06-12 15:55:15
+
+--- 1. Schema Duplication Analysis ---
+Table: production_cache
+  - public.production_cache row count: 0
+  - global.production_cache row count: 0
+  => RECOMMENDATION: Both are empty, but global.production_cache is preferred for master data.
+
+Table: production_cache_locks
+  - public.production_cache_locks row count: 0
+  - global.production_cache_locks row count: 0
+  => RECOMMENDATION: Both are empty, but global.production_cache_locks is preferred for master data.
+
+Table: production_failed_jobs
+  - public.production_failed_jobs row count: 0
+  - global.production_failed_jobs row count: 0
+  => RECOMMENDATION: Both are empty, but global.production_failed_jobs is preferred for master data.
+
+Table: production_job_batches
+  - public.production_job_batches row count: 0
+  - global.production_job_batches row count: 0
+  => RECOMMENDATION: Both are empty, but global.production_job_batches is preferred for master data.
+
+Table: production_jobs
+  - public.production_jobs row count: 0
+  - global.production_jobs row count: 0
+  => RECOMMENDATION: Both are empty, but global.production_jobs is preferred for master data.
+
+Table: production_lines
+  - public.production_lines row count: 0
+  - global.production_lines row count: 0
+  => RECOMMENDATION: Both are empty, but global.production_lines is preferred for master data.
+
+Table: production_migrations
+  - public.production_migrations row count: 27
+  - global.production_migrations row count: 49
+  => WARNING: Both schemas have data! Needs migration/merge.
+
+Table: production_password_reset_tokens
+  - public.production_password_reset_tokens row count: 0
+  - global.production_password_reset_tokens row count: 0
+  => RECOMMENDATION: Both are empty, but global.production_password_reset_tokens is preferred for master data.
+
+Table: production_sessions
+  - public.production_sessions row count: 1
+  - global.production_sessions row count: 2
+  => WARNING: Both schemas have data! Needs migration/merge.
+
+
+--- 2. Single-Schema Tables ---
+global.audit_logs (Row count: 24)
+global.product_allowed_molds (Row count: 0)
+public.production_batch_status_logs (Row count: 1)
+global.production_batch_statuses (Row count: 7)
+public.production_batches (Row count: 2)
+global.production_bom_headers (Row count: 4)
+global.production_bom_items (Row count: 14)
+global.production_concrete_grades (Row count: 6)
+public.production_costs (Row count: 0)
+public.production_curing_batches (Row count: 0)
+global.production_customers (Row count: 5)
+global.production_defect_categories (Row count: 5)
+public.production_delivery_orders (Row count: 0)
+global.production_delivery_statuses (Row count: 6)
+public.production_demands (Row count: 3)
+public.production_inventory (Row count: 0)
+public.production_inventory_batches (Row count: 0)
+global.production_material_categories (Row count: 5)
+global.production_materials (Row count: 22)
+global.production_molds (Row count: 4)
+public.production_orders (Row count: 0)
+public.production_plans (Row count: 2)
+global.production_product_categories (Row count: 5)
+global.production_product_specs (Row count: 11)
+global.production_product_types (Row count: 5)
+global.production_products (Row count: 15)
+public.production_qc_inspections (Row count: 0)
+global.production_qc_parameters (Row count: 5)
+public.production_sales_order_items (Row count: 3)
+public.production_sales_orders (Row count: 2)
+global.production_shifts (Row count: 3)
+global.production_statuses (Row count: 7)
+public.production_stock_reservations (Row count: 0)
+global.production_supplier_materials (Row count: 0)
+global.production_suppliers (Row count: 25)
+global.production_users (Row count: 10)
+global.production_warehouses (Row count: 4)
+global.production_work_centers (Row count: 0)
+public.production_work_orders (Row count: 0)
+global.system_modules (Row count: 15)
+global.user_role_permissions (Row count: 69)
+global.user_roles (Row count: 8)

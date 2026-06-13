@@ -7,24 +7,23 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('production_orders', function (Blueprint $table) {
+        Schema::create('public.production_orders', function (Blueprint $table) {
             $table->id();
             $table->string('no', 30)->unique();
             $table->foreignId('sales_order_id')
                 ->nullable()
-                ->constrained('production_sales_orders')
+                ->constrained('public.production_sales_orders')
                 ->nullOnDelete();
             $table->foreignId('product_id')
-                ->constrained('production_products')
+                ->constrained('global.production_products')
                 ->restrictOnDelete();
             $table->foreignId('line_id')
                 ->nullable()
-                ->constrained('production_lines')
+                ->constrained('global.production_lines')
                 ->nullOnDelete();
             $table->integer('qty');
             $table->integer('qty_selesai')->default(0);
             $table->integer('progress')->default(0); // 0-100
-            // Direncanakan → Casting → Curing → Demoulding → QC → Selesai
             $table->string('status', 30)->default('Direncanakan');
             $table->string('prioritas', 20)->default('Sedang');
             $table->date('tgl_mulai');
@@ -37,6 +36,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('production_orders');
+        Schema::dropIfExists('public.production_orders');
     }
 };

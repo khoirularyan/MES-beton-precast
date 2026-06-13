@@ -1,0 +1,76 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Mold;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class MoldController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $q = Mold::with('product:id,kode,nama')
+            ->whereNull('deleted_at');
+            
+        if ($request->filled('search')) {
+            $q->where(function ($qq) use ($request) {
+                $qq->where('kode', 'like', "%{$request->search}%")
+                   ->orWhere('nama', 'like', "%{$request->search}%");
+            });
+        }
+        
+        if ($request->filled('product_id')) {
+            $q->where('product_id', $request->product_id);
+        }
+        
+        return response()->json($q->orderBy('kode')->paginate($request->get('per_page', 100)));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'kode'                 => 'required|string|max:20|unique:production_molds,kode',
+            'nama'                 => 'required|string|max:100',
+            'product_id'           => 'nullable|exists:production_products,id',
+            'produk'               => 'nullable|string|max:100',
+            'jumlah'               => 'nullable|integer|min:0',
+            'aktif'                => 'nullable|integer|min:0',
+            'kondisi'              => 'nullable|string|max:30',
+            'utilisasi'            => 'nullable|integer|min:0|max:100',
+            'kapasitas_per_siklus' => 'nullable|integer|min:0',
+            'siklus_per_hari'      => 'nullable|integer|min:0',
+        ]);
+        return response()->json(Mold::create($validated), 201);
+    }
+
+    public function show(Mold $mold): JsonResponse
+    {
+        return response()->json($mold->load('product:id,kode,nama'));
+    }
+
+    public function update(Request $request, Mold $mold): JsonResponse
+    {
+        $validated = $request->validate([
+            'kode'                 => 'sometimes|string|max:20|unique:production_molds,kode,' . $mold->id,
+            'nama'                 => 'sometimes|string|max:100',
+            'product_id'           => 'nullable|exists:production_products,id',
+            'produk'               => 'nullable|string|max:100',
+            'jumlah'               => 'nullable|integer|min:0',
+            'aktif'                => 'nullable|integer|min:0',
+            'kondisi'              => 'nullable|string|max:30',
+            'utilisasi'            => 'nullable|integer|min:0|max:100',
+            'kapasitas_per_siklus' => 'nullable|integer|min:0',
+            'siklus_per_hari'      => 'nullable|integer|min:0',
+        ]);
+        $mold->update($validated);
+        return response()->json($mold->fresh(['product:id,kode,nama']));
+    }
+
+    public function destroy(Mold $mold): JsonResponse
+    {
+        $mold->delete();
+        return response()->json(['message' => 'Deleted successfully']);
+    }
+}

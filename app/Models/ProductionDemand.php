@@ -10,7 +10,7 @@ class ProductionDemand extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_demands';
+    protected $table = 'public.production_demands';
 
     protected $fillable = [
         'demand_number', 'source_type', 'sales_order_id', 'sales_order_item_id',
@@ -21,6 +21,11 @@ class ProductionDemand extends Model
         'demand_qty'    => 'decimal:2',
         'required_date' => 'date',
         'priority'      => 'integer',
+    ];
+
+    protected $appends = [
+        'daily_capacity',
+        'estimated_days',
     ];
 
     public function product(): BelongsTo
@@ -36,5 +41,30 @@ class ProductionDemand extends Model
     public function salesOrderItem(): BelongsTo
     {
         return $this->belongsTo(SalesOrderItem::class, 'sales_order_item_id');
+    }
+
+    public function getDailyCapacityAttribute(): int
+    {
+        try {
+            $planningService = new \App\Services\ProductionPlanningService();
+            $molds = $planningService->getCompatibleMolds($this->product_id);
+            if ($molds->isEmpty()) {
+                return 0;
+            }
+            $mold = $molds->firstWhere('pivot.is_primary', true) ?: $molds->first();
+            $capacityService = new \App\Services\CapacityPlanningService();
+            return $capacityService->getDailyCapacity($mold);
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    public function getEstimatedDaysAttribute(): int
+    {
+        $capacity = $this->daily_capacity;
+        if ($capacity <= 0) {
+            return 0;
+        }
+        return (int) ceil((float) $this->demand_qty / $capacity);
     }
 }

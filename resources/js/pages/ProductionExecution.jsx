@@ -1,407 +1,437 @@
-﻿import PageHeader from "@/components/shared/PageHeader";
+import PageHeader from "@/components/shared/PageHeader";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { useState } from "react";
-import { productionOrders, productionLines, productionStatuses, processDefinitions } from "@/data/mockData";
-import { ArrowRight, Pencil, ArrowUpRight, Clock } from "lucide-react";
-import { ProcessIcon } from "@/components/visuals/ProcessIcons";
-import ProductIcon from "@/components/visuals/ProductIcon";
+import { useState, useEffect } from "react";
+import { ArrowRight, Clock, Play, CheckCircle2, History, User, Calendar, RefreshCw, AlertTriangle, AlertCircle, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
-
-const stages = [
-  { id: "preparation", label: "Preparation", color: "#0A6ED1" },
-  { id: "material",    label: "Material",    color: "#0070F2" },
-  { id: "production",  label: "Production",  color: "#E9730C" },
-  { id: "finishing",   label: "Finishing",   color: "#107E3E" },
-  { id: "removal",     label: "Removal",     color: "#59687A" },
-];
-
-// Stage choices derived from configurable production statuses (Master Data).
-const stageOptions = productionStatuses.filter((s) => s.aktif && s.status !== "Direncanakan");
-
-const StageEditBody = ({ order, onSave, onCancel }) => {
-  const [newStage, setNewStage] = useState(order.status);
-  const [progress, setProgress] = useState(order.progress);
-  const [note, setNote] = useState("");
-
-  return (
-    <>
-      <div className="px-6 py-4 bg-gradient-to-r from-[#0A6ED1] to-[#0854A1] text-white">
-        <DialogHeader>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-white/75 font-semibold">Edit Production Stage</div>
-          <DialogTitle className="text-base font-display text-white">{order.no}</DialogTitle>
-          <DialogDescription className="text-xs text-white/85">
-            {order.produk} · {order.qty} units · Batch {order.line}
-          </DialogDescription>
-        </DialogHeader>
-      </div>
-
-      <div className="p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded p-3">
-            <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Current Stage</div>
-            <div className="mt-1.5"><StatusBadge status={order.status} /></div>
-          </div>
-          <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded p-3">
-            <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Current Progress</div>
-            <div className="text-xl font-semibold font-mono-num text-[#1C252E] mt-1">{order.progress}%</div>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Select New Stage</label>
-          <div className="grid grid-cols-2 gap-2 mt-2" data-testid="stage-picker">
-            {stageOptions.map((s) => {
-              const selected = newStage === s.status;
-              return (
-                <button
-                  key={s.kode}
-                  data-testid={`stage-option-${s.status.replace(/\s/g, "-")}`}
-                  onClick={() => setNewStage(s.status)}
-                  className={`text-left p-2.5 rounded border transition-all ${
-                    selected ? "border-[#0A6ED1] bg-[#E5F0FA]" : "border-[#DFE3E8] hover:border-[#0A6ED1]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.warna }} />
-                    <span className="text-xs font-semibold text-[#1C252E]">{s.status}</span>
-                  </div>
-                  <div className="text-[10px] text-[#59687A] mt-0.5 line-clamp-1">{s.deskripsi}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Progress (%)</label>
-            <span className="text-sm font-mono-num font-semibold text-[#0A6ED1]" data-testid="stage-progress-value">{progress}%</span>
-          </div>
-          <input
-            type="range"
-            min={0} max={100} step={1}
-            value={progress}
-            onChange={(e) => setProgress(Number(e.target.value))}
-            className="w-full mt-2 accent-[#0A6ED1]"
-            data-testid="stage-progress-slider"
-          />
-          <div className="flex items-center justify-between text-[10px] text-[#59687A] font-mono-num mt-1">
-            <span>0%</span><span>50%</span><span>100%</span>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Operator Notes (optional)</label>
-          <input
-            type="text"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. Casting completed, moving to chamber B"
-            data-testid="stage-note-input"
-            className="w-full mt-1 h-9 px-2.5 text-sm border border-[#DFE3E8] rounded focus:outline-none focus:ring-2 focus:ring-[#0A6ED1]/30 focus:border-[#0A6ED1]"
-          />
-        </div>
-
-        <div className="text-[10px] text-[#59687A] flex items-center gap-1.5 border-t border-[#EEF0F2] pt-2">
-          <Clock className="w-3 h-3" />
-          Stages can be configured via <a href="/master-process" className="text-[#0A6ED1] hover:underline">Master Process</a> ({processDefinitions.filter((p) => p.aktif).length} active stages)
-        </div>
-      </div>
-
-      <DialogFooter className="px-6 py-3 bg-[#F8FAFC] border-t border-[#EEF0F2]">
-        <Button variant="outline" size="sm" onClick={onCancel} data-testid="stage-edit-cancel">Cancel</Button>
-        <Button
-          size="sm" className="bg-[#0A6ED1] hover:bg-[#0854A1]"
-          data-testid="stage-edit-save"
-          onClick={() => onSave({ status: newStage, progress, note })}
-        >
-          Save Changes
-        </Button>
-      </DialogFooter>
-    </>
-  );
-};
-
-const StageEditDialog = ({ open, onOpenChange, order, onSave }) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-lg p-0 overflow-hidden" data-testid="stage-edit-dialog">
-      {order && (
-        <StageEditBody
-          key={order.no}
-          order={order}
-          onSave={(data) => { onSave(data); onOpenChange(false); }}
-          onCancel={() => onOpenChange(false)}
-        />
-      )}
-    </DialogContent>
-  </Dialog>
-);
+import { productionBatchApi, batchStatusApi } from "@/lib/api";
+import ProductIcon from "@/components/visuals/ProductIcon";
 
 const ProductionExecution = () => {
-  const [orders, setOrders] = useState(productionOrders);
-  const [editOrder, setEditOrder] = useState(null);
-  const [execQtyMap, setExecQtyMap] = useState({});
-  const active = orders.filter((o) => o.status !== "Completed" && o.status !== "Planned");
+  const [statuses, setStatuses] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [transitionNotes, setTransitionNotes] = useState("");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [filterQuery, setFilterQuery] = useState("");
 
-  const handleStartExecution = (orderNo) => {
-    const qty = Number(execQtyMap[orderNo] || 0);
-    const ord = orders.find((o) => o.no === orderNo);
-    if (!ord) return;
-    const executed = Number(ord.executed || 0);
-    const remaining = ord.qty - executed;
-    if (!qty || qty <= 0) {
-      toast.error("Please enter a valid execution quantity (>=1)");
-      return;
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [statusRes, batchRes] = await Promise.all([
+        batchStatusApi.getAll({ aktif: true }),
+        productionBatchApi.getAll({ raw: true })
+      ]);
+      
+      // Sort statuses by urutan sequence
+      const activeStatuses = (statusRes.data.data || statusRes.data).filter(s => s.aktif);
+      activeStatuses.sort((a, b) => a.urutan - b.urutan);
+      setStatuses(activeStatuses);
+      setBatches(batchRes.data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal mengambil data dari database");
+    } finally {
+      setLoading(false);
     }
-    if (qty > remaining) {
-      toast.error(`Maximum remaining quantity for execution: ${remaining}`);
-      return;
-    }
-
-    setOrders((prev) => prev.map((o) => {
-      if (o.no !== orderNo) return o;
-      const newExecuted = (Number(o.executed || 0) + qty);
-      const newProgress = Math.min(100, Math.round((newExecuted / o.qty) * 100));
-      const newStatus = newProgress >= 100 ? "Completed" : "Production";
-      return { ...o, executed: newExecuted, progress: newProgress, status: newStatus };
-    }));
-
-    setExecQtyMap((m) => ({ ...m, [orderNo]: "" }));
-    toast.success(`Execution started: ${qty} units for ${orderNo}`);
   };
 
-  const handleSaveStage = ({ status, progress, note }) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.no === editOrder.no ? { ...o, status, progress } : o))
-    );
-    toast.success(
-      `${editOrder.no} → ${status}`,
-      { description: `Progress ${progress}%${note ? ` · ${note}` : ""}` }
-    );
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleTransition = async (batchId, toStatusId, notes = "") => {
+    setIsTransitioning(true);
+    try {
+      await productionBatchApi.transition(batchId, {
+        to_status_id: toStatusId,
+        notes: notes || `Transisi status via Progress Board`
+      });
+      toast.success("Status batch berhasil diperbarui");
+      setTransitionNotes("");
+      fetchData();
+    } catch (error) {
+      const msg = error.response?.data?.message || "Gagal mengubah status batch";
+      const detail = error.response?.data?.errors?.status?.[0] || "";
+      toast.error(`${msg}. ${detail}`);
+    } finally {
+      setIsTransitioning(false);
+    }
   };
+
+  const openHistory = async (batch) => {
+    try {
+      const res = await productionBatchApi.getOne(batch.id);
+      setSelectedBatch(res.data);
+      setHistoryOpen(true);
+    } catch (error) {
+      toast.error("Gagal mengambil histori batch");
+    }
+  };
+
+  // Duration Calculator (for Casting, Curing, QC)
+  const getDurationString = (start) => {
+    if (!start) return "";
+    const startTime = new Date(start);
+    const now = new Date();
+    const diffMs = now - startTime;
+    if (diffMs < 0) return "Baru mulai";
+    
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffHrs > 24) {
+      const days = Math.floor(diffHrs / 24);
+      return `${days} Hari ${diffHrs % 24} Jam berjalan`;
+    }
+    return `${diffHrs} Jam ${diffMins} Menit berjalan`;
+  };
+
+  // Planned vs Actual Variance Calculator
+  const getVarianceString = (batch) => {
+    const plan = batch.planned_date ? new Date(batch.planned_date) : null;
+    const actual = batch.actual_start ? new Date(batch.actual_start) : new Date();
+    
+    if (!plan) return { text: "N/A", type: "neutral" };
+    
+    // reset times for day comparison
+    plan.setHours(0,0,0,0);
+    actual.setHours(0,0,0,0);
+    
+    const diffTime = actual - plan;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) {
+      return { text: `+${diffDays} Hari Terlambat`, type: "late" };
+    } else if (diffDays < 0) {
+      return { text: `${diffDays} Hari Lebih Cepat`, type: "early" };
+    }
+    return { text: "Tepat Waktu", type: "ontime" };
+  };
+
+  // Schedule Status Calculator (On Schedule, Near Due, Overdue)
+  const getScheduleStatus = (batch) => {
+    // If already finished/delivered, it's completed
+    const isCompleted = batch.status_model?.kode === 'BS-05' || batch.status_model?.kode === 'BS-06';
+    if (isCompleted) {
+      return { label: "On Schedule", color: "text-[#107E3E] bg-[#E5F6ED]", dot: "bg-[#107E3E]" };
+    }
+
+    const plan = batch.planned_date ? new Date(batch.planned_date) : null;
+    if (!plan) return { label: "On Schedule", color: "text-[#107E3E] bg-[#E5F6ED]", dot: "bg-[#107E3E]" };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    plan.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((plan - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { label: "Overdue", color: "text-[#B00020] bg-[#FBE6E9]", dot: "bg-[#B00020]" };
+    } else if (diffDays === 0) {
+      return { label: "Near Due", color: "text-[#E9730C] bg-[#FFF2E5]", dot: "bg-[#E9730C]" };
+    }
+    return { label: "On Schedule", color: "text-[#107E3E] bg-[#E5F6ED]", dot: "bg-[#107E3E]" };
+  };
+
+  const getActionLabel = (nextStatusName) => {
+    if (!nextStatusName) return "";
+    const name = nextStatusName.toLowerCase();
+    if (name.includes("ready material") || name.includes("material")) {
+      return "Siapkan Material";
+    }
+    if (name.includes("casting") || name.includes("cetak")) {
+      return "Mulai Casting";
+    }
+    if (name.includes("qc") || name.includes("quality")) {
+      return "Mulai QC Check";
+    }
+    if (name.includes("finished") || name.includes("selesai") || name.includes("komplet")) {
+      return "Selesaikan Batch";
+    }
+    if (name.includes("delivered") || name.includes("kirim") || name.includes("kirim customer")) {
+      return "Kirim ke Customer";
+    }
+    // Dynamic fallback
+    return `Kirim ke ${nextStatusName}`;
+  };
+
+  const getActionIcon = (nextStatusName) => {
+    if (!nextStatusName) return <Play className="w-3 h-3 text-[#59687A]" />;
+    const name = nextStatusName.toLowerCase();
+    if (name.includes("ready") || name.includes("material")) {
+      return <Calendar className="w-3 h-3 text-[#59687A]" />;
+    }
+    if (name.includes("casting") || name.includes("cetak")) {
+      return <Play className="w-3 h-3 text-[#107E3E] fill-[#107E3E]" />;
+    }
+    if (name.includes("qc") || name.includes("quality")) {
+      return <CheckCircle2 className="w-3 h-3 text-[#0A6ED1]" />;
+    }
+    if (name.includes("finished") || name.includes("selesai")) {
+      return <CheckCircle2 className="w-3 h-3 text-[#107E3E]" />;
+    }
+    if (name.includes("delivered") || name.includes("kirim")) {
+      return <ArrowRight className="w-3 h-3 text-[#59687A]" />;
+    }
+    return <Play className="w-3 h-3 text-[#59687A]" />;
+  };
+
+  const filteredBatches = batches.filter(b => 
+    b.batch_number.toLowerCase().includes(filterQuery.toLowerCase()) ||
+    (b.product?.nama && b.product.nama.toLowerCase().includes(filterQuery.toLowerCase()))
+  );
 
   return (
     <div>
       <PageHeader
-        title="Production Execution"
-        subtitle="Real-time monitoring of casting, curing, demoulding & QC processes"
+        title="Production Execution Monitoring"
+        subtitle="Real-time progress board for precast concrete batches driven by planning schedule"
         breadcrumbs={["Home", "Production Execution"]}
-        testId="exec-page-header"
+        actions={
+          <Button size="sm" onClick={fetchData} className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh Data
+          </Button>
+        }
       />
+
       <div className="p-6 space-y-6">
-        {/* Global Process Status — 5-stage live pipeline */}
-        <div className="bg-white border border-[#DFE3E8] rounded-md overflow-hidden" data-testid="global-process-status">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#DFE3E8] bg-gradient-to-r from-[#F8FAFC] to-white">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-[#0A6ED1] font-semibold">Live Pipeline</div>
-              <div className="text-base font-display font-semibold text-[#1C252E]">Global Process Status</div>
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-[#59687A]">
-              <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#5DCB7E] animate-pulse" />Real-time · Auto-refresh 5s</span>
-            </div>
+        
+        {/* Search filter bar */}
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white border border-[#DFE3E8] p-4 rounded-md shadow-sm">
+          <div className="w-full sm:max-w-xs">
+            <input
+              type="text"
+              placeholder="Cari Batch No atau Produk..."
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              className="w-full h-9 px-3 text-sm border border-[#DFE3E8] rounded focus:outline-none focus:border-[#0A6ED1]"
+            />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-5">
-            {[
-              { id: "batching",  label: "Batching",   color: "#0A6ED1", inQ: 18, outQ: 16, wait: 4, util: 88 },
-              { id: "casting",   label: "Casting",    color: "#0070F2", inQ: 16, outQ: 14, wait: 8, util: 72 },
-              { id: "curing",    label: "Curing",     color: "#E9730C", inQ: 14, outQ: 0,  wait: 248, util: 95 },
-              { id: "finishing", label: "Finishing",  color: "#107E3E", inQ: 22, outQ: 20, wait: 12, util: 64 },
-              { id: "storage",   label: "Storage",    color: "#59687A", inQ: 20, outQ: 18, wait: 0,  util: 92 },
-            ].map((s, i, arr) => (
-              <div key={s.id} data-testid={`pipeline-${s.id}`} className="relative px-4 py-4 border-r border-[#EEF0F2] last:border-r-0 group hover:bg-[#F8FAFC] transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: s.color }}>
-                      {i + 1}
-                    </span>
-                    <span className="text-sm font-semibold text-[#1C252E]">{s.label}</span>
-                  </div>
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: s.color }} />
-                </div>
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-[10px] text-[#59687A] mb-1">
-                    <span>Utilisasi</span>
-                    <span className="font-mono-num font-semibold" style={{ color: s.color }}>{s.util}%</span>
-                  </div>
-                  <div className="h-1.5 bg-[#EEF0F2] rounded-full overflow-hidden">
-                    <div className="h-full transition-all" style={{ width: `${s.util}%`, backgroundColor: s.color }} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-1 text-center">
-                  <div>
-                    <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold">In</div>
-                    <div className="text-sm font-mono-num font-semibold text-[#1C252E]">{s.inQ}</div>
-                  </div>
-                  <div className="border-l border-r border-[#EEF0F2]">
-                    <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold">Out</div>
-                    <div className="text-sm font-mono-num font-semibold text-[#107E3E]">{s.outQ}</div>
-                  </div>
-                  <div>
-                    <div className="text-[9px] uppercase tracking-wider text-[#59687A] font-semibold">Wait</div>
-                    <div className="text-sm font-mono-num font-semibold text-[#E9730C]">{s.wait}</div>
-                  </div>
-                </div>
-                {i < arr.length - 1 && (
-                  <div className="hidden md:flex absolute right-[-7px] top-1/2 -translate-y-1/2 w-3.5 h-3.5 items-center justify-center bg-white border border-[#DFE3E8] rounded-full z-10">
-                    <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 1 L 5 4 L 1 7" stroke="#59687A" strokeWidth="1.4" fill="none" /></svg>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="flex items-center gap-3 text-xs text-[#59687A]">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#107E3E]" />On Schedule</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#E9730C]" />Near Due</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B00020]" />Overdue</span>
           </div>
-          <div className="h-1 bg-gradient-to-r from-[#0A6ED1] via-[#0070F2] via-30% via-[#E9730C] via-60% via-[#107E3E] via-85% to-[#59687A]" />
         </div>
 
-        {/* Lines status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {productionLines.map((l, i) => (
-            <div key={l.kode} data-testid={`line-card-${i}`} className="bg-white border border-[#DFE3E8] rounded-md p-4 overflow-hidden">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">{l.kode}</div>
-                  <div className="text-sm font-semibold text-[#1C252E] font-display">{l.nama}</div>
-                </div>
-                <StatusBadge status={l.status} />
+        {/* Dashboard Status Counters */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          {statuses.map((s) => {
+            const count = batches.filter(b => b.batch_status_id === s.id).length;
+            return (
+              <div
+                key={s.id}
+                className="bg-white border border-[#DFE3E8] p-3 rounded-md flex flex-col items-center justify-center text-center shadow-xs"
+              >
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-[#59687A]">{s.status}</span>
+                <span className="text-2xl font-bold font-mono-num mt-1" style={{ color: s.warna }}>{count}</span>
+                <span className="text-[9px] text-[#A6B0BE] mt-0.5">batch aktif</span>
               </div>
-              <div className="text-xs text-[#59687A] mb-2">{l.produk}</div>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-2xl font-semibold font-mono-num text-[#1C252E]">{l.output}</span>
-                <span className="text-xs text-[#59687A]">/ {l.kapasitas} unit</span>
-              </div>
-              <Progress value={(l.output / l.kapasitas) * 100} className="h-1.5" />
-              <div className="mt-3 text-xs text-[#59687A]">Supervisor: <span className="text-[#1C252E] font-medium">{l.supervisor}</span></div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Stage pipeline */}
-        <div className="bg-white border border-[#DFE3E8] rounded-md p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-base font-semibold text-[#1C252E] font-display">Production Process Flow</div>
-              <div className="text-xs text-[#59687A]">Preparation → Material → Production → Finishing → Removal</div>
-            </div>
+        {/* Kanban Board Container */}
+        {loading && statuses.length === 0 ? (
+          <div className="flex items-center justify-center h-64 bg-white border rounded-md">
+            <RefreshCw className="w-8 h-8 animate-spin text-[#0A6ED1]" />
+            <span className="ml-2.5 text-sm text-[#59687A]">Memuat progress board...</span>
           </div>
-          <div className="flex items-stretch gap-2 overflow-x-auto">
-            {stages.map((s, i) => {
-              const count = active.filter((o) => o.status.toLowerCase() === s.label.toLowerCase() || (s.id === "qc" && o.status === "QC")).length;
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-4 items-stretch min-h-[60vh]">
+            {statuses.map((columnStatus, colIndex) => {
+              const colBatches = filteredBatches.filter(b => b.batch_status_id === columnStatus.id);
+              const nextStatus = statuses[colIndex + 1];
+
               return (
-                <div key={s.id} className="flex items-center gap-2 flex-shrink-0">
-                  <div
-                    className="relative border rounded-md p-4 min-w-[210px] overflow-hidden"
-                    style={{ borderColor: s.color + "33", background: `linear-gradient(135deg, ${s.color}08 0%, #FFFFFF 60%)` }}
-                    data-testid={`stage-${s.id}`}
-                  >
-                    <div className="flex items-start gap-3 mb-2">
-                      <div className="w-12 h-12 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: s.color + "12" }}>
-                        <ProcessIcon stage={s.id} color={s.color} size="md" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">Stage {i + 1}</div>
-                        <div className="text-sm font-semibold text-[#1C252E]">{s.label}</div>
-                      </div>
+                <div
+                  key={columnStatus.id}
+                  className="flex-shrink-0 w-80 bg-[#F4F6F8] rounded-md border border-[#DFE3E8] p-3 flex flex-col"
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-[#DFE3E8] mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: columnStatus.warna }} />
+                      <h3 className="font-semibold text-sm text-[#1C252E] font-display">{columnStatus.status}</h3>
                     </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-semibold font-mono-num" style={{ color: s.color }}>{count}</span>
-                      <span className="text-xs text-[#59687A]">order aktif</span>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: s.color }} />
+                    <span className="font-mono-num text-xs font-semibold px-2 py-0.5 bg-white border border-[#DFE3E8] rounded-full text-[#59687A]">
+                      {colBatches.length}
+                    </span>
                   </div>
-                  {i < stages.length - 1 && <ArrowRight className="w-4 h-4 text-[#59687A] flex-shrink-0" />}
+
+                  {/* Cards stack */}
+                  <div className="space-y-3 overflow-y-auto flex-1 max-h-[60vh] pr-1">
+                    {colBatches.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-28 border border-dashed border-[#DFE3E8] bg-white/50 rounded-md text-[#A6B0BE]">
+                        <span className="text-xs">Tidak ada batch</span>
+                      </div>
+                    ) : (
+                      colBatches.map((batch) => {
+                        const schedInfo = getScheduleStatus(batch);
+                        const variance = getVarianceString(batch);
+                        
+                        // Check if active running status (Casting, Curing, QC)
+                        const isActiveRunning = ['BS-03', 'BS-07', 'BS-04'].includes(columnStatus.kode);
+
+                        return (
+                          <div
+                            key={batch.id}
+                            className="bg-white border border-[#DFE3E8] rounded-md p-3.5 shadow-sm hover:border-[#0A6ED1] transition-all space-y-3 relative group"
+                          >
+                            {/* Card Header: Batch Number & History Trigger */}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono-num text-xs font-semibold text-[#0A6ED1]">{batch.batch_number}</span>
+                              <div className="flex items-center gap-1.5">
+                                <button 
+                                  onClick={() => openHistory(batch)} 
+                                  className="text-[#A6B0BE] hover:text-[#0A6ED1] transition-colors p-1"
+                                  title="Lihat Histori Log Batch"
+                                >
+                                  <History className="w-3.5 h-3.5" />
+                                </button>
+                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-1 ${schedInfo.color}`}>
+                                  <span className={`w-1 h-1 rounded-full ${schedInfo.dot}`} />
+                                  {schedInfo.label}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Product Info */}
+                            <div className="flex items-start gap-2.5">
+                              <ProductIcon name={batch.product?.nama || ""} size="sm" className="mt-0.5" />
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-[#1C252E] leading-tight truncate">{batch.product?.nama || "Unknown Product"}</h4>
+                                <p className="text-[10px] text-[#A6B0BE] mt-0.5">SO: {batch.sales_order?.no || "Stock (MTS)"}</p>
+                              </div>
+                            </div>
+
+                            {/* Batch Info Grid */}
+                            <div className="grid grid-cols-2 gap-2 text-[10px] bg-[#F8FAFC] p-2 rounded border border-[#EEF0F2]">
+                              <div>
+                                <span className="text-[#A6B0BE]">Cetakan:</span>
+                                <div className="font-semibold text-[#1C252E] truncate">{batch.mold?.nama || "N/A"}</div>
+                              </div>
+                              <div>
+                                <span className="text-[#A6B0BE]">Kuantitas:</span>
+                                <div className="font-semibold text-[#1C252E] font-mono-num">
+                                  {batch.actual_qty > 0 ? `${batch.actual_qty} / ` : ""}{batch.target_qty} unit
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[#A6B0BE]">Tgl Jadwal:</span>
+                                <div className="font-semibold text-[#1C252E] font-mono-num">{batch.planned_date || "N/A"}</div>
+                              </div>
+                              <div>
+                                <span className="text-[#A6B0BE]">Schedule Variance:</span>
+                                <div className={`font-semibold font-mono-num ${
+                                  variance.type === 'late' ? 'text-[#B00020]' : variance.type === 'early' ? 'text-[#107E3E]' : 'text-[#59687A]'
+                                }`}>
+                                  {variance.text}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Active production running indicators */}
+                            {isActiveRunning && batch.actual_start && (
+                              <div className="flex items-center justify-between text-[10px] border-t border-[#EEF0F2] pt-2">
+                                <span className="text-[#107E3E] font-semibold flex items-center gap-1 animate-pulse">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#107E3E]" /> Running
+                                </span>
+                                <span className="text-[#59687A] font-mono-num font-medium flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-[#A6B0BE]" /> {getDurationString(batch.actual_start)}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Action transition button */}
+                            {nextStatus && (
+                              <div className="pt-1.5">
+                                <Button
+                                  size="xs"
+                                  className="w-full text-[10px] h-7 bg-white hover:bg-[#E5F0FA] border border-[#DFE3E8] text-[#1C252E] hover:text-[#0A6ED1] hover:border-[#0A6ED1] gap-1 font-medium transition-all"
+                                  onClick={() => handleTransition(batch.id, nextStatus.id)}
+                                  disabled={isTransitioning}
+                                >
+                                  {getActionIcon(nextStatus.status)}
+                                  {getActionLabel(nextStatus.status)}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
-        </div>
-
-        {/* Active Orders */}
-        <div className="bg-white border border-[#DFE3E8] rounded-md overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#DFE3E8]">
-            <div className="text-base font-semibold text-[#1C252E] font-display">Order Sedang Berjalan</div>
-            <div className="text-xs text-[#59687A]">Total {active.length} order aktif di batch produksi · Klik <span className="font-medium text-[#0A6ED1]">Edit Tahap</span> untuk mengubah tahap & progress</div>
-          </div>
-          <table className="w-full mes-table">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 text-left">No. PO</th>
-                <th className="px-4 py-2 text-left">Produk</th>
-                <th className="px-4 py-2 text-right">Qty</th>
-                <th className="px-4 py-2 text-left">Batch</th>
-                <th className="px-4 py-2 text-left">Tahap Saat Ini</th>
-                <th className="px-4 py-2 text-left w-56">Progress</th>
-                <th className="px-4 py-2 text-left">Target Selesai</th>
-                  <th className="px-4 py-2 text-left">Eksekusi</th>
-                  <th className="px-4 py-2 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {active.map((o, i) => (
-                <tr key={o.no} data-testid={`exec-row-${i}`}>
-                  <td className="px-4 font-mono-num text-[#0A6ED1] font-medium">{o.no}</td>
-                  <td className="px-4">
-                    <div className="flex items-center gap-2">
-                      <ProductIcon name={o.produk} size="sm" />
-                      <span className="font-medium">{o.produk}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 text-right font-mono-num">
-                    <div>{o.qty}</div>
-                    <div className="text-xs text-[#59687A]">Selesai: {o.executed || 0}</div>
-                  </td>
-                  <td className="px-4">{o.line}</td>
-                  <td className="px-4"><StatusBadge status={o.status} /></td>
-                  <td className="px-4">
-                    <div className="flex items-center gap-2">
-                      <Progress value={o.progress} className="h-1.5 flex-1" />
-                      <span className="font-mono-num text-xs w-9 text-right">{o.progress}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 font-mono-num text-[#59687A]">{o.tglSelesai}</td>
-                  <td className="px-4 text-left">
-                    <div className="flex items-center gap-2 justify-start">
-                      <input
-                        type="number"
-                        min={1}
-                        max={o.qty - (o.executed || 0)}
-                        value={execQtyMap[o.no] ?? ""}
-                        onChange={(e) => setExecQtyMap((m) => ({ ...m, [o.no]: e.target.value }))}
-                        className="w-20 h-8 text-sm px-2 border rounded text-right"
-                        data-testid={`exec-input-${o.no}`}
-                      />
-                      <Button size="sm" className="h-8 text-xs" onClick={() => handleStartExecution(o.no)} data-testid={`exec-start-${o.no}`}>
-                        Mulai
-                      </Button>
-                    </div>
-                  </td>
-                  <td className="px-4 text-right">
-                    <Button
-                      data-testid={`btn-edit-stage-${i}`}
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-[11px] gap-1 hover:bg-[#E5F0FA] hover:border-[#0A6ED1] hover:text-[#0A6ED1]"
-                      onClick={() => setEditOrder(o)}
-                    >
-                      <Pencil className="w-3 h-3" /> Edit Tahap
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <StageEditDialog
-          open={Boolean(editOrder)}
-          onOpenChange={(o) => { if (!o) setEditOrder(null); }}
-          order={editOrder}
-          onSave={handleSaveStage}
-        />
+        )}
       </div>
+
+      {/* Timeline Logs dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-xl p-0 overflow-hidden">
+          {selectedBatch && (
+            <>
+              <div className="px-6 py-4 bg-gradient-to-r from-[#0A6ED1] to-[#0854A1] text-white">
+                <DialogHeader>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/75 font-semibold">Histori Log Batch</div>
+                  <DialogTitle className="text-base font-display text-white">{selectedBatch.batch_number}</DialogTitle>
+                  <DialogDescription className="text-xs text-white/85">
+                    {selectedBatch.product?.nama} · Qty {selectedBatch.target_qty} units
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              <div className="p-6 space-y-4 max-h-[50vh] overflow-y-auto">
+                <div className="relative border-l-2 border-[#DFE3E8] ml-2.5 pl-6 space-y-6">
+                  {selectedBatch.status_logs && selectedBatch.status_logs.length > 0 ? (
+                    selectedBatch.status_logs.map((log) => (
+                      <div key={log.id} className="relative">
+                        {/* Dot marker */}
+                        <span className="absolute left-[-31px] top-1.5 w-3 h-3 rounded-full border-2 border-[#0A6ED1] bg-white" />
+                        
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] text-[#A6B0BE] font-mono-num">
+                            <span>{new Date(log.changed_at).toLocaleString('id-ID')}</span>
+                            <span className="flex items-center gap-1"><User className="w-3 h-3" /> {log.user?.name || "Sistem"}</span>
+                          </div>
+                          
+                          <div className="text-xs font-semibold text-[#1C252E] flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px]">{log.from_status?.status || "Draft"}</span>
+                            <ArrowRight className="w-3.5 h-3.5 text-[#A6B0BE]" />
+                            <span className="px-1.5 py-0.5 rounded text-white font-mono text-[10px]" style={{ backgroundColor: log.to_status?.warna }}>{log.to_status?.status}</span>
+                          </div>
+                          
+                          {log.notes && (
+                            <p className="text-xs text-[#59687A] bg-[#F8FAFC] border border-[#EEF0F2] p-2 rounded italic">
+                              "{log.notes}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-xs text-[#A6B0BE]">Belum ada log histori perubahan status batch ini</div>
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="px-6 py-3 bg-[#F8FAFC] border-t border-[#EEF0F2]">
+                <Button variant="outline" size="sm" onClick={() => setHistoryOpen(false)}>Tutup</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -10,16 +10,18 @@ class Product extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_products';
+    protected $table = 'global.production_products';
 
     protected $fillable = [
-        'kode', 'nama', 'kategori', 'varian', 'spek',
-        'grade', 'berat', 'harga', 'satuan', 'standar', 'aktif',
+        'kode', 'nama', 'foto', 'kategori', 'varian', 'spek',
+        'grade', 'berat', 'volume_m3',
+        'harga', 'satuan', 'standar', 'aktif',
     ];
 
     protected $casts = [
         'aktif' => 'boolean',
         'berat' => 'decimal:2',
+        'volume_m3' => 'decimal:3',
         'harga' => 'integer',
     ];
 
@@ -56,5 +58,22 @@ class Product extends Model
     public function productionDemands(): HasMany
     {
         return $this->hasMany(ProductionDemand::class, 'product_id');
+    }
+
+    public function productSpecs(): HasMany
+    {
+        return $this->hasMany(ProductSpec::class, 'product_id');
+    }
+
+    public function activeBom(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(BomHeader::class, 'product_id')->where('status', 'active');
+    }
+
+    public function allowedMolds(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Mold::class, 'global.product_allowed_molds', 'product_id', 'mold_id')
+            ->withPivot('is_primary')
+            ->withTimestamps();
     }
 }

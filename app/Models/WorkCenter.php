@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkCenter extends Model
 {
-    protected $table = 'production_work_centers';
+    protected $table = 'global.production_work_centers';
 
     protected $fillable = [
         'code', 'name', 'description',

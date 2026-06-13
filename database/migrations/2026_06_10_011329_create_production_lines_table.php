@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('production_lines', function (Blueprint $table) {
+        Schema::create('global.production_lines', function (Blueprint $table) {
             $table->id();
             $table->string('kode', 20)->unique();
             $table->string('nama', 100);
@@ -22,6 +22,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('production_lines');
+        Schema::dropIfExists('global.production_lines');
     }
 };

@@ -1,4 +1,4 @@
-﻿import "@/App.css";
+import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
@@ -43,7 +43,7 @@ function App() {
                 <Route path="/planning" element={<ProductionPlanning />} />
               </Route>
               <Route element={<ProtectedRoute permission="work-orders.view" />}>
-                <Route path="/work-orders" element={<ProductionWorkOrder />} />
+                <Route path="/work-orders" element={<ProductionExecution />} />
               </Route>
               <Route element={<ProtectedRoute permission="sales.view" />}>
                 <Route path="/sales" element={<SalesOrders />} />
@@ -52,7 +52,7 @@ function App() {
                 <Route path="/delivery" element={<DeliveryOrders />} />
               </Route>
               <Route element={<ProtectedRoute permission="production-execution.view" />}>
-                <Route path="/production-execution" element={<ProductionExecution />} />
+                <Route path="/production-execution" element={<ProductionWorkOrder />} />
               </Route>
               <Route element={<ProtectedRoute permission="curing.view" />}>
                 <Route path="/curing" element={<CuringManagement />} />

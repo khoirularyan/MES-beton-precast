@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductionCost extends Model
 {
-    protected $table = 'production_costs';
+    protected $table = 'public.production_costs';
 
     protected $fillable = [
         'production_batch_id',

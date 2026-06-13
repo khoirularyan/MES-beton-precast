@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ProductionBatch;
 use App\Models\ProductionCost;
+use App\Models\AuditLog;
+use App\Services\BatchTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,12 +16,23 @@ class ProductionBatchController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ProductionBatch::with(['product', 'workCenter', 'plan', 'cost'])
+        $query = ProductionBatch::with(['product', 'workCenter', 'plan', 'cost', 'mold', 'statusModel'])
             ->whereNull('deleted_at');
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('status_id')) {
+            $query->where('batch_status_id', $request->status_id);
+        } elseif ($request->filled('status')) {
+            // Fallback for older frontend components using string query
+            $statusId = DB::table('global.production_batch_statuses')
+                ->where('status', 'like', "%{$request->status}%")
+                ->value('id');
+            if ($statusId) {
+                $query->where('batch_status_id', $statusId);
+            } else {
+                $query->where('batch_status_id', 0); // Force empty result
+            }
         }
+        
         if ($request->filled('product_id')) {
             $query->where('product_id', $request->product_id);
         }
@@ -27,14 +40,19 @@ class ProductionBatchController extends Controller
             $query->where('work_center_id', $request->work_center_id);
         }
         if ($request->filled('date_from')) {
-            $query->where('planned_start', '>=', $request->date_from);
+            $query->where('planned_date', '>=', $request->date_from);
         }
         if ($request->filled('date_to')) {
-            $query->where('planned_end', '<=', $request->date_to);
+            $query->where('planned_date', '<=', $request->date_to);
+        }
+
+        // Support fetching all records for Kanban board
+        if ($request->boolean('raw')) {
+            return response()->json($query->orderBy('planned_start')->get());
         }
 
         return response()->json(
-            $query->orderBy('planned_start')->paginate($request->get('per_page', 20))
+            $query->orderBy('planned_start')->paginate($request->get('per_page', 100))
         );
     }
 
@@ -53,13 +71,25 @@ class ProductionBatchController extends Controller
             'planned_end'        => 'nullable|date|after_or_equal:planned_start',
             'work_center_id'     => 'nullable|exists:production_work_centers,id',
             'notes'              => 'nullable|string',
-            // Optional cost estimates on creation
+            'mold_id'            => 'nullable|exists:production_molds,id',
+            'batch_sequence'     => 'nullable|integer',
+            'sales_order_id'     => 'nullable|exists:production_sales_orders,id',
+            'planned_date'       => 'nullable|date',
+            // Cost estimates
             'estimated_material_cost'  => 'nullable|numeric|min:0',
             'estimated_labor_cost'     => 'nullable|numeric|min:0',
             'estimated_overhead_cost'  => 'nullable|numeric|min:0',
         ]);
 
         $batch = DB::transaction(function () use ($validated) {
+            $planningStatus = DB::table('global.production_batch_statuses')
+                ->where(function ($q) {
+                    $q->whereRaw('LOWER(status) LIKE ?', ['%planning%'])
+                      ->orWhereRaw('LOWER(status) LIKE ?', ['%rencana%']);
+                })
+                ->first() ?: DB::table('global.production_batch_statuses')->orderBy('urutan')->first();
+            $batchStatusId = $planningStatus ? $planningStatus->id : 1;
+
             $batch = ProductionBatch::create([
                 'batch_number'       => $validated['batch_number'],
                 'production_plan_id' => $validated['production_plan_id'] ?? null,
@@ -72,11 +102,14 @@ class ProductionBatchController extends Controller
                 'planned_start'      => $validated['planned_start'] ?? null,
                 'planned_end'        => $validated['planned_end'] ?? null,
                 'work_center_id'     => $validated['work_center_id'] ?? null,
+                'mold_id'            => $validated['mold_id'] ?? null,
+                'batch_sequence'     => $validated['batch_sequence'] ?? null,
+                'sales_order_id'     => $validated['sales_order_id'] ?? null,
+                'planned_date'       => $validated['planned_date'] ?? ($validated['planned_start'] ? date('Y-m-d', strtotime($validated['planned_start'])) : null),
                 'notes'              => $validated['notes'] ?? null,
-                'status'             => 'Planned',
+                'batch_status_id'    => $batchStatusId,
             ]);
 
-            // Create cost record
             ProductionCost::create([
                 'production_batch_id'       => $batch->id,
                 'estimated_material_cost'   => $validated['estimated_material_cost'] ?? 0,
@@ -87,29 +120,46 @@ class ProductionBatchController extends Controller
             return $batch;
         });
 
-        return response()->json($batch->load(['product', 'workCenter', 'cost']), 201);
+        return response()->json($batch->load(['product', 'workCenter', 'cost', 'mold', 'statusModel']), 201);
     }
 
     public function show(ProductionBatch $batch): JsonResponse
     {
         return response()->json(
-            $batch->load(['product', 'workCenter', 'plan', 'demand.salesOrder', 'cost'])
+            $batch->load([
+                'product', 'workCenter', 'plan', 'demand.salesOrder', 'cost', 'mold', 'statusModel',
+                'statusLogs.fromStatus', 'statusLogs.toStatus', 'statusLogs.user'
+            ])
         );
     }
 
     public function update(Request $request, ProductionBatch $batch): JsonResponse
     {
-        if (in_array($batch->status, ['Completed', 'Closed'])) {
-            return response()->json(['message' => 'Cannot edit completed batch'], 422);
+        $finishedOrDeliveredIds = DB::table('global.production_batch_statuses')
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(status) LIKE ?', ['%finished%'])
+                  ->orWhereRaw('LOWER(status) LIKE ?', ['%selesai%'])
+                  ->orWhereRaw('LOWER(status) LIKE ?', ['%delivered%'])
+                  ->orWhereRaw('LOWER(status) LIKE ?', ['%kirim%']);
+            })
+            ->pluck('id')
+            ->toArray();
+
+        if (in_array($batch->batch_status_id, $finishedOrDeliveredIds)) {
+            return response()->json(['message' => 'Cannot edit finished or delivered batch'], 422);
         }
 
         $validated = $request->validate([
             'target_qty'       => 'sometimes|numeric|min:0.01',
+            'actual_qty'       => 'nullable|numeric|min:0',
             'target_volume_m3' => 'nullable|numeric|min:0',
             'planned_start'    => 'nullable|date',
             'planned_end'      => 'nullable|date',
+            'planned_date'     => 'nullable|date',
             'work_center_id'   => 'nullable|exists:production_work_centers,id',
             'notes'            => 'nullable|string',
+            'mold_id'          => 'nullable|exists:production_molds,id',
+            'batch_sequence'   => 'nullable|integer',
             // Cost updates
             'actual_material_cost'  => 'nullable|numeric|min:0',
             'actual_labor_cost'     => 'nullable|numeric|min:0',
@@ -140,52 +190,145 @@ class ProductionBatchController extends Controller
             }
         });
 
-        return response()->json($batch->fresh(['product', 'workCenter', 'cost']));
+        return response()->json($batch->fresh(['product', 'workCenter', 'cost', 'mold', 'statusModel']));
     }
 
     public function destroy(ProductionBatch $batch): JsonResponse
     {
-        if (!in_array($batch->status, ['Planned'])) {
-            return response()->json(['message' => 'Only Planned batches can be deleted'], 422);
+        $planningStatus = DB::table('global.production_batch_statuses')
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(status) LIKE ?', ['%planning%'])
+                  ->orWhereRaw('LOWER(status) LIKE ?', ['%rencana%']);
+            })
+            ->first() ?: DB::table('global.production_batch_statuses')->orderBy('urutan')->first();
+        $planningStatusId = $planningStatus ? $planningStatus->id : null;
+
+        if ($batch->batch_status_id !== $planningStatusId) {
+            return response()->json(['message' => 'Only Planning batches can be deleted'], 422);
         }
         $batch->delete();
         return response()->json(['message' => 'Deleted successfully']);
     }
 
-    public function release(ProductionBatch $batch): JsonResponse
+    // New Transition Endpoint
+    public function transition(Request $request, ProductionBatch $batch, BatchTransitionService $transitionService): JsonResponse
     {
-        if ($batch->status !== 'Planned') {
-            return response()->json(['message' => 'Only Planned batches can be released'], 422);
+        $validated = $request->validate([
+            'to_status_id' => 'required|exists:production_batch_statuses,id',
+            'notes'        => 'nullable|string',
+        ]);
+
+        try {
+            $transitioned = $transitionService->transition($batch, $validated['to_status_id'], $validated['notes'] ?? null);
+            return response()->json([
+                'message' => 'Batch transitioned successfully',
+                'batch'   => $transitioned->load(['product', 'workCenter', 'plan', 'demand.salesOrder', 'cost', 'mold', 'statusModel']),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Transition failed',
+                'errors'  => $e->errors()
+            ], 422);
         }
-        $batch->update(['status' => 'Released']);
-        return response()->json(['message' => 'Batch released', 'status' => 'Released']);
     }
 
-    public function start(ProductionBatch $batch): JsonResponse
+    // Backwards Compatibility method (start)
+    public function start(ProductionBatch $batch, BatchTransitionService $transitionService): JsonResponse
     {
-        if ($batch->status !== 'Released') {
-            return response()->json(['message' => 'Only Released batches can be started'], 422);
+        // Find the target casting status dynamically
+        $castingStatus = DB::table('global.production_batch_statuses')
+            ->where('aktif', true)
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(status) LIKE ?', ['%casting%'])
+                  ->orWhereRaw('LOWER(status) LIKE ?', ['%cetak%']);
+            })
+            ->first();
+
+        if (!$castingStatus) {
+            return response()->json(['message' => 'Casting status not configured or inactive'], 422);
         }
-        $batch->update(['status' => 'In Progress', 'actual_start' => now()]);
-        return response()->json(['message' => 'Batch started', 'status' => 'In Progress']);
+
+        try {
+            // Move the batch to Casting.
+            // If there are intermediate active statuses, we transition through them in sequence.
+            while ($batch->batch_status_id !== $castingStatus->id) {
+                $activeStatuses = DB::table('global.production_batch_statuses')
+                    ->where('aktif', true)
+                    ->orderBy('urutan', 'asc')
+                    ->get();
+
+                $currentStatus = $batch->statusModel;
+                
+                $nextStatus = null;
+                foreach ($activeStatuses as $s) {
+                    if ($s->urutan > $currentStatus->urutan) {
+                        $nextStatus = $s;
+                        break;
+                    }
+                }
+
+                if (!$nextStatus || $nextStatus->urutan > $castingStatus->urutan) {
+                    break;
+                }
+
+                $transitionService->transition($batch, $nextStatus->id, 'Auto-transitioned via start action');
+                $batch->refresh();
+            }
+
+            // Write audit log if started successfully
+            $statusNameLower = strtolower(trim($batch->statusModel?->status ?? ''));
+            if (strpos($statusNameLower, 'casting') !== false || strpos($statusNameLower, 'cetak') !== false) {
+                AuditLog::log(
+                    'production_batch.started',
+                    'production_batch',
+                    $batch->id,
+                    [],
+                    ['status' => $batch->status]
+                );
+            }
+
+            return response()->json(['message' => 'Batch started', 'status' => $batch->status]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
-    public function complete(Request $request, ProductionBatch $batch): JsonResponse
+    // Backwards Compatibility method (complete)
+    public function complete(Request $request, ProductionBatch $batch, BatchTransitionService $transitionService): JsonResponse
     {
-        if ($batch->status !== 'In Progress') {
-            return response()->json(['message' => 'Only In Progress batches can be completed'], 422);
-        }
-
         $validated = $request->validate([
             'actual_qty' => 'required|numeric|min:0',
         ]);
 
-        $batch->update([
-            'status'     => 'QC Pending',
-            'actual_qty' => $validated['actual_qty'],
-            'actual_end' => now(),
-        ]);
+        $batch->update(['actual_qty' => $validated['actual_qty']]);
 
-        return response()->json(['message' => 'Batch completed, awaiting QC', 'status' => 'QC Pending']);
+        // Find the next active status after the current status
+        $activeStatuses = DB::table('global.production_batch_statuses')
+            ->where('aktif', true)
+            ->orderBy('urutan', 'asc')
+            ->get();
+
+        $currentStatus = $batch->statusModel;
+        $nextStatus = null;
+        foreach ($activeStatuses as $s) {
+            if ($s->urutan > $currentStatus->urutan) {
+                $nextStatus = $s;
+                break;
+            }
+        }
+
+        if ($nextStatus) {
+            try {
+                $transitionService->transition($batch, $nextStatus->id, 'Casting completed, moved to ' . $nextStatus->status);
+                return response()->json([
+                    'message' => 'Batch casting completed, moved to ' . $nextStatus->status,
+                    'status' => $nextStatus->status
+                ]);
+            } catch (\Exception $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        }
+
+        return response()->json(['message' => 'No active next status configured after ' . $currentStatus->status], 422);
     }
 }

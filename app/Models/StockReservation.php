@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockReservation extends Model
 {
-    protected $table = 'production_stock_reservations';
+    protected $table = 'public.production_stock_reservations';
 
     protected $fillable = [
         'sales_order_id', 'sales_order_item_id', 'inventory_batch_id',

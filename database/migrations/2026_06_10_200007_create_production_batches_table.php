@@ -7,20 +7,20 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('production_batches', function (Blueprint $table) {
+        Schema::create('public.production_batches', function (Blueprint $table) {
             $table->id();
             $table->string('batch_number', 50)->unique();
             $table->foreignId('production_plan_id')
                 ->nullable()
-                ->constrained('production_plans')
+                ->constrained('public.production_plans')
                 ->nullOnDelete();
             $table->foreignId('demand_id')
                 ->nullable()
-                ->constrained('production_demands')
+                ->constrained('public.production_demands')
                 ->nullOnDelete();
             $table->string('source_type', 20); // SO, MTS
             $table->foreignId('product_id')
-                ->constrained('production_products')
+                ->constrained('global.production_products')
                 ->restrictOnDelete();
             $table->string('routing_version', 30)->nullable();
             $table->decimal('target_qty', 10, 2);
@@ -32,9 +32,8 @@ return new class extends Migration {
             $table->timestamp('actual_end')->nullable();
             $table->foreignId('work_center_id')
                 ->nullable()
-                ->constrained('production_work_centers')
+                ->constrained('global.production_work_centers')
                 ->nullOnDelete();
-            // Planned, Released, In Progress, QC Pending, Completed, Closed
             $table->string('status', 30)->default('Planned');
             $table->text('notes')->nullable();
             $table->timestamps();
@@ -47,6 +46,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('production_batches');
+        Schema::dropIfExists('public.production_batches');
     }
 };

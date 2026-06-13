@@ -10,10 +10,11 @@ class Customer extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'production_customers';
+    protected $table = 'global.production_customers';
 
     protected $fillable = [
         'kode', 'nama', 'kontak', 'telepon', 'email',
+        'npwp', 'pic_proyek',
         'alamat', 'kota', 'segmen', 'limit_kredit', 'aktif',
     ];
 

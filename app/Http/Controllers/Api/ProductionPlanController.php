@@ -4,15 +4,24 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductionPlan;
+use App\Services\ProductionPlanningService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class ProductionPlanController extends Controller
 {
+    protected ProductionPlanningService $planningService;
+
+    public function __construct(ProductionPlanningService $planningService)
+    {
+        $this->planningService = $planningService;
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $query = ProductionPlan::with(['product', 'workCenter'])
+        $query = ProductionPlan::with(['product', 'workCenter', 'mold', 'demand'])
             ->whereNull('deleted_at');
 
         if ($request->filled('plan_level')) {
@@ -60,7 +69,7 @@ class ProductionPlanController extends Controller
     public function show(ProductionPlan $productionPlan): JsonResponse
     {
         return response()->json(
-            $productionPlan->load(['product', 'workCenter', 'batches.product'])
+            $productionPlan->load(['product', 'workCenter', 'mold', 'demand', 'batches.product'])
         );
     }
 
@@ -72,20 +81,60 @@ class ProductionPlanController extends Controller
             'work_center_id'    => 'nullable|exists:production_work_centers,id',
             'material_status'   => ['nullable', Rule::in(['Ready', 'Partial', 'Not Ready'])],
             'capacity_status'   => ['nullable', Rule::in(['Available', 'Overload'])],
-            'status'            => ['nullable', Rule::in(['Draft', 'Approved', 'Released', 'Closed'])],
+            'status'            => ['nullable', Rule::in(['Draft', 'Scheduled', 'Closed'])],
             'notes'             => 'nullable|string',
         ]);
 
         $productionPlan->update($validated);
-        return response()->json($productionPlan->fresh(['product', 'workCenter']));
+        return response()->json($productionPlan->fresh(['product', 'workCenter', 'mold', 'demand']));
     }
 
     public function destroy(ProductionPlan $productionPlan): JsonResponse
     {
-        if (!in_array($productionPlan->status, ['Draft'])) {
-            return response()->json(['message' => 'Only Draft plans can be deleted'], 422);
+        if (!in_array($productionPlan->status, ['Draft', 'Scheduled'])) {
+            return response()->json(['message' => 'Only Draft or Scheduled plans can be deleted'], 422);
         }
-        $productionPlan->delete();
-        return response()->json(['message' => 'Deleted successfully']);
+
+        DB::transaction(function () use ($productionPlan) {
+            // Restore demand to Approved status so it can be re-scheduled
+            if ($productionPlan->demand) {
+                $productionPlan->demand->update(['status' => 'Approved']);
+            }
+            // Delete associated batches that haven't started yet
+            $planningStatus = DB::table('global.production_batch_statuses')
+                ->where(function ($q) {
+                    $q->whereRaw('LOWER(status) LIKE ?', ['%planning%'])
+                      ->orWhereRaw('LOWER(status) LIKE ?', ['%rencana%']);
+                })
+                ->first() ?: DB::table('global.production_batch_statuses')->orderBy('urutan')->first();
+            $planningStatusId = $planningStatus ? $planningStatus->id : null;
+
+            $productionPlan->batches()->where('batch_status_id', $planningStatusId)->delete();
+            $productionPlan->delete();
+        });
+
+        return response()->json(['message' => 'Plan deleted successfully and demand returned to queue.']);
+    }
+
+    /**
+     * Get Gantt calendar data
+     */
+    public function calendarData(Request $request): JsonResponse
+    {
+        $from = $request->query('from');
+        $to = $request->query('to');
+        
+        $data = $this->planningService->getCalendarData($from, $to);
+        
+        return response()->json($data);
+    }
+
+    /**
+     * Get Planning Dashboard stats
+     */
+    public function dashboardStats(Request $request): JsonResponse
+    {
+        $stats = $this->planningService->getPlanningDashboardStats();
+        return response()->json($stats);
     }
 }
