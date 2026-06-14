@@ -1,4 +1,4 @@
-﻿// Mock data for Precast Concrete MES Dashboard - Bahasa Indonesia
+// Mock data for Precast Concrete MES Dashboard - Bahasa Indonesia
 
 export const company = {
   name: "PT Megacon Bangun Perkasa",
@@ -630,7 +630,12 @@ export const kpiDefinitions = {
   },
 };
 
-export const formatRupiah = (n) =>
-  "Rp " + Number(n).toLocaleString("id-ID");
+export const formatRupiah = (n) => {
+  const val = Number(n);
+  return "Rp " + (isNaN(val) ? 0 : val).toLocaleString("id-ID");
+};
 
-export const formatNumber = (n) => Number(n).toLocaleString("id-ID");
+export const formatNumber = (n) => {
+  const val = Number(n);
+  return (isNaN(val) ? 0 : val).toLocaleString("id-ID");
+};

@@ -76,4 +76,9 @@ class Product extends Model
             ->withPivot('is_primary')
             ->withTimestamps();
     }
+
+    public function qcInspections(): HasMany
+    {
+        return $this->hasMany(QcInspection::class, 'product_id');
+    }
 }

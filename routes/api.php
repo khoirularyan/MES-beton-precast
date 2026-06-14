@@ -32,7 +32,7 @@ use App\Http\Controllers\Api\DeliveryOrderController;
 Route::middleware(['auth', 'active'])->group(function () {
 
     // ── Dashboard — any authenticated active user ────────────────────────────
-    Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+    Route::get('dashboard', [DashboardController::class, 'index']);
 
     // ============================================================
     // MASTER DATA
@@ -197,12 +197,14 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ============================================================
 
     Route::middleware('permission:qc.view')->group(function () {
-        Route::apiResource('qc-inspections', QcInspectionController::class)->only(['index', 'show']);
+        Route::get('qc-inspections', [QcInspectionController::class, 'index']);
+        Route::get('qc-inspections/{id}', [QcInspectionController::class, 'show']);
+        Route::get('qc-dashboard', [QcInspectionController::class, 'dashboard']);
     });
 
-    Route::middleware('permission:qc.manage')->group(function () {
-        Route::apiResource('qc-inspections', QcInspectionController::class)->except(['index', 'show']);
-    });
+    Route::post('qc-inspections', [QcInspectionController::class, 'store'])->middleware('permission:qc.create');
+    Route::put('qc-inspections/{id}', [QcInspectionController::class, 'update'])->middleware('permission:qc.update');
+    Route::delete('qc-inspections/{id}', [QcInspectionController::class, 'destroy'])->middleware('permission:qc.delete');
 
     // ============================================================
     // DELIVERY

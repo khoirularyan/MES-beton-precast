@@ -40,4 +40,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(\App\Models\Role::class, 'role_id');
     }
+
+    public function qcInspections()
+    {
+        return $this->hasMany(\App\Models\QcInspection::class, 'inspector_id');
+    }
 }

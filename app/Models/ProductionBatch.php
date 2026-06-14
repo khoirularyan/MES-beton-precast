@@ -128,4 +128,9 @@ class ProductionBatch extends Model
     {
         return $this->hasMany(BatchStatusLog::class, 'production_batch_id')->orderBy('changed_at', 'asc');
     }
+
+    public function qcInspections(): HasMany
+    {
+        return $this->hasMany(QcInspection::class, 'production_batch_id');
+    }
 }

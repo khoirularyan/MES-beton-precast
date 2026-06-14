@@ -227,8 +227,8 @@ export const curingApi = {
 export const qcInspectionApi = {
   getAll: (params = {}) => api.get('/qc-inspections', { params }),
   getOne: (id)          => api.get(`/qc-inspections/${id}`),
-  create: (data)        => api.post('/qc-inspections', data),
-  update: (id, data)    => api.put(`/qc-inspections/${id}`, data),
+  create: (data)        => api.post('/qc-inspections', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id, data)    => api.post(`/qc-inspections/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }), // Use POST with _method=PUT in FormData for file upload support
   delete: (id)          => api.delete(`/qc-inspections/${id}`),
 };
 
@@ -250,7 +250,8 @@ export const deliveryOrderApi = {
 // ============================================
 
 export const dashboardApi = {
-  getStats: (params = {}) => api.get('/dashboard/stats', { params }),
+  getStats: (params = {}) => api.get('/dashboard', { params }),
+  getOverview: () => api.get('/dashboard'),
 };
 
 // ============================================
@@ -300,6 +301,10 @@ export const roleApi = {
 
 export const moduleApi = {
   getAll: (params = {}) => api.get('/modules', { params }),
+};
+
+export const qcDashboardApi = {
+  getOverview: () => api.get('/qc-dashboard'),
 };
 
 // Export default api instance for custom calls

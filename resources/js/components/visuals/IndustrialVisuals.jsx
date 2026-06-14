@@ -420,7 +420,17 @@ export const OEEGauge = ({ value = 80, label = "Line A", subLabel = "OEE", size 
 };
 
 // ===== Dashboard Hero Banner =====
-export const FactoryHero = ({ company = "PT Megacon Bangun Perkasa", plant = "Plant Surabaya", shift = "Shift 1 - Pagi" }) => {
+export const FactoryHero = ({
+  company = "PT Megacon Bangun Perkasa",
+  plant = "Plant Surabaya",
+  shift = "Shift 1 - Pagi",
+  supervisor = "Budi Santoso",
+  moldsUsed = 0,
+  moldsTotal = 0,
+  wipQty = 0,
+  planDayCurrent = 1,
+  planDayTotal = 1,
+}) => {
   return (
     <div
       className="relative overflow-hidden rounded-md border border-[#DFE3E8]"
@@ -512,7 +522,7 @@ export const FactoryHero = ({ company = "PT Megacon Bangun Perkasa", plant = "Pl
             Live · {plant}
           </span>
           <span>•</span>
-          <span>{shift}</span>
+          <span>{shift} · SPV: {supervisor}</span>
           <span>•</span>
           <span className="font-mono-num">{new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}</span>
         </div>
@@ -520,16 +530,22 @@ export const FactoryHero = ({ company = "PT Megacon Bangun Perkasa", plant = "Pl
         {/* Bottom metric strip */}
         <div className="mt-auto grid grid-cols-3 gap-3 pt-4 max-w-md">
           <div className="border-l-2 border-[#5DCB7E] pl-2">
-            <div className="text-[9px] uppercase tracking-wider text-[#B9DCFF]">Line Aktif</div>
-            <div className="text-base font-semibold text-white font-mono-num">3<span className="text-xs text-[#B9DCFF]">/4</span></div>
+            <div className="text-[9px] uppercase tracking-wider text-[#B9DCFF]">Mold Terpakai</div>
+            <div className="text-base font-semibold text-white font-mono-num">
+              {moldsUsed}
+              <span className="text-xs text-[#B9DCFF]">/{moldsTotal}</span>
+            </div>
           </div>
           <div className="border-l-2 border-[#FBC36C] pl-2">
             <div className="text-[9px] uppercase tracking-wider text-[#B9DCFF]">WIP</div>
-            <div className="text-base font-semibold text-white font-mono-num">312</div>
+            <div className="text-base font-semibold text-white font-mono-num">{wipQty}</div>
           </div>
           <div className="border-l-2 border-[#9DD8FF] pl-2">
             <div className="text-[9px] uppercase tracking-wider text-[#B9DCFF]">Hari Ke</div>
-            <div className="text-base font-semibold text-white font-mono-num">14<span className="text-xs text-[#B9DCFF]">/28</span></div>
+            <div className="text-base font-semibold text-white font-mono-num">
+              {planDayCurrent}
+              <span className="text-xs text-[#B9DCFF]">/{planDayTotal}</span>
+            </div>
           </div>
         </div>
       </div>
