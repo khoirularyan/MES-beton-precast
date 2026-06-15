@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/lib/auth";
 import PageHeader from "@/components/shared/PageHeader";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -95,20 +96,22 @@ const Section = ({ children, columns, data, testId, entityName, addFields, filte
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => showExportToast(entityName)} data-testid={`${testId}-export`}>
             <Download className="w-3.5 h-3.5" />Ekspor
           </Button>
-          <FormDialog
-            testId={`${testId}-create`}
-            title={`Tambah ${entityName}`}
-            description={`Tambah data ${entityName} baru ke master data`}
-            submitLabel="Simpan"
-            successMessage={`${entityName} berhasil ditambahkan`}
-            fields={addFields}
-            onSubmit={onSubmit}
-            trigger={
-              <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" data-testid={`${testId}-add`}>
-                <Plus className="w-3.5 h-3.5" />Tambah
-              </Button>
-            }
-          />
+          {onSubmit && (
+            <FormDialog
+              testId={`${testId}-create`}
+              title={`Tambah ${entityName}`}
+              description={`Tambah data ${entityName} baru ke master data`}
+              submitLabel="Simpan"
+              successMessage={`${entityName} berhasil ditambahkan`}
+              fields={addFields}
+              onSubmit={onSubmit}
+              trigger={
+                <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]" data-testid={`${testId}-add`}>
+                  <Plus className="w-3.5 h-3.5" />Tambah
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -217,10 +220,10 @@ const ProductGridCard = ({ p, i }) => (
 );
 
 // ─── Generic API-connected tab hook ─────────────────────────────────────────
-const useApiData = (api, tabKey, activeTab, activeWhen = tabKey) => {
+const useApiData = (api, tabKey, activeTab, activeWhen = tabKey, enabled = true) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const shouldLoad = Array.isArray(activeWhen) ? activeWhen.includes(activeTab) : activeTab === activeWhen;
+  const shouldLoad = enabled && (Array.isArray(activeWhen) ? activeWhen.includes(activeTab) : activeTab === activeWhen);
 
   const load = useCallback(async () => {
     try {
@@ -278,29 +281,77 @@ const useApiData = (api, tabKey, activeTab, activeWhen = tabKey) => {
 
 // ─── Main MasterData Page ────────────────────────────────────────────────────
 const MasterData = () => {
-  const [tab, setTab] = useState("products");
+  const { hasPermission } = useAuth();
+
+  const canViewProducts   = hasPermission("master-products.view");
+  const canViewMaterials  = hasPermission("master-materials.view");
+  const canViewMolds      = hasPermission("master-molds.view");
+  const canViewCustomers  = hasPermission("master-customers.view");
+  const canViewSuppliers  = hasPermission("master-suppliers.view");
+  const canViewWarehouses = hasPermission("master-warehouses.view");
+  const canViewUsers      = hasPermission("user-access.manage");
+  const canViewShifts     = hasPermission("master-shifts.view");
+  const canViewQc         = hasPermission("master-qc.view");
+  const canViewStatuses   = canViewProducts; // Link status batch with product viewing permissions
+
+  const canManageProducts   = hasPermission("master-products.manage");
+  const canManageMaterials  = hasPermission("master-materials.manage");
+  const canManageMolds      = hasPermission("master-molds.manage");
+  const canManageCustomers  = hasPermission("master-customers.manage");
+  const canManageSuppliers  = hasPermission("master-suppliers.manage");
+  const canManageWarehouses = hasPermission("master-warehouses.manage");
+  const canManageShifts     = hasPermission("master-shifts.manage");
+  const canManageQc         = hasPermission("master-qc.manage");
+  const canManageUsers      = hasPermission("user-access.manage");
+  const canManageStatuses   = hasPermission("user-access.manage"); // batch-statuses, production-statuses, delivery-statuses are manage admin only
+
+  const hasAnyTab = canViewProducts || canViewMaterials || canViewMolds || canViewCustomers || canViewSuppliers || canViewWarehouses || canViewUsers || canViewShifts || canViewQc;
+
+  const defaultTab = [
+    { key: "products",     can: canViewProducts },
+    { key: "specs",        can: canViewProducts },
+    { key: "grades",       can: canViewProducts },
+    { key: "materials",    can: canViewMaterials },
+    { key: "molds",        can: canViewMolds },
+    { key: "customers",    can: canViewCustomers },
+    { key: "suppliers",    can: canViewSuppliers },
+    { key: "warehouses",   can: canViewWarehouses },
+    { key: "users",        can: canViewUsers },
+    { key: "shifts",       can: canViewShifts },
+    { key: "batch-status", can: canViewStatuses },
+    { key: "qc-params",    can: canViewQc },
+    { key: "defects",      can: canViewQc }
+  ].find(item => item.can)?.key || "";
+
+  const [tab, setTab] = useState(defaultTab || "products");
   const [productView, setProductView] = useState("grid");
   const [productQuery, setProductQuery] = useState("");
 
+  useEffect(() => {
+    if (defaultTab && tab !== defaultTab && tab === "products") {
+      setTab(defaultTab);
+    }
+  }, [defaultTab]);
+
   // Products
-  const products     = useApiData(productApi,    "Produk",           tab, ["products", "specs"]);
-  const categories   = useApiData(productCategoryApi, "Kategori Produk", tab, "products");
-  const types        = useApiData(productTypeApi, "Tipe Produk",      tab, "products");
-  const specs        = useApiData(productSpecApi, "Spesifikasi",      tab, "specs");
-  const grades       = useApiData(concreteGradeApi, "Mutu Beton",    tab, ["products", "grades"]);
+  const products     = useApiData(productApi,    "Produk",           tab, ["products", "specs"], canViewProducts);
+  const categories   = useApiData(productCategoryApi, "Kategori Produk", tab, "products", canViewProducts);
+  const types        = useApiData(productTypeApi, "Tipe Produk",      tab, "products", canViewProducts);
+  const specs        = useApiData(productSpecApi, "Spesifikasi",      tab, "specs", canViewProducts);
+  const grades       = useApiData(concreteGradeApi, "Mutu Beton",    tab, ["products", "grades"], canViewProducts);
   // Materials
-  const materials    = useApiData(materialApi,   "Material",          tab, ["materials", "suppliers"]);
-  const matCats      = useApiData(materialCategoryApi, "Kategori Material", tab, "materials");
+  const materials    = useApiData(materialApi,   "Material",          tab, ["materials", "suppliers"], canViewMaterials);
+  const matCats      = useApiData(materialCategoryApi, "Kategori Material", tab, "materials", canViewMaterials);
   // Others
-  const molds        = useApiData(moldApi,       "Cetakan",           tab, "molds");
-  const customers    = useApiData(customerApi,   "Customer",          tab, "customers");
-  const suppliers    = useApiData(supplierApi,   "Supplier",          tab, "suppliers");
-  const warehouses   = useApiData(warehouseApi,  "Gudang",            tab, "warehouses");
-  const users        = useApiData(userApi,       "User",              tab, ["users", "shifts"]);
-  const shifts       = useApiData(shiftApi,      "Shift",             tab, "shifts");
-  const batchStatuses= useApiData(batchStatusApi,"Status Batch",      tab, "batch-status");
-  const qcParams     = useApiData(qcParameterApi, "Parameter QC",    tab, "qc-params");
-  const defects      = useApiData(defectCategoryApi, "Kategori Defect", tab, "defects");
+  const molds        = useApiData(moldApi,       "Cetakan",           tab, "molds", canViewMolds);
+  const customers    = useApiData(customerApi,   "Customer",          tab, "customers", canViewCustomers);
+  const suppliers    = useApiData(supplierApi,   "Supplier",          tab, "suppliers", canViewSuppliers);
+  const warehouses   = useApiData(warehouseApi,  "Gudang",            tab, "warehouses", canViewWarehouses);
+  const users        = useApiData(userApi,       "User",              tab, ["users", "shifts"], canViewUsers);
+  const shifts       = useApiData(shiftApi,      "Shift",             tab, "shifts", canViewShifts);
+  const batchStatuses= useApiData(batchStatusApi,"Status Batch",      tab, "batch-status", canViewStatuses);
+  const qcParams     = useApiData(qcParameterApi, "Parameter QC",    tab, "qc-params", canViewQc);
+  const defects      = useApiData(defectCategoryApi, "Kategori Defect", tab, "defects", canViewQc);
 
   // Status Produksi & Pengiriman di-hardcode (bukan master data)
 
@@ -359,6 +410,25 @@ const MasterData = () => {
     ? users.data.map(u => ({ value: u.name, label: u.name }))
     : [];
 
+  if (!hasAnyTab) {
+    return (
+      <div>
+        <PageHeader
+          title="Master Data"
+          subtitle="Kelola data referensi produk, material, customer, dan sumber daya pabrik"
+          breadcrumbs={["Beranda", "Master Data"]}
+          testId="master-data-header"
+        />
+        <div className="p-6">
+          <div className="bg-white border border-[#DFE3E8] rounded-md p-12 text-center shadow-sm">
+            <h3 className="text-lg font-semibold text-[#1C252E] mb-2 font-display">Akses Dibatasi</h3>
+            <p className="text-sm text-[#59687A]">Anda tidak memiliki izin untuk melihat tabel master data apa pun.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -370,86 +440,91 @@ const MasterData = () => {
       <div className="p-6">
         <Tabs value={tab} onValueChange={setTab} data-testid="master-tabs">
           <TabsList className="bg-white border border-[#DFE3E8] p-1 h-auto flex flex-wrap gap-1">
-            <TabsTrigger value="products"     className="text-xs h-8">Produk</TabsTrigger>
-            <TabsTrigger value="specs"        className="text-xs h-8">Spesifikasi</TabsTrigger>
-            <TabsTrigger value="grades"       className="text-xs h-8">Mutu Beton</TabsTrigger>
-            <TabsTrigger value="materials"    className="text-xs h-8">Material</TabsTrigger>
-            <TabsTrigger value="molds"        className="text-xs h-8">Cetakan</TabsTrigger>
-            <TabsTrigger value="customers"    className="text-xs h-8">Customer</TabsTrigger>
-            <TabsTrigger value="suppliers"    className="text-xs h-8">Supplier</TabsTrigger>
-            <TabsTrigger value="warehouses"   className="text-xs h-8">Gudang</TabsTrigger>
-            <TabsTrigger value="users"        className="text-xs h-8">User</TabsTrigger>
-            <TabsTrigger value="shifts"       className="text-xs h-8">Shift</TabsTrigger>
-            <TabsTrigger value="batch-status" className="text-xs h-8">Status Batch</TabsTrigger>
-            <TabsTrigger value="qc-params"    className="text-xs h-8">Parameter QC</TabsTrigger>
-            <TabsTrigger value="defects"      className="text-xs h-8">Kategori Defect</TabsTrigger>
+            {canViewProducts && <TabsTrigger value="products"     className="text-xs h-8">Produk</TabsTrigger>}
+            {canViewProducts && <TabsTrigger value="specs"        className="text-xs h-8">Spesifikasi</TabsTrigger>}
+            {canViewProducts && <TabsTrigger value="grades"       className="text-xs h-8">Mutu Beton</TabsTrigger>}
+            {canViewMaterials && <TabsTrigger value="materials"    className="text-xs h-8">Material</TabsTrigger>}
+            {canViewMolds && <TabsTrigger value="molds"        className="text-xs h-8">Cetakan</TabsTrigger>}
+            {canViewCustomers && <TabsTrigger value="customers"    className="text-xs h-8">Customer</TabsTrigger>}
+            {canViewSuppliers && <TabsTrigger value="suppliers"    className="text-xs h-8">Supplier</TabsTrigger>}
+            {canViewWarehouses && <TabsTrigger value="warehouses"   className="text-xs h-8">Gudang</TabsTrigger>}
+            {canViewUsers && <TabsTrigger value="users"        className="text-xs h-8">User</TabsTrigger>}
+            {canViewShifts && <TabsTrigger value="shifts"       className="text-xs h-8">Shift</TabsTrigger>}
+            {canViewStatuses && <TabsTrigger value="batch-status" className="text-xs h-8">Status Batch</TabsTrigger>}
+            {canViewQc && <TabsTrigger value="qc-params"    className="text-xs h-8">Parameter QC</TabsTrigger>}
+            {canViewQc && <TabsTrigger value="defects"      className="text-xs h-8">Kategori Defect</TabsTrigger>}
           </TabsList>
 
           {/* ── PRODUK ── */}
-          <TabsContent value="products" className="mt-4">
-            {products.loading ? (
-              <div className="bg-white border border-[#DFE3E8] rounded-md p-12 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-[#0A6ED1] mr-2" />
-                <span className="text-[#59687A]">Memuat produk...</span>
-              </div>
-            ) : productView === "grid" ? (
-              <div className="bg-white border border-[#DFE3E8] rounded-md" data-testid="products-grid">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#DFE3E8]">
-                  <div className="flex items-center gap-2">
-                    <div className="relative w-64">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#59687A]" />
-                      <Input placeholder="Cari produk..." value={productQuery} onChange={(e) => setProductQuery(e.target.value)} className="pl-9 h-8 text-xs bg-[#F4F6F8] border-[#DFE3E8]" data-testid="products-grid-search" />
-                    </div>
-                    {viewToggle}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => showExportToast("Katalog Produk")}>
-                      <Download className="w-3.5 h-3.5" />Ekspor Katalog
-                    </Button>
-                    <FormDialog
-                      testId="products-grid-create"
-                      title="Tambah Produk"
-                      description="Tambah produk baru ke katalog"
-                      submitLabel="Simpan"
-                      successMessage="Produk berhasil ditambahkan"
-                      onSubmit={products.handleCreate}
-                      fields={[
-                        { name: "kode",             label: "Kode Produk",    required: true },
-                        { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
-                        { name: "foto",             label: "Foto Produk",    type: "file", span: 2 },
-                        { name: "kategori",         label: "Kategori",       type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
-                        { name: "varian",           label: "Tipe/Varian",    type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
-                        { name: "grade",            label: "Mutu Beton",     type: "select", options: gradeOptions },
-                        { name: "spek",             label: "Spesifikasi" },
-                        { name: "berat",            label: "Berat (kg)",     type: "number" },
-                        { name: "volume_m3",        label: "Volume (m³)",    type: "number", placeholder: "Volume per unit" },
-                        { name: "harga",            label: "Harga (Rp)",     type: "number" },
-                        { name: "satuan",           label: "Satuan",         placeholder: "pcs, unit, m3" },
-                      ]}
-                      trigger={
-                        <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]">
-                          <Plus className="w-3.5 h-3.5" />Tambah Produk
-                        </Button>
-                      }
-                    />
-                  </div>
+          {canViewProducts && (
+            <TabsContent value="products" className="mt-4">
+              {products.loading ? (
+                <div className="bg-white border border-[#DFE3E8] rounded-md p-12 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#0A6ED1] mr-2" />
+                  <span className="text-[#59687A]">Memuat produk...</span>
                 </div>
-                {filteredProducts.length === 0 ? (
-                  <div className="px-4 py-12 text-center text-xs text-[#59687A]">Tidak ada produk yang cocok</div>
-                ) : (
-                  <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                    {filteredProducts.map((p, i) => <ProductGridCard key={p.kode || i} p={p} i={i} />)}
+              ) : productView === "grid" ? (
+                <div className="bg-white border border-[#DFE3E8] rounded-md" data-testid="products-grid">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#DFE3E8]">
+                    <div className="flex items-center gap-2">
+                      <div className="relative w-64">
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#59687A]" />
+                        <Input placeholder="Cari produk..." value={productQuery} onChange={(e) => setProductQuery(e.target.value)} className="pl-9 h-8 text-xs bg-[#F4F6F8] border-[#DFE3E8]" data-testid="products-grid-search" />
+                      </div>
+                      {viewToggle}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => showExportToast("Katalog Produk")}>
+                        <Download className="w-3.5 h-3.5" />Ekspor Katalog
+                      </Button>
+                      {canManageProducts && (
+                        <FormDialog
+                          testId="products-grid-create"
+                          title="Tambah Produk"
+                          description="Tambah produk baru ke katalog"
+                          submitLabel="Simpan"
+                          successMessage="Produk berhasil ditambahkan"
+                          onSubmit={products.handleCreate}
+                          fields={[
+                            { name: "kode",             label: "Kode Produk",    required: true },
+                            { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
+                            { name: "foto",             label: "Foto Produk",    type: "file", span: 2 },
+                            { name: "kategori",         label: "Kategori",       type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
+                            { name: "varian",           label: "Tipe/Varian",    type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
+                            { name: "grade",            label: "Mutu Beton",     type: "select", options: gradeOptions },
+                            { name: "spek",             label: "Spesifikasi" },
+                            { name: "berat",            label: "Berat (kg)",     type: "number" },
+                            { name: "volume_m3",        label: "Volume (m³)",    type: "number", placeholder: "Volume per unit" },
+                            { name: "harga",            label: "Harga (Rp)",     type: "number" },
+                            { name: "satuan",           label: "Satuan",         placeholder: "pcs, unit, m3" },
+                          ]}
+                          trigger={
+                            <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]">
+                              <Plus className="w-3.5 h-3.5" />Tambah Produk
+                            </Button>
+                          }
+                        />
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            ) : (
-              <Section
-                testId="products-table" entityName="Produk"
-                data={products.data} headerExtra={viewToggle}
-                onSubmit={products.handleCreate} onUpdate={products.handleUpdate} onDelete={products.handleDelete}
-                addFields={[
-                  { name: "kode",             label: "Kode Produk",    required: true },
-                  { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
+                  {filteredProducts.length === 0 ? (
+                    <div className="px-4 py-12 text-center text-xs text-[#59687A]">Tidak ada produk yang cocok</div>
+                  ) : (
+                    <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                      {filteredProducts.map((p, i) => <ProductGridCard key={p.kode || i} p={p} i={i} />)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Section
+                  testId="products-table" entityName="Produk"
+                  data={products.data} headerExtra={viewToggle}
+                  onSubmit={canManageProducts ? products.handleCreate : null}
+                  onUpdate={canManageProducts ? products.handleUpdate : null}
+                  onDelete={canManageProducts ? products.handleDelete : null}
+                  addFields={[
+                    { name: "kode",             label: "Kode Produk",    required: true },
+                    { name: "nama",             label: "Nama Produk",    required: true, span: 2 },
                   { name: "foto",             label: "Foto Produk",    type: "file", span: 2 },
                   { name: "kategori",         label: "Kategori",       type: "datalist", options: productCategoryOptions, placeholder: "Pilih / ketik baru..." },
                   { name: "varian",           label: "Tipe/Varian",    type: "datalist", options: productTypeOptions, placeholder: "Pilih / ketik baru..." },
@@ -474,335 +549,384 @@ const MasterData = () => {
               />
             )}
           </TabsContent>
+          )}
 
           {/* ── SPESIFIKASI ── */}
-          <TabsContent value="specs" className="mt-4">
-            <Section testId="specs-table" entityName="Spesifikasi Produk"
-              data={specs.data} loading={specs.loading}
-              onSubmit={specs.handleCreate} onUpdate={specs.handleUpdate} onDelete={specs.handleDelete}
-              addFields={[
-                { name: "kode",      label: "Kode Spec",     required: true },
-                { name: "product_id", label: "Produk",       required: true, type: "select", options: productOptions, span: 2 },
-                { name: "dimensi",   label: "Dimensi" },
-                { name: "toleransi", label: "Toleransi" },
-                { name: "berat",     label: "Berat" },
-                { name: "grade",     label: "Mutu Beton",    type: "select", options: gradeOptions },
-              ]}
-              columns={[
-                { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "produk",    label: "Produk",        cls: "font-medium" },
-                { key: "dimensi",   label: "Dimensi",       cls: "font-mono-num" },
-                { key: "toleransi", label: "Toleransi",     cls: "text-[#59687A]" },
-                { key: "berat",     label: "Berat" },
-                { key: "grade",     label: "Mutu",          render: (r) => <StatusBadge status={r.grade} variant="info" /> },
-                { key: "aktif",     label: "Status",        render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
-              ]}
-            />
-          </TabsContent>
+          {canViewProducts && (
+            <TabsContent value="specs" className="mt-4">
+              <Section testId="specs-table" entityName="Spesifikasi Produk"
+                data={specs.data} loading={specs.loading}
+                onSubmit={canManageProducts ? specs.handleCreate : null}
+                onUpdate={canManageProducts ? specs.handleUpdate : null}
+                onDelete={canManageProducts ? specs.handleDelete : null}
+                addFields={[
+                  { name: "kode",      label: "Kode Spec",     required: true },
+                  { name: "product_id", label: "Produk",       required: true, type: "select", options: productOptions, span: 2 },
+                  { name: "dimensi",   label: "Dimensi" },
+                  { name: "toleransi", label: "Toleransi" },
+                  { name: "berat",     label: "Berat" },
+                  { name: "grade",     label: "Mutu Beton",    type: "select", options: gradeOptions },
+                ]}
+                columns={[
+                  { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "produk",    label: "Produk",        cls: "font-medium" },
+                  { key: "dimensi",   label: "Dimensi",       cls: "font-mono-num" },
+                  { key: "toleransi", label: "Toleransi",     cls: "text-[#59687A]" },
+                  { key: "berat",     label: "Berat" },
+                  { key: "grade",     label: "Mutu",          render: (r) => <StatusBadge status={r.grade} variant="info" /> },
+                  { key: "aktif",     label: "Status",        render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── MUTU BETON ── */}
-          <TabsContent value="grades" className="mt-4">
-            <Section testId="grades-table" entityName="Mutu Beton"
-              data={grades.data} loading={grades.loading}
-              onSubmit={grades.handleCreate} onUpdate={grades.handleUpdate} onDelete={grades.handleDelete}
-              addFields={[
-                { name: "grade",        label: "Kode Mutu",       required: true, placeholder: "K-350" },
-                { name: "nama",         label: "Nama Mutu",       required: true, span: 2, placeholder: "Beton K-350 untuk Kolom" },
-                { name: "fc_mpa",       label: "f'c (MPa)",       type: "number", required: true, placeholder: "29.05" },
-                { name: "slump_min_cm", label: "Slump Min (cm)",  type: "number", placeholder: "8" },
-                { name: "slump_max_cm", label: "Slump Max (cm)",  type: "number", placeholder: "12" },
-                { name: "keterangan",   label: "Keterangan",      type: "textarea", span: 2 },
-              ]}
-              columns={[
-                { key: "grade",        label: "Kode",            cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",         label: "Nama Mutu",       cls: "font-medium" },
-                { key: "fc_mpa",       label: "f'c (MPa)",       cls: "text-right font-mono-num" },
-                { key: "slump_min_cm", label: "Slump Min (cm)",  cls: "text-right font-mono-num" },
-                { key: "slump_max_cm", label: "Slump Max (cm)",  cls: "text-right font-mono-num" },
-                { key: "keterangan",   label: "Keterangan",      cls: "text-[#59687A]" },
-              ]}
-            />
-          </TabsContent>
+          {canViewProducts && (
+            <TabsContent value="grades" className="mt-4">
+              <Section testId="grades-table" entityName="Mutu Beton"
+                data={grades.data} loading={grades.loading}
+                onSubmit={canManageProducts ? grades.handleCreate : null}
+                onUpdate={canManageProducts ? grades.handleUpdate : null}
+                onDelete={canManageProducts ? grades.handleDelete : null}
+                addFields={[
+                  { name: "grade",        label: "Kode Mutu",       required: true, placeholder: "K-350" },
+                  { name: "nama",         label: "Nama Mutu",       required: true, span: 2, placeholder: "Beton K-350 untuk Kolom" },
+                  { name: "fc_mpa",       label: "f'c (MPa)",       type: "number", required: true, placeholder: "29.05" },
+                  { name: "slump_min_cm", label: "Slump Min (cm)",  type: "number", placeholder: "8" },
+                  { name: "slump_max_cm", label: "Slump Max (cm)",  type: "number", placeholder: "12" },
+                  { name: "keterangan",   label: "Keterangan",      type: "textarea", span: 2 },
+                ]}
+                columns={[
+                  { key: "grade",        label: "Kode",            cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "nama",         label: "Nama Mutu",       cls: "font-medium" },
+                  { key: "fc_mpa",       label: "f'c (MPa)",       cls: "text-right font-mono-num" },
+                  { key: "slump_min_cm", label: "Slump Min (cm)",  cls: "text-right font-mono-num" },
+                  { key: "slump_max_cm", label: "Slump Max (cm)",  cls: "text-right font-mono-num" },
+                  { key: "keterangan",   label: "Keterangan",      cls: "text-[#59687A]" },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── MATERIAL ── */}
-          <TabsContent value="materials" className="mt-4">
-            <Section testId="materials-table" entityName="Material"
-              data={materials.data} loading={materials.loading}
-              onSubmit={materials.handleCreate} onUpdate={materials.handleUpdate} onDelete={materials.handleDelete}
-              addFields={[
-                { name: "nama",     label: "Nama Material", required: true, span: 2 },
-                { name: "satuan",   label: "Satuan",        type: "select", options: [
-                  { value: "kg", label: "kg" }, { value: "ton", label: "ton" },
-                  { value: "m3", label: "m³" }, { value: "liter", label: "liter" }, { value: "lembar", label: "lembar" },
-                ]},
-                { name: "kategori", label: "Kategori",      type: "datalist", options: materialCategoryOptions, placeholder: "Pilih / ketik baru..." },
-                { name: "min_stok", label: "Min Stok",      type: "number" },
-                { name: "harga",    label: "Harga (Rp/unit)", type: "number" },
-                { name: "lead_time_hari", label: "Lead Time (hari)", type: "number", placeholder: "Hari pengiriman dari PO" },
-              ]}
-              columns={[
-                { key: "nama",     label: "Nama Material", cls: "font-medium" },
-                { key: "kategori", label: "Kategori" },
-                { key: "satuan",   label: "Satuan" },
-                { key: "min_stok", label: "Min Stok",      cls: "text-right font-mono-num text-[#59687A]", render: (r) => formatNumber(r.min_stok || 0) },
-                { key: "harga",    label: "Harga/Unit",    cls: "text-right font-mono-num", render: (r) => formatRupiah(r.harga || 0) },
-                { key: "lead_time_hari", label: "Lead Time", cls: "text-right font-mono-num", render: (r) => r.lead_time_hari ? `${r.lead_time_hari} hari` : "-" },
-              ]}
-            />
-          </TabsContent>
+          {canViewMaterials && (
+            <TabsContent value="materials" className="mt-4">
+              <Section testId="materials-table" entityName="Material"
+                data={materials.data} loading={materials.loading}
+                onSubmit={canManageMaterials ? materials.handleCreate : null}
+                onUpdate={canManageMaterials ? materials.handleUpdate : null}
+                onDelete={canManageMaterials ? materials.handleDelete : null}
+                addFields={[
+                  { name: "nama",     label: "Nama Material", required: true, span: 2 },
+                  { name: "satuan",   label: "Satuan",        type: "select", options: [
+                    { value: "kg", label: "kg" }, { value: "ton", label: "ton" },
+                    { value: "m3", label: "m³" }, { value: "liter", label: "liter" }, { value: "lembar", label: "lembar" },
+                  ]},
+                  { name: "kategori", label: "Kategori",      type: "datalist", options: materialCategoryOptions, placeholder: "Pilih / ketik baru..." },
+                  { name: "min_stok", label: "Min Stok",      type: "number" },
+                  { name: "harga",    label: "Harga (Rp/unit)", type: "number" },
+                  { name: "lead_time_hari", label: "Lead Time (hari)", type: "number", placeholder: "Hari pengiriman dari PO" },
+                ]}
+                columns={[
+                  { key: "nama",     label: "Nama Material", cls: "font-medium" },
+                  { key: "kategori", label: "Kategori" },
+                  { key: "satuan",   label: "Satuan" },
+                  { key: "min_stok", label: "Min Stok",      cls: "text-right font-mono-num text-[#59687A]", render: (r) => formatNumber(r.min_stok || 0) },
+                  { key: "harga",    label: "Harga/Unit",    cls: "text-right font-mono-num", render: (r) => formatRupiah(r.harga || 0) },
+                  { key: "lead_time_hari", label: "Lead Time", cls: "text-right font-mono-num", render: (r) => r.lead_time_hari ? `${r.lead_time_hari} hari` : "-" },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── CETAKAN ── */}
-          <TabsContent value="molds" className="mt-4">
-            <Section testId="molds-table" entityName="Cetakan"
-              data={molds.data} loading={molds.loading}
-              onSubmit={molds.handleCreate} onUpdate={molds.handleUpdate} onDelete={molds.handleDelete}
-              addFields={[
-                { name: "kode",                 label: "Kode Cetakan",        required: true },
-                { name: "nama",                 label: "Nama Cetakan",        required: true, span: 2 },
-                { name: "product_id",           label: "Produk Terkait",      type: "select", options: productOptions, placeholder: "Pilih produk..." },
-                { name: "jumlah",               label: "Jumlah Cetakan",      type: "number" },
-                { name: "kondisi",              label: "Kondisi",             type: "select", options: [
-                  { value: "Baik", label: "Baik" }, { value: "Sedang", label: "Sedang" }, { value: "Perlu Perawatan", label: "Perlu Perawatan" },
-                ]},
-                { name: "kapasitas_per_siklus", label: "Kapasitas/Siklus",    type: "number", placeholder: "Jml produk per siklus casting", required: true },
-                { name: "siklus_per_hari",      label: "Siklus/Hari",         type: "number", placeholder: "Jml siklus casting per hari" },
-              ]}
-              columns={[
-                { key: "kode",                 label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",                 label: "Cetakan",       cls: "font-medium" },
-                { key: "product",              label: "Produk",        render: (r) => r.product ? `${r.product.kode} - ${r.product.nama}` : "-" },
-                { key: "jumlah",               label: "Total",         cls: "text-right font-mono-num" },
-                { key: "kondisi",              label: "Kondisi",       render: (r) => <StatusBadge status={r.kondisi} /> },
-                { key: "kapasitas_per_siklus", label: "Kap/Siklus",   cls: "text-right font-mono-num" },
-                { key: "siklus_per_hari",      label: "Siklus/Hari",  cls: "text-right font-mono-num" },
-              ]}
-            />
-          </TabsContent>
+          {canViewMolds && (
+            <TabsContent value="molds" className="mt-4">
+              <Section testId="molds-table" entityName="Cetakan"
+                data={molds.data} loading={molds.loading}
+                onSubmit={canManageMolds ? molds.handleCreate : null}
+                onUpdate={canManageMolds ? molds.handleUpdate : null}
+                onDelete={canManageMolds ? molds.handleDelete : null}
+                addFields={[
+                  { name: "kode",                 label: "Kode Cetakan",        required: true },
+                  { name: "nama",                 label: "Nama Cetakan",        required: true, span: 2 },
+                  { name: "product_id",           label: "Produk Terkait",      type: "select", options: productOptions, placeholder: "Pilih produk..." },
+                  { name: "jumlah",               label: "Jumlah Cetakan",      type: "number" },
+                  { name: "kondisi",              label: "Kondisi",             type: "select", options: [
+                    { value: "Baik", label: "Baik" }, { value: "Sedang", label: "Sedang" }, { value: "Perlu Perawatan", label: "Perlu Perawatan" },
+                  ]},
+                  { name: "kapasitas_per_siklus", label: "Kapasitas/Siklus",    type: "number", placeholder: "Jml produk per siklus casting", required: true },
+                  { name: "siklus_per_hari",      label: "Siklus/Hari",         type: "number", placeholder: "Jml siklus casting per hari" },
+                ]}
+                columns={[
+                  { key: "kode",                 label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "nama",                 label: "Cetakan",       cls: "font-medium" },
+                  { key: "product",              label: "Produk",        render: (r) => r.product ? `${r.product.kode} - ${r.product.nama}` : "-" },
+                  { key: "jumlah",               label: "Total",         cls: "text-right font-mono-num" },
+                  { key: "kondisi",              label: "Kondisi",       render: (r) => <StatusBadge status={r.kondisi} /> },
+                  { key: "kapasitas_per_siklus", label: "Kap/Siklus",   cls: "text-right font-mono-num" },
+                  { key: "siklus_per_hari",      label: "Siklus/Hari",  cls: "text-right font-mono-num" },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── CUSTOMER ── */}
-          <TabsContent value="customers" className="mt-4">
-            <Section testId="customers-table" entityName="Customer"
-              data={customers.data} loading={customers.loading}
-              onSubmit={customers.handleCreate} onUpdate={customers.handleUpdate} onDelete={customers.handleDelete}
-              addFields={[
-                { name: "kode",         label: "Kode Customer",    required: true },
-                { name: "nama",         label: "Nama Perusahaan",  required: true, span: 2 },
-                { name: "kontak",       label: "Kontak Person" },
-                { name: "telepon",      label: "Telepon" },
-                { name: "email",        label: "Email" },
-                { name: "npwp",         label: "NPWP",             placeholder: "00.000.000.0-000.000" },
-                { name: "pic_proyek",   label: "PIC Proyek",       placeholder: "Nama PIC di lapangan" },
-                { name: "kota",         label: "Kota" },
-                { name: "segmen",       label: "Segmen",           type: "select", options: [
-                  { value: "BUMN Konstruksi", label: "BUMN Konstruksi" },
-                  { value: "Swasta",          label: "Swasta" },
-                  { value: "Pemerintah",      label: "Pemerintah" },
-                ]},
-                { name: "limit_kredit", label: "Limit Kredit (Rp)", type: "number" },
-                { name: "alamat",       label: "Alamat Lengkap",   type: "textarea", span: 2 },
-              ]}
-              columns={[
-                { key: "kode",         label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",         label: "Customer",      cls: "font-medium" },
-                { key: "kontak",       label: "Kontak" },
-                { key: "pic_proyek",   label: "PIC Proyek",  cls: "text-[#59687A]" },
-                { key: "npwp",         label: "NPWP",          cls: "font-mono-num text-[#59687A]" },
-                { key: "telepon",      label: "Telepon",       cls: "font-mono-num" },
-                { key: "kota",         label: "Kota" },
-                { key: "segmen",       label: "Segmen" },
-                { key: "limit_kredit", label: "Limit Kredit",  cls: "text-right font-mono-num", render: (r) => formatRupiah(r.limit_kredit || 0) },
-              ]}
-            />
-          </TabsContent>
+          {canViewCustomers && (
+            <TabsContent value="customers" className="mt-4">
+              <Section testId="customers-table" entityName="Customer"
+                data={customers.data} loading={customers.loading}
+                onSubmit={canManageCustomers ? customers.handleCreate : null}
+                onUpdate={canManageCustomers ? customers.handleUpdate : null}
+                onDelete={canManageCustomers ? customers.handleDelete : null}
+                addFields={[
+                  { name: "kode",         label: "Kode Customer",    required: true },
+                  { name: "nama",         label: "Nama Perusahaan",  required: true, span: 2 },
+                  { name: "kontak",       label: "Kontak Person" },
+                  { name: "telepon",      label: "Telepon" },
+                  { name: "email",        label: "Email" },
+                  { name: "npwp",         label: "NPWP",             placeholder: "00.000.000.0-000.000" },
+                  { name: "pic_proyek",   label: "PIC Proyek",       placeholder: "Nama PIC di lapangan" },
+                  { name: "kota",         label: "Kota" },
+                  { name: "segmen",       label: "Segmen",           type: "select", options: [
+                    { value: "BUMN Konstruksi", label: "BUMN Konstruksi" },
+                    { value: "Swasta",          label: "Swasta" },
+                    { value: "Pemerintah",      label: "Pemerintah" },
+                  ]},
+                  { name: "limit_kredit", label: "Limit Kredit (Rp)", type: "number" },
+                  { name: "alamat",       label: "Alamat Lengkap",   type: "textarea", span: 2 },
+                ]}
+                columns={[
+                  { key: "kode",         label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "nama",         label: "Customer",      cls: "font-medium" },
+                  { key: "kontak",       label: "Kontak" },
+                  { key: "pic_proyek",   label: "PIC Proyek",  cls: "text-[#59687A]" },
+                  { key: "npwp",         label: "NPWP",          cls: "font-mono-num text-[#59687A]" },
+                  { key: "telepon",      label: "Telepon",       cls: "font-mono-num" },
+                  { key: "kota",         label: "Kota" },
+                  { key: "segmen",       label: "Segmen" },
+                  { key: "limit_kredit", label: "Limit Kredit",  cls: "text-right font-mono-num", render: (r) => formatRupiah(r.limit_kredit || 0) },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── SUPPLIER ── */}
-          <TabsContent value="suppliers" className="mt-4">
-            <Section testId="suppliers-table" entityName="Supplier"
-              data={suppliers.data} loading={suppliers.loading}
-              onSubmit={suppliers.handleCreate} onUpdate={suppliers.handleUpdate} onDelete={suppliers.handleDelete}
-              addFields={[
-                { name: "nama",           label: "Nama Supplier",    required: true, span: 2 },
-                { name: "materials",      label: "Material Disuplai", type: "multiselect", options: materials.data.map(m => ({ value: m.id, label: m.nama })), span: 2 },
-                { name: "kontak",         label: "Telepon" },
-                { name: "email",          label: "Email" },
-                { name: "kota",           label: "Kota" },
-                { name: "rating",         label: "Rating (1-5)",     type: "number" },
-                { name: "lead_time_hari", label: "Lead Time (hari)", type: "number", placeholder: "Hari pengiriman dari PO" },
-                { name: "alamat",         label: "Alamat",           type: "textarea", span: 2 },
-              ]}
-              columns={[
-                { key: "nama",           label: "Supplier",       cls: "font-medium" },
-                { key: "materials",      label: "Material",       render: (r) => r.materials?.map(m => m.nama).join(", ") || "-" },
-                { key: "kontak",         label: "Kontak",         cls: "font-mono-num" },
-                { key: "kota",           label: "Kota" },
-                { key: "lead_time_hari", label: "Lead Time",      cls: "text-right font-mono-num", render: (r) => r.lead_time_hari ? `${r.lead_time_hari} hari` : "-" },
-                { key: "rating",         label: "Rating",         render: (r) => "★".repeat(r.rating || 0) + "☆".repeat(5 - (r.rating || 0)) },
-              ]}
-            />
-          </TabsContent>
+          {canViewSuppliers && (
+            <TabsContent value="suppliers" className="mt-4">
+              <Section testId="suppliers-table" entityName="Supplier"
+                data={suppliers.data} loading={suppliers.loading}
+                onSubmit={canManageSuppliers ? suppliers.handleCreate : null}
+                onUpdate={canManageSuppliers ? suppliers.handleUpdate : null}
+                onDelete={canManageSuppliers ? suppliers.handleDelete : null}
+                addFields={[
+                  { name: "nama",           label: "Nama Supplier",    required: true, span: 2 },
+                  { name: "materials",      label: "Material Disuplai", type: "multiselect", options: materials.data.map(m => ({ value: m.id, label: m.nama })), span: 2 },
+                  { name: "kontak",         label: "Telepon" },
+                  { name: "email",          label: "Email" },
+                  { name: "kota",           label: "Kota" },
+                  { name: "rating",         label: "Rating (1-5)",     type: "number" },
+                  { name: "lead_time_hari", label: "Lead Time (hari)", type: "number", placeholder: "Hari pengiriman dari PO" },
+                  { name: "alamat",         label: "Alamat",           type: "textarea", span: 2 },
+                ]}
+                columns={[
+                  { key: "nama",           label: "Supplier",       cls: "font-medium" },
+                  { key: "materials",      label: "Material",       render: (r) => r.materials?.map(m => m.nama).join(", ") || "-" },
+                  { key: "kontak",         label: "Kontak",         cls: "font-mono-num" },
+                  { key: "kota",           label: "Kota" },
+                  { key: "lead_time_hari", label: "Lead Time",      cls: "text-right font-mono-num", render: (r) => r.lead_time_hari ? `${r.lead_time_hari} hari` : "-" },
+                  { key: "rating",         label: "Rating",         render: (r) => "★".repeat(r.rating || 0) + "☆".repeat(5 - (r.rating || 0)) },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── GUDANG ── */}
-          <TabsContent value="warehouses" className="mt-4">
-            <Section testId="warehouses-table" entityName="Gudang"
-              data={warehouses.data} loading={warehouses.loading}
-              onSubmit={warehouses.handleCreate} onUpdate={warehouses.handleUpdate} onDelete={warehouses.handleDelete}
-              addFields={[
-                { name: "kode",      label: "Kode Gudang",   required: true },
-                { name: "nama",      label: "Nama Gudang",   required: true, span: 2 },
-                { name: "tipe",      label: "Tipe",          type: "select", options: [
-                  { value: "Raw Material", label: "Raw Material" },
-                  { value: "Work In Progress", label: "Work In Progress" },
-                  { value: "Finished Goods", label: "Finished Goods" },
-                  { value: "Reject", label: "Reject" },
-                ]},
-                { name: "lokasi",    label: "Lokasi" },
-                { name: "kapasitas", label: "Kapasitas" },
-              ]}
-              columns={[
-                { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",      label: "Gudang",        cls: "font-medium" },
-                { key: "tipe",      label: "Tipe" },
-                { key: "lokasi",    label: "Lokasi" },
-                { key: "kapasitas", label: "Kapasitas" },
-              ]}
-            />
-          </TabsContent>
+          {canViewWarehouses && (
+            <TabsContent value="warehouses" className="mt-4">
+              <Section testId="warehouses-table" entityName="Gudang"
+                data={warehouses.data} loading={warehouses.loading}
+                onSubmit={canManageWarehouses ? warehouses.handleCreate : null}
+                onUpdate={canManageWarehouses ? warehouses.handleUpdate : null}
+                onDelete={canManageWarehouses ? warehouses.handleDelete : null}
+                addFields={[
+                  { name: "kode",      label: "Kode Gudang",   required: true },
+                  { name: "nama",      label: "Nama Gudang",   required: true, span: 2 },
+                  { name: "tipe",      label: "Tipe",          type: "select", options: [
+                    { value: "Raw Material", label: "Raw Material" },
+                    { value: "Work In Progress", label: "Work In Progress" },
+                    { value: "Finished Goods", label: "Finished Goods" },
+                    { value: "Reject", label: "Reject" },
+                  ]},
+                  { name: "lokasi",    label: "Lokasi" },
+                  { name: "kapasitas", label: "Kapasitas" },
+                ]}
+                columns={[
+                  { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "nama",      label: "Gudang",        cls: "font-medium" },
+                  { key: "tipe",      label: "Tipe" },
+                  { key: "lokasi",    label: "Lokasi" },
+                  { key: "kapasitas", label: "Kapasitas" },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── USER (Master User - menggantikan Karyawan) ── */}
-          <TabsContent value="users" className="mt-4">
-            <Section testId="users-table" entityName="User"
-              data={users.data} loading={users.loading}
-              onSubmit={users.handleCreate} onUpdate={users.handleUpdate} onDelete={users.handleDelete}
-              addFields={[
-                { name: "name",       label: "Nama Lengkap",  required: true, span: 2 },
-                { name: "username",   label: "Username",      required: true },
-                { name: "email",      label: "Email",         required: true },
-                { name: "password",   label: "Password",      type: "password", placeholder: "Min. 6 karakter" },
-                { name: "role",       label: "Role",          required: true, type: "select", options: [
-                  { value: "super_admin", label: "Super Admin" },
-                  { value: "admin",       label: "Admin" },
-                  { value: "manager",     label: "Manager" },
-                  { value: "ppic",        label: "PPIC" },
-                  { value: "production",  label: "Production" },
-                  { value: "qc",          label: "QC" },
-                  { value: "warehouse",   label: "Warehouse" },
-                  { value: "sales",       label: "Sales" },
-                ]},
-                { name: "is_active",  label: "Status",        type: "select", options: [
-                  { value: true,  label: "Aktif" },
-                  { value: false, label: "Nonaktif" },
-                ], default: true },
-              ]}
-              columns={[
-                { key: "name",       label: "Nama",          cls: "font-medium" },
-                { key: "username",   label: "Username",      cls: "font-mono-num text-[#0A6ED1]" },
-                { key: "email",      label: "Email",         cls: "text-[#59687A]" },
-                { key: "role",       label: "Role",          render: (r) => <StatusBadge status={r.role} variant="info" /> },
-                { key: "is_active",  label: "Status",        render: (r) => <StatusBadge status={r.is_active ? "Aktif" : "Nonaktif"} /> },
-              ]}
-            />
-          </TabsContent>
+          {canViewUsers && (
+            <TabsContent value="users" className="mt-4">
+              <Section testId="users-table" entityName="User"
+                data={users.data} loading={users.loading}
+                onSubmit={canManageUsers ? users.handleCreate : null}
+                onUpdate={canManageUsers ? users.handleUpdate : null}
+                onDelete={canManageUsers ? users.handleDelete : null}
+                addFields={[
+                  { name: "name",       label: "Nama Lengkap",  required: true, span: 2 },
+                  { name: "username",   label: "Username",      required: true },
+                  { name: "email",      label: "Email",         required: true },
+                  { name: "password",   label: "Password",      type: "password", placeholder: "Min. 6 karakter" },
+                  { name: "role",       label: "Role",          required: true, type: "select", options: [
+                    { value: "super_admin", label: "Super Admin" },
+                    { value: "admin",       label: "Admin" },
+                    { value: "manager",     label: "Manager" },
+                    { value: "ppic",        label: "PPIC" },
+                    { value: "production",  label: "Production" },
+                    { value: "qc",          label: "QC" },
+                    { value: "warehouse",   label: "Warehouse" },
+                    { value: "sales",       label: "Sales" },
+                  ]},
+                  { name: "is_active",  label: "Status",        type: "select", options: [
+                    { value: true,  label: "Aktif" },
+                    { value: false, label: "Nonaktif" },
+                  ], default: true },
+                ]}
+                columns={[
+                  { key: "name",       label: "Nama",          cls: "font-medium" },
+                  { key: "username",   label: "Username",      cls: "font-mono-num text-[#0A6ED1]" },
+                  { key: "email",      label: "Email",         cls: "text-[#59687A]" },
+                  { key: "role",       label: "Role",          render: (r) => <StatusBadge status={r.role} variant="info" /> },
+                  { key: "is_active",  label: "Status",        render: (r) => <StatusBadge status={r.is_active ? "Aktif" : "Nonaktif"} /> },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── SHIFT ── */}
-          <TabsContent value="shifts" className="mt-4">
-            <Section testId="shifts-table" entityName="Shift"
-              data={shifts.data} loading={shifts.loading}
-              onSubmit={shifts.handleCreate} onUpdate={shifts.handleUpdate} onDelete={shifts.handleDelete}
-              addFields={[
-                { name: "kode",           label: "Kode Shift",     required: true },
-                { name: "nama",           label: "Nama Shift",     required: true },
-                { name: "jam",            label: "Jam Kerja",      placeholder: "07:00 - 15:00" },
-                { name: "supervisor",     label: "Supervisor",     type: "select", options: userOptions, placeholder: "Pilih supervisor dari User" },
-                { name: "jumlah_pekerja", label: "Jumlah Pekerja", type: "number" },
-              ]}
-              columns={[
-                { key: "kode",           label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "nama",           label: "Shift",         cls: "font-medium" },
-                { key: "jam",            label: "Jam Kerja",     cls: "font-mono-num" },
-                { key: "supervisor",     label: "Supervisor",    cls: "text-[#59687A]" },
-                { key: "jumlah_pekerja", label: "Jml Pekerja",  cls: "text-right font-mono-num" },
-              ]}
-            />
-          </TabsContent>
+          {canViewShifts && (
+            <TabsContent value="shifts" className="mt-4">
+              <Section testId="shifts-table" entityName="Shift"
+                data={shifts.data} loading={shifts.loading}
+                onSubmit={canManageShifts ? shifts.handleCreate : null}
+                onUpdate={canManageShifts ? shifts.handleUpdate : null}
+                onDelete={canManageShifts ? shifts.handleDelete : null}
+                addFields={[
+                  { name: "kode",           label: "Kode Shift",     required: true },
+                  { name: "nama",           label: "Nama Shift",     required: true },
+                  { name: "jam",            label: "Jam Kerja",      placeholder: "07:00 - 15:00" },
+                  { name: "supervisor",     label: "Supervisor",     type: "select", options: userOptions, placeholder: "Pilih supervisor dari User" },
+                  { name: "jumlah_pekerja", label: "Jumlah Pekerja", type: "number" },
+                ]}
+                columns={[
+                  { key: "kode",           label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "nama",           label: "Shift",         cls: "font-medium" },
+                  { key: "jam",            label: "Jam Kerja",     cls: "font-mono-num" },
+                  { key: "supervisor",     label: "Supervisor",    cls: "text-[#59687A]" },
+                  { key: "jumlah_pekerja", label: "Jml Pekerja",  cls: "text-right font-mono-num" },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── STATUS BATCH ── */}
-          <TabsContent value="batch-status" className="mt-4">
-            <Section testId="batch-status-table" entityName="Status Batch"
-              data={batchStatuses.data} loading={batchStatuses.loading}
-              onSubmit={batchStatuses.handleCreate} onUpdate={batchStatuses.handleUpdate} onDelete={batchStatuses.handleDelete}
-              addFields={[
-                { name: "kode",      label: "Kode Status",   required: true, placeholder: "BS-01" },
-                { name: "status",    label: "Nama Status",   required: true, span: 2, placeholder: "Planning, Casting, dll" },
-                { name: "urutan",    label: "Urutan",        type: "number", placeholder: "1, 2, 3..." },
-                { name: "warna",     label: "Warna (hex)",   placeholder: "#4CAF50" },
-                { name: "deskripsi", label: "Deskripsi",     type: "textarea", span: 2 },
-                { name: "aktif",     label: "Status",        type: "select", options: [
-                  { value: true,  label: "Aktif" },
-                  { value: false, label: "Nonaktif" },
-                ], default: true },
-              ]}
-              columns={[
-                { key: "urutan",  label: "#",          cls: "text-center w-12 font-mono-num text-[#59687A]" },
-                { key: "warna",   label: "",           render: (r) => <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: r.warna || "#ccc" }} /> },
-                { key: "kode",    label: "Kode",       cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "status",  label: "Status",     cls: "font-medium" },
-                { key: "deskripsi", label: "Deskripsi", cls: "text-[#59687A]" },
-                { key: "aktif",   label: "Aktif",      render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
-              ]}
-            />
-          </TabsContent>
+          {canViewStatuses && (
+            <TabsContent value="batch-status" className="mt-4">
+              <Section testId="batch-status-table" entityName="Status Batch"
+                data={batchStatuses.data} loading={batchStatuses.loading}
+                onSubmit={canManageStatuses ? batchStatuses.handleCreate : null}
+                onUpdate={canManageStatuses ? batchStatuses.handleUpdate : null}
+                onDelete={canManageStatuses ? batchStatuses.handleDelete : null}
+                addFields={[
+                  { name: "kode",      label: "Kode Status",   required: true, placeholder: "BS-01" },
+                  { name: "status",    label: "Nama Status",   required: true, span: 2, placeholder: "Planning, Casting, dll" },
+                  { name: "urutan",    label: "Urutan",        type: "number", placeholder: "1, 2, 3..." },
+                  { name: "warna",     label: "Warna (hex)",   placeholder: "#4CAF50" },
+                  { name: "deskripsi", label: "Deskripsi",     type: "textarea", span: 2 },
+                  { name: "aktif",     label: "Status",        type: "select", options: [
+                    { value: true,  label: "Aktif" },
+                    { value: false, label: "Nonaktif" },
+                  ], default: true },
+                ]}
+                columns={[
+                  { key: "urutan",  label: "#",          cls: "text-center w-12 font-mono-num text-[#59687A]" },
+                  { key: "warna",   label: "",           render: (r) => <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: r.warna || "#ccc" }} /> },
+                  { key: "kode",    label: "Kode",       cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "status",  label: "Status",     cls: "font-medium" },
+                  { key: "deskripsi", label: "Deskripsi", cls: "text-[#59687A]" },
+                  { key: "aktif",   label: "Aktif",      render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── PARAMETER QC ── */}
-          <TabsContent value="qc-params" className="mt-4">
-            <Section testId="qc-params-table" entityName="Parameter QC"
-              data={qcParams.data} loading={qcParams.loading}
-              onSubmit={qcParams.handleCreate} onUpdate={qcParams.handleUpdate} onDelete={qcParams.handleDelete}
-              addFields={[
-                { name: "kode",      label: "Kode Parameter", required: true },
-                { name: "parameter", label: "Nama Parameter", required: true, span: 2 },
-                { name: "satuan",    label: "Satuan" },
-                { name: "min",       label: "Batas Minimum" },
-                { name: "target",    label: "Target" },
-                { name: "metode",    label: "Metode Uji",     span: 2 },
-              ]}
-              columns={[
-                { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "parameter", label: "Parameter",     cls: "font-medium" },
-                { key: "satuan",    label: "Satuan",        cls: "text-[#59687A]" },
-                { key: "min",       label: "Minimum" },
-                { key: "target",    label: "Target",        cls: "font-medium text-[#107E3E]" },
-                { key: "metode",    label: "Metode" },
-                { key: "aktif",     label: "Status",        render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
-              ]}
-            />
-          </TabsContent>
+          {canViewQc && (
+            <TabsContent value="qc-params" className="mt-4">
+              <Section testId="qc-params-table" entityName="Parameter QC"
+                data={qcParams.data} loading={qcParams.loading}
+                onSubmit={canManageQc ? qcParams.handleCreate : null}
+                onUpdate={canManageQc ? qcParams.handleUpdate : null}
+                onDelete={canManageQc ? qcParams.handleDelete : null}
+                addFields={[
+                  { name: "kode",      label: "Kode Parameter", required: true },
+                  { name: "parameter", label: "Nama Parameter", required: true, span: 2 },
+                  { name: "satuan",    label: "Satuan" },
+                  { name: "min",       label: "Batas Minimum" },
+                  { name: "target",    label: "Target" },
+                  { name: "metode",    label: "Metode Uji",     span: 2 },
+                ]}
+                columns={[
+                  { key: "kode",      label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "parameter", label: "Parameter",     cls: "font-medium" },
+                  { key: "satuan",    label: "Satuan",        cls: "text-[#59687A]" },
+                  { key: "min",       label: "Minimum" },
+                  { key: "target",    label: "Target",        cls: "font-medium text-[#107E3E]" },
+                  { key: "metode",    label: "Metode" },
+                  { key: "aktif",     label: "Status",        render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
+                ]}
+              />
+            </TabsContent>
+          )}
 
           {/* ── KATEGORI DEFECT ── */}
-          <TabsContent value="defects" className="mt-4">
-            <Section testId="defects-table" entityName="Kategori Defect"
-              data={defects.data} loading={defects.loading}
-              onSubmit={defects.handleCreate} onUpdate={defects.handleUpdate} onDelete={defects.handleDelete}
-              addFields={[
-                { name: "kode",          label: "Kode Defect",    required: true },
-                { name: "nama",          label: "Nama Defect",    required: true, span: 2 },
-                { name: "tingkat",       label: "Tingkat",        type: "select", options: [
-                  { value: "Kritis", label: "Kritis" }, { value: "Mayor", label: "Mayor" }, { value: "Minor", label: "Minor" },
-                ]},
-                { name: "warna",         label: "Warna (hex)",    placeholder: "#FF0000" },
-                { name: "penyebab_umum", label: "Penyebab Umum",  span: 2 },
-                { name: "disposisi",     label: "Disposisi Standar", span: 2 },
-              ]}
-              columns={[
-                { key: "kode",          label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
-                { key: "warna",         label: "",              render: (r) => <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: r.warna }} /> },
-                { key: "nama",          label: "Defect",        cls: "font-medium" },
-                { key: "tingkat",       label: "Tingkat",       render: (r) => <StatusBadge status={r.tingkat} /> },
-                { key: "penyebab_umum", label: "Penyebab Umum", cls: "text-[#59687A]" },
-                { key: "disposisi",     label: "Disposisi" },
-                { key: "aktif",         label: "Status",        render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
-              ]}
-            />
-          </TabsContent>
+          {canViewQc && (
+            <TabsContent value="defects" className="mt-4">
+              <Section testId="defects-table" entityName="Kategori Defect"
+                data={defects.data} loading={defects.loading}
+                onSubmit={canManageQc ? defects.handleCreate : null}
+                onUpdate={canManageQc ? defects.handleUpdate : null}
+                onDelete={canManageQc ? defects.handleDelete : null}
+                addFields={[
+                  { name: "kode",          label: "Kode Defect",    required: true },
+                  { name: "nama",          label: "Nama Defect",    required: true, span: 2 },
+                  { name: "tingkat",       label: "Tingkat",        type: "select", options: [
+                    { value: "Kritis", label: "Kritis" }, { value: "Mayor", label: "Mayor" }, { value: "Minor", label: "Minor" },
+                  ]},
+                  { name: "warna",         label: "Warna (hex)",    placeholder: "#FF0000" },
+                  { name: "penyebab_umum", label: "Penyebab Umum",  span: 2 },
+                  { name: "disposisi",     label: "Disposisi Standar", span: 2 },
+                ]}
+                columns={[
+                  { key: "kode",          label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "warna",         label: "",              render: (r) => <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: r.warna }} /> },
+                  { key: "nama",          label: "Defect",        cls: "font-medium" },
+                  { key: "tingkat",       label: "Tingkat",       render: (r) => <StatusBadge status={r.tingkat} /> },
+                  { key: "penyebab_umum", label: "Penyebab Umum", cls: "text-[#59687A]" },
+                  { key: "disposisi",     label: "Disposisi" },
+                  { key: "aktif",         label: "Status",        render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
+                ]}
+              />
+            </TabsContent>
+          )}
 
         </Tabs>
       </div>

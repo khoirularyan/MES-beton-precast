@@ -403,6 +403,8 @@ const PermissionMatrix = () => {
     }
   };
 
+  const [expandMaster, setExpandMaster] = useState(false);
+
   const flags = [
     { key: "can_view",    label: "View" },
     { key: "can_create",  label: "Create" },
@@ -412,6 +414,35 @@ const PermissionMatrix = () => {
   ];
 
   const currentPerms = selectedRoleId ? (matrix[selectedRoleId] || {}) : {};
+  const generalModules = modules.filter((m) => !m.code.startsWith("master_"));
+  const masterModules = modules.filter((m) => m.code.startsWith("master_"));
+
+  const renderRow = (mod) => {
+    const perm = currentPerms[mod.id] || {};
+    return (
+      <TableRow key={mod.id}>
+        <TableCell>
+          <div className="font-medium text-xs">{mod.name}</div>
+          <div className="text-[10px] text-[#59687A] font-mono">{mod.code}</div>
+        </TableCell>
+        {flags.map((f) => (
+          <TableCell key={f.key} className="text-center">
+            <button
+              type="button"
+              onClick={() => toggle(mod.id, f.key)}
+              className={`w-7 h-7 rounded border transition-colors ${
+                perm[f.key]
+                  ? "bg-[#0A6ED1] border-[#0A6ED1] text-white"
+                  : "bg-white border-[#DFE3E8] text-transparent hover:border-[#0A6ED1]"
+              }`}
+            >
+              ✓
+            </button>
+          </TableCell>
+        ))}
+      </TableRow>
+    );
+  };
 
   return (
     <Card className="rounded-lg shadow-sm">
@@ -461,32 +492,23 @@ const PermissionMatrix = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {modules.map((mod) => {
-                  const perm = currentPerms[mod.id] || {};
-                  return (
-                    <TableRow key={mod.id}>
-                      <TableCell>
-                        <div className="font-medium text-xs">{mod.name}</div>
-                        <div className="text-[10px] text-[#59687A] font-mono">{mod.code}</div>
+                {generalModules.map(renderRow)}
+                {masterModules.length > 0 && (
+                  <>
+                    <TableRow
+                      className="bg-[#F4F6F8] hover:bg-[#EEF0F2] cursor-pointer"
+                      onClick={() => setExpandMaster(!expandMaster)}
+                    >
+                      <TableCell colSpan={6} className="py-2.5 px-4 font-semibold text-[#1C252E] text-xs">
+                        <div className="flex items-center gap-2">
+                          <span>{expandMaster ? "▼" : "▶"} Master Data & Configurations ({masterModules.length} Tables)</span>
+                          <span className="text-[10px] text-[#59687A] font-normal italic">(Click to {expandMaster ? "collapse" : "expand"})</span>
+                        </div>
                       </TableCell>
-                      {flags.map((f) => (
-                        <TableCell key={f.key} className="text-center">
-                          <button
-                            type="button"
-                            onClick={() => toggle(mod.id, f.key)}
-                            className={`w-7 h-7 rounded border transition-colors ${
-                              perm[f.key]
-                                ? "bg-[#0A6ED1] border-[#0A6ED1] text-white"
-                                : "bg-white border-[#DFE3E8] text-transparent hover:border-[#0A6ED1]"
-                            }`}
-                          >
-                            ✓
-                          </button>
-                        </TableCell>
-                      ))}
                     </TableRow>
-                  );
-                })}
+                    {expandMaster && masterModules.map(renderRow)}
+                  </>
+                )}
               </TableBody>
             </Table>
           </div>

@@ -35,63 +35,97 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index']);
 
     // ============================================================
-    // MASTER DATA
-    // Reads  : any authenticated active user (master-data.view — see Rbac.php,
-    //          every role has at least 'master-data.view')
-    // Writes : requires master-data.manage
-    //          (super_admin, admin, ppic — see Rbac::PERMISSIONS)
+    // MASTER DATA (FINE-GRAINED PERMISSIONS)
     // ============================================================
 
-    // Controller map for all master data resources
-    $masterData = [
-        'products'            => \App\Http\Controllers\Api\ProductController::class,
-        'materials'           => \App\Http\Controllers\Api\MaterialController::class,
-        'work-centers'        => \App\Http\Controllers\Api\WorkCenterController::class,
-        'suppliers'           => \App\Http\Controllers\Api\SupplierController::class,
-        'customers'           => \App\Http\Controllers\Api\CustomerController::class,
-        'product-categories'  => \App\Http\Controllers\Api\ProductCategoryController::class,
-        'product-types'       => \App\Http\Controllers\Api\ProductTypeController::class,
-        'product-specs'       => \App\Http\Controllers\Api\ProductSpecController::class,
-        'concrete-grades'     => \App\Http\Controllers\Api\ConcreteGradeController::class,
-        'material-categories' => \App\Http\Controllers\Api\MaterialCategoryController::class,
-        'molds'               => \App\Http\Controllers\Api\MoldController::class,
-        'warehouses'          => \App\Http\Controllers\Api\WarehouseController::class,
-        'shifts'              => \App\Http\Controllers\Api\ShiftController::class,
-        'batch-statuses'      => \App\Http\Controllers\Api\BatchStatusController::class,
-        'qc-parameters'       => \App\Http\Controllers\Api\QcParameterController::class,
-        'defect-categories'   => \App\Http\Controllers\Api\DefectCategoryController::class,
-        'production-statuses' => \App\Http\Controllers\Api\ProductionStatusController::class,
-        'delivery-statuses'   => \App\Http\Controllers\Api\DeliveryStatusController::class,
-    ];
+    // ── 1. Products, Specifications & Concrete Grades ────────────────────────
+    Route::middleware('permission:master-products.view')->group(function () {
+        Route::apiResource('products',            \App\Http\Controllers\Api\ProductController::class)->only(['index', 'show']);
+        Route::apiResource('product-categories',  \App\Http\Controllers\Api\ProductCategoryController::class)->only(['index', 'show']);
+        Route::apiResource('product-types',       \App\Http\Controllers\Api\ProductTypeController::class)->only(['index', 'show']);
+        Route::apiResource('product-specs',       \App\Http\Controllers\Api\ProductSpecController::class)->only(['index', 'show']);
+        Route::apiResource('concrete-grades',     \App\Http\Controllers\Api\ConcreteGradeController::class)->only(['index', 'show']);
+    });
+    Route::middleware('permission:master-products.manage')->group(function () {
+        Route::apiResource('products',            \App\Http\Controllers\Api\ProductController::class)->except(['index', 'show']);
+        Route::apiResource('product-categories',  \App\Http\Controllers\Api\ProductCategoryController::class)->except(['index', 'show']);
+        Route::apiResource('product-types',       \App\Http\Controllers\Api\ProductTypeController::class)->except(['index', 'show']);
+        Route::apiResource('product-specs',       \App\Http\Controllers\Api\ProductSpecController::class)->except(['index', 'show']);
+        Route::apiResource('concrete-grades',     \App\Http\Controllers\Api\ConcreteGradeController::class)->except(['index', 'show']);
+    });
 
-    // Read-only: all authenticated active users (every role has master-data.view)
-    foreach ($masterData as $uri => $controller) {
-        Route::apiResource($uri, $controller)->only(['index', 'show']);
-    }
+    // ── 2. Materials ─────────────────────────────────────────────────────────
+    Route::middleware('permission:master-materials.view')->group(function () {
+        Route::apiResource('materials',           \App\Http\Controllers\Api\MaterialController::class)->only(['index', 'show']);
+        Route::apiResource('material-categories', \App\Http\Controllers\Api\MaterialCategoryController::class)->only(['index', 'show']);
+    });
+    Route::middleware('permission:master-materials.manage')->group(function () {
+        Route::apiResource('materials',           \App\Http\Controllers\Api\MaterialController::class)->except(['index', 'show']);
+        Route::apiResource('material-categories', \App\Http\Controllers\Api\MaterialCategoryController::class)->except(['index', 'show']);
+    });
 
-    // BOM Read Routes
-    Route::get('boms', [\App\Http\Controllers\Api\BomController::class, 'index']);
-    Route::get('boms/{id}', [\App\Http\Controllers\Api\BomController::class, 'show']);
-    Route::get('products/{productId}/boms', [\App\Http\Controllers\Api\BomController::class, 'getByProduct']);
-    Route::get('products/{productId}/active-bom', [\App\Http\Controllers\Api\BomController::class, 'getActiveBom']);
+    // ── 3. Molds ─────────────────────────────────────────────────────────────
+    Route::apiResource('molds', \App\Http\Controllers\Api\MoldController::class)->only(['index', 'show'])->middleware('permission:master-molds.view');
+    Route::apiResource('molds', \App\Http\Controllers\Api\MoldController::class)->except(['index', 'show'])->middleware('permission:master-molds.manage');
 
-    // Write: super_admin, admin, ppic (master-data.manage)
-    Route::middleware('permission:master-data.manage')->group(
-        function () use ($masterData) {
-            foreach ($masterData as $uri => $controller) {
-                Route::apiResource($uri, $controller)->except(['index', 'show']);
-            }
+    // ── 4. Customers ─────────────────────────────────────────────────────────
+    Route::apiResource('customers', \App\Http\Controllers\Api\CustomerController::class)->only(['index', 'show'])->middleware('permission:master-customers.view');
+    Route::apiResource('customers', \App\Http\Controllers\Api\CustomerController::class)->except(['index', 'show'])->middleware('permission:master-customers.manage');
 
-            // BOM Write Routes
-            Route::post('boms', [\App\Http\Controllers\Api\BomController::class, 'store']);
-            Route::put('boms/{id}', [\App\Http\Controllers\Api\BomController::class, 'update']);
-            Route::delete('boms/{id}', [\App\Http\Controllers\Api\BomController::class, 'destroy']);
-            Route::post('boms/{id}/activate', [\App\Http\Controllers\Api\BomController::class, 'activate']);
-            Route::post('boms/{id}/archive', [\App\Http\Controllers\Api\BomController::class, 'archive']);
-            Route::post('boms/{id}/unarchive', [\App\Http\Controllers\Api\BomController::class, 'unarchive']);
-            Route::post('boms/{id}/clone', [\App\Http\Controllers\Api\BomController::class, 'clone']);
-        }
-    );
+    // ── 5. Suppliers ─────────────────────────────────────────────────────────
+    Route::apiResource('suppliers', \App\Http\Controllers\Api\SupplierController::class)->only(['index', 'show'])->middleware('permission:master-suppliers.view');
+    Route::apiResource('suppliers', \App\Http\Controllers\Api\SupplierController::class)->except(['index', 'show'])->middleware('permission:master-suppliers.manage');
+
+    // ── 6. Warehouses ────────────────────────────────────────────────────────
+    Route::apiResource('warehouses', \App\Http\Controllers\Api\WarehouseController::class)->only(['index', 'show'])->middleware('permission:master-warehouses.view');
+    Route::apiResource('warehouses', \App\Http\Controllers\Api\WarehouseController::class)->except(['index', 'show'])->middleware('permission:master-warehouses.manage');
+
+    // ── 7. Shifts ────────────────────────────────────────────────────────────
+    Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class)->only(['index', 'show'])->middleware('permission:master-shifts.view');
+    Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class)->except(['index', 'show'])->middleware('permission:master-shifts.manage');
+
+    // ── 8. QC Parameters & Defect Categories ─────────────────────────────────
+    Route::middleware('permission:master-qc.view')->group(function () {
+        Route::apiResource('qc-parameters',       \App\Http\Controllers\Api\QcParameterController::class)->only(['index', 'show']);
+        Route::apiResource('defect-categories',   \App\Http\Controllers\Api\DefectCategoryController::class)->only(['index', 'show']);
+    });
+    Route::middleware('permission:master-qc.manage')->group(function () {
+        Route::apiResource('qc-parameters',       \App\Http\Controllers\Api\QcParameterController::class)->except(['index', 'show']);
+        Route::apiResource('defect-categories',   \App\Http\Controllers\Api\DefectCategoryController::class)->except(['index', 'show']);
+    });
+
+    // ── 9. Work Centers ──────────────────────────────────────────────────────
+    Route::apiResource('work-centers', \App\Http\Controllers\Api\WorkCenterController::class)->only(['index', 'show'])->middleware('permission:master-workcenters.view');
+    Route::apiResource('work-centers', \App\Http\Controllers\Api\WorkCenterController::class)->except(['index', 'show'])->middleware('permission:master-workcenters.manage');
+
+    // ── 10. Metadata Statuses (Read open to all active users, Write is Admin only) ──
+    Route::apiResource('batch-statuses',      \App\Http\Controllers\Api\BatchStatusController::class)->only(['index', 'show']);
+    Route::apiResource('production-statuses', \App\Http\Controllers\Api\ProductionStatusController::class)->only(['index', 'show']);
+    Route::apiResource('delivery-statuses',   \App\Http\Controllers\Api\DeliveryStatusController::class)->only(['index', 'show']);
+
+    Route::middleware('admin')->group(function () {
+        Route::apiResource('batch-statuses',      \App\Http\Controllers\Api\BatchStatusController::class)->except(['index', 'show']);
+        Route::apiResource('production-statuses', \App\Http\Controllers\Api\ProductionStatusController::class)->except(['index', 'show']);
+        Route::apiResource('delivery-statuses',   \App\Http\Controllers\Api\DeliveryStatusController::class)->except(['index', 'show']);
+    });
+
+    // ── 11. Bill of Materials (BOM) ──────────────────────────────────────────
+    Route::middleware('permission:master-bom.view')->group(function () {
+        Route::get('boms', [\App\Http\Controllers\Api\BomController::class, 'index']);
+        Route::get('boms/{id}', [\App\Http\Controllers\Api\BomController::class, 'show']);
+        Route::get('products/{productId}/boms', [\App\Http\Controllers\Api\BomController::class, 'getByProduct']);
+        Route::get('products/{productId}/active-bom', [\App\Http\Controllers\Api\BomController::class, 'getActiveBom']);
+    });
+
+    Route::middleware('permission:master-bom.manage')->group(function () {
+        Route::post('boms', [\App\Http\Controllers\Api\BomController::class, 'store']);
+        Route::put('boms/{id}', [\App\Http\Controllers\Api\BomController::class, 'update']);
+        Route::delete('boms/{id}', [\App\Http\Controllers\Api\BomController::class, 'destroy']);
+        Route::post('boms/{id}/activate', [\App\Http\Controllers\Api\BomController::class, 'activate']);
+        Route::post('boms/{id}/archive', [\App\Http\Controllers\Api\BomController::class, 'archive']);
+        Route::post('boms/{id}/unarchive', [\App\Http\Controllers\Api\BomController::class, 'unarchive']);
+        Route::post('boms/{id}/clone', [\App\Http\Controllers\Api\BomController::class, 'clone']);
+    });
 
     // ============================================================
     // SALES

@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'active'     => \App\Http\Middleware\EnsureUserActive::class,
             'permission' => \App\Http\Middleware\EnsurePermission::class,
+            'admin'      => \App\Http\Middleware\EnsureAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
