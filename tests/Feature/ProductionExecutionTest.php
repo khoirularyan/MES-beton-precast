@@ -12,6 +12,10 @@ use App\Models\Customer;
 use App\Models\Mold;
 use App\Models\InventoryBatch;
 use App\Models\DeliveryOrder;
+use App\Models\Material;
+use App\Models\BomHeader;
+use App\Models\BomItem;
+use App\Models\WorkCenter;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 
@@ -270,5 +274,86 @@ class ProductionExecutionTest extends TestCase
             'qty' => 15,
             'status' => 'Selesai',
         ]);
+    }
+
+    public function test_casting_transition_deducts_material_inventory(): void
+    {
+        // 1. Create a Material with stock
+        $material = Material::create([
+            'kode' => 'MAT-TEST-' . rand(1000, 9999),
+            'nama' => 'Test Cement',
+            'satuan' => 'Kg',
+            'kategori' => 'Semen',
+            'stok' => 1000,
+            'min_stok' => 50,
+            'harga' => 1500,
+            'aktif' => true,
+        ]);
+
+        // Verify initial inventory stock is exactly 1000
+        $this->assertEquals(1000, $material->fresh()->stok);
+
+        // 2. Create a BOM for this product
+        $bom = BomHeader::create([
+            'product_id' => $this->product->id,
+            'version' => 'V1.0',
+            'status' => 'active',
+            'output_qty' => 1.0,
+            'output_uom' => 'pcs',
+        ]);
+
+        // 2 kg of cement per unit with 10% waste
+        BomItem::create([
+            'bom_header_id'  => $bom->id,
+            'material_id'    => $material->id,
+            'qty_per_unit'   => 2.0,
+            'waste_pct'      => 10.0,
+            'urutan'         => 1,
+            'harga_snapshot' => 1500,
+        ]);
+
+        // 3. Create a Work Center with rates
+        $workCenter = WorkCenter::create([
+            'code' => 'WC-TEST-' . rand(1000, 9999),
+            'name' => 'Execution Work Center',
+            'standard_labor_rate_per_m3' => 40000.00,
+            'standard_overhead_rate_per_m3' => 80000.00,
+            'capacity_qty_per_shift' => 10.0,
+            'capacity_m3_per_shift' => 5.0,
+            'shifts_per_day' => 1,
+            'is_active' => true,
+        ]);
+
+        // 4. Create a production batch in Planning status
+        $planningStatus = BatchStatus::where('status', 'Planning')->firstOrFail();
+        $castingStatus = BatchStatus::where('status', 'Casting')->firstOrFail();
+
+        $batch = ProductionBatch::create([
+            'batch_number' => 'BATCH-MAT-CONS-' . rand(100, 999),
+            'source_type' => 'SO',
+            'product_id' => $this->product->id,
+            'target_qty' => 10,
+            'target_volume_m3' => 5,
+            'batch_status_id' => $planningStatus->id,
+            'work_center_id' => $workCenter->id,
+            'mold_id' => $this->mold->id,
+        ]);
+
+        // 5. Transition to Casting status
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/production-batches/{$batch->id}/transition", [
+                'to_status_id' => $castingStatus->id,
+                'notes' => 'Starting casting',
+            ]);
+
+        $response->assertStatus(200);
+
+        // Required qty = (qty_per_unit / output_qty) * batch_qty * (1 + waste_pct/100)
+        // Required qty = (2.0 / 1.0) * 10 * (1 + 0.1) = 20 * 1.1 = 22 kg
+        // Expected remaining stock = 1000 - 22 = 978 kg
+        $this->assertEquals(978, (float) $material->fresh()->stok);
+
+        // Verify material_consumed is marked as true
+        $this->assertTrue((bool) $batch->fresh()->material_consumed);
     }
 }

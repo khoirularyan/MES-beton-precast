@@ -210,7 +210,33 @@ export const FormDialog = ({
                     value={values[f.name] || ""}
                     onChange={(e) => handleChange(f.name, e.target.value)}
                     className="text-sm min-h-[72px]"
+                    disabled={f.disabled}
                   />
+                ) : f.type === "toggle-pass" ? (
+                  <div className="flex gap-2 h-9 items-center" data-testid={`${testId}-field-${f.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleChange(f.name, true)}
+                      className={`flex-1 h-9 rounded text-xs font-semibold border transition-colors ${
+                        values[f.name] === true
+                          ? "bg-[#107E3E] text-white border-[#107E3E] hover:bg-[#0B5E2E]"
+                          : "bg-white text-[#107E3E] border-[#107E3E] hover:bg-[#F0FAF4]"
+                      }`}
+                    >
+                      Lolos (Passed)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChange(f.name, false)}
+                      className={`flex-1 h-9 rounded text-xs font-semibold border transition-colors ${
+                        values[f.name] === false
+                          ? "bg-[#B00020] text-white border-[#B00020] hover:bg-[#800010]"
+                          : "bg-white text-[#B00020] border-[#B00020] hover:bg-[#FFF5F6]"
+                      }`}
+                    >
+                      Gagal (Failed)
+                    </button>
+                  </div>
                 ) : f.type === "select" ? (
                   <Select 
                     value={values[f.name] !== undefined ? String(values[f.name]) : ""} 
@@ -219,8 +245,9 @@ export const FormDialog = ({
                       const parsedValue = opt && typeof opt.value === 'boolean' ? (v === 'true') : v;
                       handleChange(f.name, parsedValue);
                     }}
+                    disabled={f.disabled}
                   >
-                    <SelectTrigger className="h-9 text-sm" data-testid={`${testId}-field-${f.name}`}>
+                    <SelectTrigger className="h-9 text-sm" data-testid={`${testId}-field-${f.name}`} disabled={f.disabled}>
                       <SelectValue placeholder={f.placeholder || "Pilih..."} />
                     </SelectTrigger>
                     <SelectContent position="popper" side="bottom" sideOffset={5} className="max-h-[300px] overflow-y-auto">
@@ -296,6 +323,7 @@ export const FormDialog = ({
                       value={values[f.name] || ""}
                       onChange={(e) => handleChange(f.name, e.target.value)}
                       className="h-9 text-sm"
+                      disabled={f.disabled}
                     />
                   )
                 )}

@@ -7,6 +7,7 @@ use App\Models\BatchStatus;
 use App\Models\InventoryBatch;
 use App\Models\DeliveryOrder;
 use App\Models\BatchStatusLog;
+use App\Models\BomHeader;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -100,6 +101,9 @@ class BatchTransitionService
                 // Trigger standard costing calculation on Release (Casting transition)
                 $costingService = new \App\Services\StandardCostingService();
                 $costingService->calculateAndStore($batch);
+
+                // Deduct material inventory based on the BOM
+                $this->consumeMaterials($batch);
             }
 
             // 3. Log history
@@ -244,5 +248,45 @@ class BatchTransitionService
         DB::table('public.production_inventory_batches')
             ->where('batch_number', $batch->batch_number)
             ->decrement('qty_on_hand', $qty);
+    }
+
+    protected function consumeMaterials(ProductionBatch $batch): void
+    {
+        if ($batch->material_consumed) {
+            return;
+        }
+
+        $bomHeaderId = $batch->bom_header_id;
+        if (!$bomHeaderId) {
+            return;
+        }
+
+        $bom = BomHeader::with('items.material.inventory')->find($bomHeaderId);
+        if (!$bom) {
+            return;
+        }
+
+        $qty = $batch->target_qty > 0 ? (float) $batch->target_qty : 1.0;
+        $outputQty = (float) ($bom->output_qty ?? 1.0);
+        if ($outputQty <= 0) {
+            $outputQty = 1.0;
+        }
+
+        foreach ($bom->items as $item) {
+            $material = $item->material;
+            if (!$material) {
+                continue;
+            }
+
+            // Calculation formula: (qty_per_unit / output_qty) * batch_qty * (1 + waste_pct/100)
+            $qtyPerUnit = (float) $item->qty_per_unit;
+            $wastePct = (float) ($item->waste_pct ?? 0.0);
+            $requiredQty = ($qtyPerUnit / $outputQty) * $qty * (1.0 + ($wastePct / 100.0));
+
+            // Decrement from the inventory using Material model accessor to ensure consistency
+            $material->stok = max(0.0, (float) $material->stok - $requiredQty);
+        }
+
+        $batch->update(['material_consumed' => true]);
     }
 }

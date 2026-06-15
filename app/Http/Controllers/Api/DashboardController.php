@@ -64,9 +64,7 @@ class DashboardController extends Controller
                 ->whereNull('deleted_at')
                 ->count();
 
-            $moldUtilization = (float) DB::table('global.production_molds')
-                ->where('jumlah_aktif', '>', 0)
-                ->avg('utilisasi') ?: 0.0;
+            $moldUtilization = 0.0; // Will be calculated dynamically below based on actual mold usage
 
             // Calculate current shift and supervisor dynamically
             $currentHour = now()->hour;
@@ -121,6 +119,8 @@ class DashboardController extends Controller
                 $usedForThisType = min($usedForThisType, $mold->jumlah_total);
                 $moldsUsed += $usedForThisType;
             }
+
+            $moldUtilization = $moldsTotal > 0 ? ($moldsUsed / $moldsTotal) * 100 : 0.0;
 
             // Calculate current day of active plans
             $activePlans = DB::table('public.production_plans')
@@ -420,24 +420,71 @@ class DashboardController extends Controller
             $startOfMonth = date('Y-m-01');
             $endOfMonth = date('Y-m-t');
 
-            $todayCost = DB::table('public.production_costs as pc')
+            // --- REAL cost data only — no hardcoded fallbacks ---
+            $todayCostRaw = DB::table('public.production_costs as pc')
                 ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
                 ->whereDate('pb.planned_date', $todayStr)
                 ->whereNull('pb.deleted_at')
                 ->sum('pc.total_cost');
+            $todayCost = $todayCostRaw > 0 ? (float) $todayCostRaw : null;
 
-            $monthlyCost = DB::table('public.production_costs as pc')
+            $monthlyCostRaw = DB::table('public.production_costs as pc')
                 ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
                 ->whereBetween('pb.planned_date', [$startOfMonth, $endOfMonth])
                 ->whereNull('pb.deleted_at')
                 ->sum('pc.total_cost');
+            $monthlyCost = $monthlyCostRaw > 0 ? (float) $monthlyCostRaw : null;
 
-            $avgCostPerM3 = DB::table('public.production_costs as pc')
+            $avgCostPerM3Raw = DB::table('public.production_costs as pc')
                 ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
                 ->whereBetween('pb.planned_date', [$startOfMonth, $endOfMonth])
                 ->whereNull('pb.deleted_at')
                 ->selectRaw('SUM(pc.total_cost) / NULLIF(SUM(pb.target_volume_m3), 0) as avg_cost')
-                ->value('avg_cost') ?: 0.0;
+                ->value('avg_cost');
+            $avgCostPerM3 = ($avgCostPerM3Raw !== null && $avgCostPerM3Raw > 0) ? (float) $avgCostPerM3Raw : null;
+
+            // Monthly cost trend (last 6 months) — for chart
+            $sixMonthsAgo = now()->subMonths(5)->startOfMonth()->toDateString();
+            $monthlyCostSums = DB::table('public.production_costs as pc')
+                ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+                ->where('pb.planned_date', '>=', $sixMonthsAgo)
+                ->whereNull('pb.deleted_at')
+                ->selectRaw("DATE_TRUNC('month', pb.planned_date) as month_date, SUM(pc.total_cost) as total")
+                ->groupBy(DB::raw("DATE_TRUNC('month', pb.planned_date)"))
+                ->get()
+                ->keyBy(function ($item) {
+                    return \Carbon\Carbon::parse($item->month_date)->format('Y-m');
+                });
+
+            $monthlyCostTrend = [];
+            for ($i = 5; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $key  = $date->format('Y-m');
+                $row  = $monthlyCostSums->get($key);
+                $monthlyCostTrend[] = [
+                    'bulan' => $date->translatedFormat('M y'),
+                    'cost'  => $row ? (float) $row->total : null,
+                ];
+            }
+
+            // Costing readiness: check if any WorkCenter has non-zero rates
+            $wcWithRates = DB::table('global.production_work_centers')
+                ->where('is_active', true)
+                ->where(function ($q) {
+                    $q->where('standard_labor_rate_per_m3', '>', 0)
+                      ->orWhere('standard_overhead_rate_per_m3', '>', 0);
+                })
+                ->count();
+            $hasCostData   = $monthlyCostRaw > 0;
+            $ratesConfigured = $wcWithRates > 0;
+
+            // FG Inventory Value from InventoryBatch lot-level cost
+            $fgInventoryValue = (float) DB::table('public.production_inventory_batches')
+                ->whereIn('status', ['Available', 'Partial', 'Reserved'])
+                ->whereRaw('qty_on_hand > 0')
+                ->whereNotNull('cost_per_unit')
+                ->selectRaw('SUM(qty_on_hand * cost_per_unit) as total_value')
+                ->value('total_value') ?: 0.0;
 
             return [
                 'production' => [
@@ -465,6 +512,7 @@ class DashboardController extends Controller
                     'low_stock_count'      => $lowStockCount,
                     'critical_stock_count' => $criticalStockCount,
                     'aging_stock_qty'      => $agingStock,
+                    'fg_inventory_value'   => $fgInventoryValue > 0 ? $fgInventoryValue : null,
                 ],
                 'delivery' => [
                     'performance'   => $deliveryPerformance,
@@ -485,9 +533,12 @@ class DashboardController extends Controller
                     'batches_waiting_qc' => $batchesWaitingQc,
                 ],
                 'costing' => [
-                    'today_production_cost'   => (float) $todayCost,
-                    'monthly_production_cost' => (float) $monthlyCost,
-                    'average_cost_per_m3'     => (float) $avgCostPerM3,
+                    'today_production_cost'    => $todayCost,
+                    'monthly_production_cost'  => $monthlyCost,
+                    'average_cost_per_m3'      => $avgCostPerM3,
+                    'monthly_cost_trend'       => $monthlyCostTrend,
+                    'has_cost_data'            => $hasCostData,
+                    'rates_configured'         => $ratesConfigured,
                 ],
             ];
         });

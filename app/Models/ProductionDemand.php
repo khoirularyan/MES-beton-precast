@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ProductionDemand extends Model
 {
@@ -41,6 +42,11 @@ class ProductionDemand extends Model
     public function salesOrderItem(): BelongsTo
     {
         return $this->belongsTo(SalesOrderItem::class, 'sales_order_item_id');
+    }
+
+    public function productionPlan(): HasOne
+    {
+        return $this->hasOne(ProductionPlan::class, 'demand_id');
     }
 
     public function getDailyCapacityAttribute(): int

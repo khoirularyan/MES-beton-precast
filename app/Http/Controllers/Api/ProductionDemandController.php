@@ -20,8 +20,15 @@ class ProductionDemandController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = ProductionDemand::with(['product.activeBom', 'product.allowedMolds', 'salesOrder.customer'])
-            ->whereNull('deleted_at');
+        $with = ['product.activeBom', 'product.allowedMolds', 'salesOrder.customer'];
+
+        // When fetching Planned demands, also eager load productionPlan so frontend
+        // can detect orphan demands (Planned but no active plan).
+        if ($request->input('status') === 'Planned') {
+            $with[] = 'productionPlan';
+        }
+
+        $query = ProductionDemand::with($with)->whereNull('deleted_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -86,15 +93,59 @@ class ProductionDemandController extends Controller
     }
 
     /**
+     * Get all demands that should appear in the Production Planning queue:
+     * - Status 'Open' or 'Approved'
+     * - Status 'Planned' but whose production plan has been deleted (orphan)
+     */
+    public function queue(Request $request): JsonResponse
+    {
+        // Open / Approved demands
+        $openOrApproved = ProductionDemand::with(['product.activeBom', 'product.allowedMolds', 'salesOrder.customer'])
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['Open', 'Approved'])
+            ->orderBy('priority')
+            ->orderBy('required_date')
+            ->get();
+
+        // Planned demands that have no active (non-soft-deleted) production plan
+        $plannedOrphans = ProductionDemand::with(['product.activeBom', 'product.allowedMolds', 'salesOrder.customer'])
+            ->whereNull('deleted_at')
+            ->where('status', 'Planned')
+            ->whereNotExists(function ($sub) {
+                $sub->select(\DB::raw(1))
+                    ->from('public.production_plans')
+                    ->whereColumn('public.production_plans.demand_id', 'public.production_demands.id')
+                    ->whereNull('public.production_plans.deleted_at');
+            })
+            ->orderBy('priority')
+            ->orderBy('required_date')
+            ->get()
+            ->each(fn ($d) => $d->setAttribute('is_orphan', true));
+
+        $all = $openOrApproved->concat($plannedOrphans)->sortBy('priority')->values();
+
+        return response()->json(['data' => $all]);
+    }
+
+    /**
      * SIMPLIFIED: Schedule Production Directly
      * Open/Approved -> Planned + auto-generates batches based on mold capacity
      */
     public function schedule(Request $request, ProductionDemand $productionDemand): JsonResponse
     {
         $validated = $request->validate([
-            'start_date' => 'required|date',
-            'notes'      => 'nullable|string',
+            'start_date'              => 'required|date',
+            'mold_id'                 => 'nullable|integer',
+            'notes'                   => 'nullable|string',
+            'planning_mode'           => ['nullable', Rule::in(['auto', 'manual'])],
+            'manual_batches'          => 'required_if:planning_mode,manual|array|min:1',
+            'manual_batches.*.date'     => 'required_with:manual_batches|date',
+            'manual_batches.*.end_date' => 'nullable|date|after_or_equal:manual_batches.*.date',
+            'manual_batches.*.qty'      => 'required_with:manual_batches|numeric|min:0.01',
+            'manual_batches.*.sequence' => 'nullable|integer|min:1',
         ]);
+
+        $validated['planning_mode'] = $validated['planning_mode'] ?? 'auto';
 
         try {
             $plan = $this->planningService->scheduleProduction($productionDemand, $validated);
@@ -144,10 +195,15 @@ class ProductionDemandController extends Controller
     {
         $validated = $request->validate([
             'start_date' => 'required|date',
+            'mold_id'    => 'nullable|integer',
         ]);
 
         try {
-            $preview = $this->planningService->previewSchedule($productionDemand, $validated['start_date']);
+            $preview = $this->planningService->previewSchedule(
+                $productionDemand,
+                $validated['start_date'],
+                $validated['mold_id'] ?? null
+            );
             
             // Check material shortage
             $reqService = new \App\Services\MaterialRequirementService();
@@ -166,6 +222,38 @@ class ProductionDemandController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         }
+    }
+
+    /**
+     * Re-open a Planned demand whose production plan has been deleted (orphan demand).
+     * Planned -> Open so it can be re-scheduled.
+     */
+    public function reopen(ProductionDemand $productionDemand): JsonResponse
+    {
+        if ($productionDemand->status !== 'Planned') {
+            return response()->json(['message' => 'Only Planned demands can be re-opened.'], 422);
+        }
+
+        // Check whether an active production plan still references this demand
+        $hasPlan = \App\Models\ProductionPlan::where('demand_id', $productionDemand->id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($hasPlan) {
+            return response()->json([
+                'message' => 'Demand masih terhubung dengan production plan aktif. Hapus plan terlebih dahulu sebelum re-open demand.',
+            ], 422);
+        }
+
+        $old = $productionDemand->status;
+        $productionDemand->update(['status' => 'Open']);
+        \App\Models\AuditLog::log('production_demand.reopened', 'production_demand', $productionDemand->id,
+            ['status' => $old], ['status' => 'Open']);
+
+        return response()->json([
+            'message' => 'Demand berhasil di-reset ke Open dan dapat dijadwalkan kembali.',
+            'demand'  => $productionDemand->fresh(['product', 'salesOrder.customer']),
+        ]);
     }
 
     /**

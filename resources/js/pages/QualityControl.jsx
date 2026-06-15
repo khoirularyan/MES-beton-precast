@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHeader from "@/components/shared/PageHeader";
 import StatusBadge from "@/components/shared/StatusBadge";
 import KPICard from "@/components/shared/KPICard";
@@ -269,6 +269,10 @@ const RejectReasonDialog = ({ open, onOpenChange, record, onSave, defectCategori
 const QualityControl = () => {
   const [tab, setTab] = useState("inspections");
   const [rejectDialog, setRejectDialog] = useState({ open: false, record: null });
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createInitialValues, setCreateInitialValues] = useState({
+    inspection_date: new Date().toISOString().split('T')[0]
+  });
 
   const queryClient = useQueryClient();
 
@@ -423,7 +427,11 @@ const QualityControl = () => {
       label: "Batch Produksi",
       type: "select",
       required: true,
-      options: activeBatches.map((b) => ({ value: b.id, label: `${b.batch_number} — ${b.product?.nama || b.product_id}` }))
+      disabled: Boolean(createInitialValues?.production_batch_id),
+      options: activeBatches.map((b) => {
+        const bStatus = (b.status || b.status_model?.status || b.statusModel?.status || '').toUpperCase();
+        return { value: b.id, label: `${b.batch_number} — ${b.product?.nama || b.product_id} (${bStatus || 'N/A'})` };
+      })
     },
     {
       name: "inspection_date",
@@ -471,13 +479,84 @@ const QualityControl = () => {
       {
         name: `param_pass_${p.id}`,
         label: `${p.parameter} Status`,
-        type: "select",
-        options: [
-          { value: true, label: "Lulus (Passed)" },
-          { value: false, label: "Gagal (Failed)" }
-        ]
+        type: "toggle-pass",
       }
     ]).flat()
+  ];
+
+  const defaultValues = {
+    inspection_date: new Date().toISOString().split('T')[0]
+  };
+  activeParameters.forEach((p) => {
+    defaultValues[`param_pass_${p.id}`] = true;
+  });
+
+  const startInspection = (batch) => {
+    const vals = {
+      ...defaultValues,
+      production_batch_id: batch.id,
+      qty_inspected: Math.round(batch.target_qty),
+      qty_passed: Math.round(batch.target_qty),
+      qty_rejected: 0,
+    };
+    setCreateInitialValues(vals);
+    setCreateDialogOpen(true);
+  };
+
+  // Auto-open QC inspection if batch_id is in URL query
+  useEffect(() => {
+    if (activeBatches.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const batchIdParam = params.get("batch_id");
+      if (batchIdParam) {
+        const batch = activeBatches.find((b) => String(b.id) === batchIdParam);
+        if (batch) {
+          startInspection(batch);
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+      }
+    }
+  }, [activeBatches]);
+
+  const batchesWaitingInspection = activeBatches.filter((b) => {
+    const isQc = (b.status || b.status_model?.status || b.statusModel?.status || '').toLowerCase() === 'qc';
+    const hasInspections = b.qc_inspections && b.qc_inspections.length > 0;
+    return isQc && !hasInspections;
+  });
+
+  const combinedInspectionsList = [
+    // Ready QC batches first
+    ...batchesWaitingInspection.map((b) => ({
+      id: `pending-${b.id}`,
+      isPending: true,
+      batch: b,
+      no: "-",
+      production_order_id: b.batch_number,
+      product: b.product,
+      qty_inspected: Math.round(b.target_qty),
+      qty_passed: "-",
+      qty_rejected: "-",
+      qc_status: "READY_QC",
+      inspector: null,
+      inspection_date: b.planned_date || b.planned_start || "-",
+      rawBatch: b,
+    })),
+    // Inspected records
+    ...qcInspections.map((q) => ({
+      id: q.id,
+      isPending: false,
+      batch: q.batch,
+      no: q.no,
+      production_order_id: q.batch?.batch_number || q.production_order_id,
+      product: q.product,
+      qty_inspected: q.qty_inspected,
+      qty_passed: q.qty_passed,
+      qty_rejected: q.qty_rejected,
+      qc_status: q.qc_status || (q.qty_rejected > 0 ? (q.qty_passed > 0 ? 'PARTIAL_PASS' : 'REJECT') : 'PASS'),
+      inspector: q.inspector,
+      inspection_date: q.inspection_date || q.tanggal,
+    })),
   ];
 
   return (
@@ -496,11 +575,20 @@ const QualityControl = () => {
             successMessage="QC inspection saved successfully"
             fields={formFields}
             onSubmit={handleCreateInspectionSubmit}
-            initialValues={{
-              inspection_date: new Date().toISOString().split('T')[0]
-            }}
+            initialValues={createInitialValues}
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
             trigger={
-              <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]"><Plus className="w-3.5 h-3.5" />New Inspection</Button>
+              <Button
+                onClick={() => {
+                  setCreateInitialValues(defaultValues);
+                  setCreateDialogOpen(true);
+                }}
+                size="sm"
+                className="h-8 text-xs gap-1.5 bg-[#0A6ED1] hover:bg-[#0854A1]"
+              >
+                <Plus className="w-3.5 h-3.5" />New Inspection
+              </Button>
             }
           />
         }
@@ -522,6 +610,53 @@ const QualityControl = () => {
           </TabsList>
 
           <TabsContent value="inspections" className="mt-4">
+            {/* QC Queue Section */}
+            <div className="mb-6 bg-white border border-[#DFE3E8] rounded-md p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm font-semibold text-[#1C252E] font-display">Antrean Inspeksi Batch (Ready for QC)</div>
+                  <div className="text-xs text-[#59687A]">Daftar batch produksi yang telah selesai dicetak & demolding, dan siap untuk di-QC.</div>
+                </div>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E5F0FA] text-[#0A6ED1] border border-[#B3D4F5]">
+                  {batchesWaitingInspection.length} Batch Menunggu
+                </span>
+              </div>
+
+              {batchesWaitingInspection.length === 0 ? (
+                <div className="text-center py-6 text-xs text-[#59687A] bg-[#F8FAFC] border border-dashed border-[#DFE3E8] rounded">
+                  Tidak ada batch dalam antrean QC saat ini. Semua batch aktif sudah di-QC.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {batchesWaitingInspection.map((b) => (
+                    <div key={b.id} className="border border-[#DFE3E8] rounded p-3 flex flex-col justify-between bg-[#F8FAFC]">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-mono font-semibold text-[#0A6ED1]">{b.batch_number}</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]">
+                            Ready QC
+                          </span>
+                        </div>
+                        <div className="text-xs font-semibold text-[#1C252E] mb-1">{b.product?.nama || b.product_id}</div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-[#59687A]">
+                          <div>Qty Target: <strong className="text-[#1C252E] font-mono-num">{Math.round(b.target_qty)} unit</strong></div>
+                          <div>Vol: <strong className="text-[#1C252E] font-mono-num">{b.target_volume_m3} m³</strong></div>
+                          <div className="col-span-2">Tgl Rencana: <strong className="text-[#1C252E]">{b.planned_date}</strong></div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="mt-3 h-8 text-xs gap-1 bg-[#0A6ED1] hover:bg-[#0854A1] text-white w-full"
+                        onClick={() => startInspection(b)}
+                      >
+                        Mulai QC Inspection
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="bg-white border border-[#DFE3E8] rounded-md overflow-hidden">
               <table className="w-full mes-table">
                 <thead>
@@ -535,41 +670,79 @@ const QualityControl = () => {
                     <th className="px-4 py-2 text-left">Status</th>
                     <th className="px-4 py-2 text-left">Inspector</th>
                     <th className="px-4 py-2 text-left">Date</th>
+                    <th className="px-4 py-2 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoadingInspections ? (
                     <tr>
-                      <td colSpan={9} className="text-center py-6 text-xs text-[#59687A]">Loading QC Inspections...</td>
+                      <td colSpan={10} className="text-center py-6 text-xs text-[#59687A]">Loading QC Inspections...</td>
                     </tr>
-                  ) : qcInspections.length === 0 ? (
+                  ) : combinedInspectionsList.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="text-center py-6 text-xs text-[#59687A]">No QC Inspections recorded.</td>
+                      <td colSpan={10} className="text-center py-6 text-xs text-[#59687A]">No QC Inspections or pending batches.</td>
                     </tr>
-                  ) : qcInspections.map((q, i) => {
-                    const statusClass = q.qc_status === "PASS" ? "Lulus" : (q.qc_status === "PARTIAL_PASS" ? "Lulus Bersyarat" : "Reject");
+                  ) : combinedInspectionsList.map((item, i) => {
+                    const statusClass = item.isPending
+                      ? "Ready QC"
+                      : item.qc_status === "PASS"
+                      ? "Lulus"
+                      : item.qc_status === "PARTIAL_PASS"
+                      ? "Lulus Bersyarat"
+                      : "Reject";
+                    
                     return (
-                      <tr key={q.no || q.id} data-testid={`qc-row-${i}`}>
-                        <td className="px-4 font-mono-num text-[#0A6ED1] font-medium">{q.no}</td>
-                        <td className="px-4 font-mono-num">{q.batch?.batch_number || q.production_order_id}</td>
+                      <tr 
+                        key={item.id} 
+                        data-testid={`qc-row-${i}`}
+                        className={item.isPending ? "bg-[#E5F0FA]/20 hover:bg-[#E5F0FA]/40 cursor-pointer transition-colors" : ""}
+                        onClick={() => {
+                          if (item.isPending) {
+                            startInspection(item.rawBatch);
+                          }
+                        }}
+                      >
+                        <td className="px-4 font-mono-num text-[#A6B0BE]">{item.no}</td>
+                        <td className="px-4 font-mono-num font-medium text-[#0A6ED1]">{item.production_order_id}</td>
                         <td className="px-4">
                           <div className="flex items-center gap-2">
-                            <ProductIcon name={q.product?.nama} size="sm" />
-                            <span className="font-medium">{q.product?.nama}</span>
+                            <ProductIcon name={item.product?.nama} size="sm" />
+                            <span className="font-medium">{item.product?.nama || "Unknown"}</span>
                           </div>
                         </td>
-                        <td className="px-4 text-right font-mono-num">{q.qty_inspected}</td>
-                        <td className="px-4 text-right font-mono-num text-[#107E3E]">{q.qty_passed}</td>
-                        <td className="px-4 text-right font-mono-num text-[#B00020]">{q.qty_rejected}</td>
+                        <td className="px-4 text-right font-mono-num">{item.qty_inspected}</td>
+                        <td className="px-4 text-right font-mono-num text-[#107E3E]">{item.qty_passed}</td>
+                        <td className="px-4 text-right font-mono-num text-[#B00020]">{item.qty_rejected}</td>
                         <td className="px-4">
                           <div className="flex items-center gap-2">
-                            <StatusBadge status={statusClass} />
-                            {(statusClass === "Lulus" || statusClass === "Lulus Bersyarat") && <QualityStamp type="pass" />}
-                            {statusClass === "Reject" && <QualityStamp type="reject" />}
+                            {item.isPending ? (
+                              <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#E5F0FA] text-[#0A6ED1] border border-[#B3D4F5] animate-pulse">
+                                Ready QC
+                              </span>
+                            ) : (
+                              <>
+                                <StatusBadge status={statusClass} />
+                                {(statusClass === "Lulus" || statusClass === "Lulus Bersyarat") && <QualityStamp type="pass" />}
+                                {statusClass === "Reject" && <QualityStamp type="reject" />}
+                              </>
+                            )}
                           </div>
                         </td>
-                        <td className="px-4 text-[#59687A]">{q.inspector?.name || q.inspektur}</td>
-                        <td className="px-4 font-mono-num text-[#59687A]">{q.inspection_date || q.tanggal}</td>
+                        <td className="px-4 text-[#59687A]">{item.inspector?.name || item.inspektur || "-"}</td>
+                        <td className="px-4 font-mono-num text-[#59687A]">{item.inspection_date}</td>
+                        <td className="px-4 text-right" onClick={(e) => { if (item.isPending) e.stopPropagation(); }}>
+                          {item.isPending ? (
+                            <Button
+                              size="xs"
+                              className="h-7 text-[10px] bg-[#0A6ED1] hover:bg-[#0854A1] text-white"
+                              onClick={() => startInspection(item.rawBatch)}
+                            >
+                              QC Now
+                            </Button>
+                          ) : (
+                            <span className="text-[10px] text-[#A6B0BE]">-</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}

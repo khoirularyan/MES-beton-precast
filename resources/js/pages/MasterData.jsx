@@ -17,7 +17,7 @@ import {
   productCategoryApi, productTypeApi, productSpecApi, concreteGradeApi,
   materialCategoryApi, moldApi, warehouseApi,
   shiftApi, qcParameterApi, defectCategoryApi,
-  batchStatusApi, userApi,
+  batchStatusApi, userApi, workCenterApi,
 } from "@/lib/api";
 import { formatRupiah, formatNumber } from "@/data/mockData";
 
@@ -293,6 +293,7 @@ const MasterData = () => {
   const canViewShifts     = hasPermission("master-shifts.view");
   const canViewQc         = hasPermission("master-qc.view");
   const canViewStatuses   = canViewProducts; // Link status batch with product viewing permissions
+  const canViewWorkCenters = hasPermission("master-workcenters.view");
 
   const canManageProducts   = hasPermission("master-products.manage");
   const canManageMaterials  = hasPermission("master-materials.manage");
@@ -304,8 +305,9 @@ const MasterData = () => {
   const canManageQc         = hasPermission("master-qc.manage");
   const canManageUsers      = hasPermission("user-access.manage");
   const canManageStatuses   = hasPermission("user-access.manage"); // batch-statuses, production-statuses, delivery-statuses are manage admin only
+  const canManageWorkCenters = hasPermission("master-workcenters.manage");
 
-  const hasAnyTab = canViewProducts || canViewMaterials || canViewMolds || canViewCustomers || canViewSuppliers || canViewWarehouses || canViewUsers || canViewShifts || canViewQc;
+  const hasAnyTab = canViewProducts || canViewMaterials || canViewMolds || canViewCustomers || canViewSuppliers || canViewWarehouses || canViewUsers || canViewShifts || canViewQc || canViewWorkCenters;
 
   const defaultTab = [
     { key: "products",     can: canViewProducts },
@@ -318,18 +320,62 @@ const MasterData = () => {
     { key: "warehouses",   can: canViewWarehouses },
     { key: "users",        can: canViewUsers },
     { key: "shifts",       can: canViewShifts },
+    { key: "work-centers", can: canViewWorkCenters },
     { key: "batch-status", can: canViewStatuses },
     { key: "qc-params",    can: canViewQc },
     { key: "defects",      can: canViewQc }
   ].find(item => item.can)?.key || "";
 
+  const tabGroups = {
+    products: "products-group",
+    specs: "products-group",
+    grades: "products-group",
+    materials: "logistics-group",
+    warehouses: "logistics-group",
+    molds: "pabrik-group",
+    shifts: "pabrik-group",
+    "work-centers": "pabrik-group",
+    customers: "relations-group",
+    suppliers: "relations-group",
+    users: "system-group",
+    "batch-status": "system-group",
+    "qc-params": "system-group",
+    defects: "system-group",
+  };
+
   const [tab, setTab] = useState(defaultTab || "products");
+  const [mainTab, setMainTab] = useState(() => tabGroups[defaultTab] || "products-group");
   const [productView, setProductView] = useState("grid");
   const [productQuery, setProductQuery] = useState("");
+
+  const handleMainTabChange = (groupKey) => {
+    setMainTab(groupKey);
+    const firstSub = [
+      { key: "products",     can: canViewProducts, group: "products-group" },
+      { key: "specs",        can: canViewProducts, group: "products-group" },
+      { key: "grades",       can: canViewProducts, group: "products-group" },
+      { key: "materials",    can: canViewMaterials, group: "logistics-group" },
+      { key: "warehouses",   can: canViewWarehouses, group: "logistics-group" },
+      { key: "molds",        can: canViewMolds, group: "pabrik-group" },
+      { key: "shifts",       can: canViewShifts, group: "pabrik-group" },
+      { key: "work-centers", can: canViewWorkCenters, group: "pabrik-group" },
+      { key: "customers",    can: canViewCustomers, group: "relations-group" },
+      { key: "suppliers",    can: canViewSuppliers, group: "relations-group" },
+      { key: "users",        can: canViewUsers, group: "system-group" },
+      { key: "batch-status", can: canViewStatuses, group: "system-group" },
+      { key: "qc-params",    can: canViewQc, group: "system-group" },
+      { key: "defects",      can: canViewQc, group: "system-group" },
+    ].find(item => item.can && item.group === groupKey)?.key;
+    
+    if (firstSub) {
+      setTab(firstSub);
+    }
+  };
 
   useEffect(() => {
     if (defaultTab && tab !== defaultTab && tab === "products") {
       setTab(defaultTab);
+      setMainTab(tabGroups[defaultTab] || "products-group");
     }
   }, [defaultTab]);
 
@@ -349,6 +395,7 @@ const MasterData = () => {
   const warehouses   = useApiData(warehouseApi,  "Gudang",            tab, "warehouses", canViewWarehouses);
   const users        = useApiData(userApi,       "User",              tab, ["users", "shifts"], canViewUsers);
   const shifts       = useApiData(shiftApi,      "Shift",             tab, "shifts", canViewShifts);
+  const workCenters  = useApiData(workCenterApi,  "Work Center",       tab, "work-centers", canViewWorkCenters);
   const batchStatuses= useApiData(batchStatusApi,"Status Batch",      tab, "batch-status", canViewStatuses);
   const qcParams     = useApiData(qcParameterApi, "Parameter QC",    tab, "qc-params", canViewQc);
   const defects      = useApiData(defectCategoryApi, "Kategori Defect", tab, "defects", canViewQc);
@@ -440,19 +487,20 @@ const MasterData = () => {
       <div className="p-6">
         <Tabs value={tab} onValueChange={setTab} data-testid="master-tabs">
           <TabsList className="bg-white border border-[#DFE3E8] p-1 h-auto flex flex-wrap gap-1">
-            {canViewProducts && <TabsTrigger value="products"     className="text-xs h-8">Produk</TabsTrigger>}
-            {canViewProducts && <TabsTrigger value="specs"        className="text-xs h-8">Spesifikasi</TabsTrigger>}
-            {canViewProducts && <TabsTrigger value="grades"       className="text-xs h-8">Mutu Beton</TabsTrigger>}
-            {canViewMaterials && <TabsTrigger value="materials"    className="text-xs h-8">Material</TabsTrigger>}
-            {canViewMolds && <TabsTrigger value="molds"        className="text-xs h-8">Cetakan</TabsTrigger>}
-            {canViewCustomers && <TabsTrigger value="customers"    className="text-xs h-8">Customer</TabsTrigger>}
-            {canViewSuppliers && <TabsTrigger value="suppliers"    className="text-xs h-8">Supplier</TabsTrigger>}
-            {canViewWarehouses && <TabsTrigger value="warehouses"   className="text-xs h-8">Gudang</TabsTrigger>}
-            {canViewUsers && <TabsTrigger value="users"        className="text-xs h-8">User</TabsTrigger>}
-            {canViewShifts && <TabsTrigger value="shifts"       className="text-xs h-8">Shift</TabsTrigger>}
-            {canViewStatuses && <TabsTrigger value="batch-status" className="text-xs h-8">Status Batch</TabsTrigger>}
-            {canViewQc && <TabsTrigger value="qc-params"    className="text-xs h-8">Parameter QC</TabsTrigger>}
-            {canViewQc && <TabsTrigger value="defects"      className="text-xs h-8">Kategori Defect</TabsTrigger>}
+            {canViewProducts    && <TabsTrigger value="products"     className="text-xs h-8">Produk</TabsTrigger>}
+            {canViewProducts    && <TabsTrigger value="specs"        className="text-xs h-8">Spesifikasi</TabsTrigger>}
+            {canViewProducts    && <TabsTrigger value="grades"       className="text-xs h-8">Mutu Beton</TabsTrigger>}
+            {canViewMaterials   && <TabsTrigger value="materials"    className="text-xs h-8">Material</TabsTrigger>}
+            {canViewMolds       && <TabsTrigger value="molds"        className="text-xs h-8">Cetakan</TabsTrigger>}
+            {canViewCustomers   && <TabsTrigger value="customers"    className="text-xs h-8">Customer</TabsTrigger>}
+            {canViewSuppliers   && <TabsTrigger value="suppliers"    className="text-xs h-8">Supplier</TabsTrigger>}
+            {canViewWarehouses  && <TabsTrigger value="warehouses"   className="text-xs h-8">Gudang</TabsTrigger>}
+            {canViewShifts      && <TabsTrigger value="shifts"       className="text-xs h-8">Shift</TabsTrigger>}
+            {canViewWorkCenters && <TabsTrigger value="work-centers" className="text-xs h-8">Work Center</TabsTrigger>}
+            {canViewUsers       && <TabsTrigger value="users"        className="text-xs h-8">User</TabsTrigger>}
+            {canViewStatuses    && <TabsTrigger value="batch-status" className="text-xs h-8">Status Batch</TabsTrigger>}
+            {canViewQc          && <TabsTrigger value="qc-params"    className="text-xs h-8">Parameter QC</TabsTrigger>}
+            {canViewQc          && <TabsTrigger value="defects"      className="text-xs h-8">Kategori Defect</TabsTrigger>}
           </TabsList>
 
           {/* ── PRODUK ── */}
@@ -923,6 +971,42 @@ const MasterData = () => {
                   { key: "penyebab_umum", label: "Penyebab Umum", cls: "text-[#59687A]" },
                   { key: "disposisi",     label: "Disposisi" },
                   { key: "aktif",         label: "Status",        render: (r) => <StatusBadge status={r.aktif ? "Aktif" : "Nonaktif"} /> },
+                ]}
+              />
+            </TabsContent>
+          )}
+
+          {/* ── WORK CENTER ── */}
+          {canViewWorkCenters && (
+            <TabsContent value="work-centers" className="mt-4">
+              <Section testId="work-centers-table" entityName="Work Center"
+                data={workCenters.data} loading={workCenters.loading}
+                onSubmit={canManageWorkCenters ? workCenters.handleCreate : null}
+                onUpdate={canManageWorkCenters ? workCenters.handleUpdate : null}
+                onDelete={canManageWorkCenters ? workCenters.handleDelete : null}
+                addFields={[
+                  { name: "code",                           label: "Kode Work Center",       required: true, placeholder: "WC-01" },
+                  { name: "name",                           label: "Nama Work Center",       required: true, placeholder: "Mixing & Batching" },
+                  { name: "capacity_qty_per_shift",          label: "Kapasitas Unit/Shift",   type: "number" },
+                  { name: "capacity_m3_per_shift",           label: "Kapasitas m³/Shift",     type: "number" },
+                  { name: "shifts_per_day",                  label: "Shift per Hari",         type: "number", default: 1 },
+                  { name: "standard_labor_rate_per_m3",      label: "Labor Rate (Rp/m³)",    type: "number", required: true },
+                  { name: "standard_overhead_rate_per_m3",   label: "Overhead Rate (Rp/m³)", type: "number", required: true },
+                  { name: "description",                     label: "Deskripsi",              type: "textarea", span: 2 },
+                  { name: "is_active",                       label: "Status",                 type: "select", options: [
+                    { value: true,  label: "Aktif" },
+                    { value: false, label: "Nonaktif" },
+                  ], default: true },
+                ]}
+                columns={[
+                  { key: "code",                           label: "Kode",          cls: "font-mono-num text-[#0A6ED1] font-medium" },
+                  { key: "name",                           label: "Nama",          cls: "font-medium" },
+                  { key: "capacity_qty_per_shift",          label: "Kapasitas (Unit)", cls: "text-right font-mono-num" },
+                  { key: "capacity_m3_per_shift",           label: "Kapasitas (m³)",   cls: "text-right font-mono-num" },
+                  { key: "shifts_per_day",                  label: "Shift/Hari",     cls: "text-center font-mono-num" },
+                  { key: "standard_labor_rate_per_m3",      label: "Labor Rate",    render: (r) => formatRupiah(r.standard_labor_rate_per_m3) },
+                  { key: "standard_overhead_rate_per_m3",   label: "Overhead Rate", render: (r) => formatRupiah(r.standard_overhead_rate_per_m3) },
+                  { key: "is_active",                       label: "Status",        render: (r) => <StatusBadge status={r.is_active ? "Aktif" : "Nonaktif"} /> },
                 ]}
               />
             </TabsContent>

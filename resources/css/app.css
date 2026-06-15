@@ -7,3 +7,6 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* ── Deadline urgency animations — injected via JS in ProductionExecution.jsx ── */
+/* Keyframes are defined inline via useEffect to avoid Tailwind purge issues */

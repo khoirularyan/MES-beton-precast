@@ -23,13 +23,15 @@ class WorkCenterController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'code'                   => 'required|string|max:30|unique:production_work_centers,code',
-            'name'                   => 'required|string|max:100',
-            'description'            => 'nullable|string|max:255',
-            'capacity_qty_per_shift' => 'nullable|numeric|min:0',
-            'capacity_m3_per_shift'  => 'nullable|numeric|min:0',
-            'shifts_per_day'         => 'nullable|integer|min:1|max:3',
-            'is_active'              => 'boolean',
+            'code'                            => 'required|string|max:30|unique:global.production_work_centers,code',
+            'name'                            => 'required|string|max:100',
+            'description'                     => 'nullable|string|max:255',
+            'capacity_qty_per_shift'          => 'nullable|numeric|min:0',
+            'capacity_m3_per_shift'           => 'nullable|numeric|min:0',
+            'shifts_per_day'                  => 'nullable|integer|min:1|max:3',
+            'is_active'                       => 'boolean',
+            'standard_labor_rate_per_m3'      => 'required|numeric|min:0',
+            'standard_overhead_rate_per_m3'   => 'required|numeric|min:0',
         ]);
 
         return response()->json(WorkCenter::create($validated), 201);
@@ -43,12 +45,14 @@ class WorkCenterController extends Controller
     public function update(Request $request, WorkCenter $workCenter): JsonResponse
     {
         $validated = $request->validate([
-            'name'                   => 'sometimes|string|max:100',
-            'description'            => 'nullable|string|max:255',
-            'capacity_qty_per_shift' => 'nullable|numeric|min:0',
-            'capacity_m3_per_shift'  => 'nullable|numeric|min:0',
-            'shifts_per_day'         => 'nullable|integer|min:1|max:3',
-            'is_active'              => 'boolean',
+            'name'                            => 'sometimes|string|max:100',
+            'description'                     => 'nullable|string|max:255',
+            'capacity_qty_per_shift'          => 'nullable|numeric|min:0',
+            'capacity_m3_per_shift'           => 'nullable|numeric|min:0',
+            'shifts_per_day'                  => 'nullable|integer|min:1|max:3',
+            'is_active'                       => 'boolean',
+            'standard_labor_rate_per_m3'      => 'sometimes|required|numeric|min:0',
+            'standard_overhead_rate_per_m3'   => 'sometimes|required|numeric|min:0',
         ]);
 
         $workCenter->update($validated);

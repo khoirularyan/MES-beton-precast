@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\ProductionPlan;
 use App\Services\ProductionPlanningService;
 use Illuminate\Http\JsonResponse;
@@ -99,6 +100,8 @@ class ProductionPlanController extends Controller
             // Restore demand to Approved status so it can be re-scheduled
             if ($productionPlan->demand) {
                 $productionPlan->demand->update(['status' => 'Approved']);
+                AuditLog::log('production_demand.reopened', 'production_demand', $productionPlan->demand->id,
+                    ['status' => 'Planned'], ['status' => 'Approved']);
             }
             // Delete associated batches that haven't started yet
             $planningStatus = DB::table('global.production_batch_statuses')

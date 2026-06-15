@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowRight, Clock, Play, CheckCircle2, History, User, Calendar, RefreshCw, AlertTriangle, AlertCircle, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { productionBatchApi, batchStatusApi } from "@/lib/api";
@@ -18,6 +18,76 @@ const ProductionExecution = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [transitionNotes, setTransitionNotes] = useState("");
+
+  // Inject deadline keyframe animations once on mount
+  useEffect(() => {
+    const styleId = 'deadline-keyframes';
+    if (document.getElementById(styleId)) return;
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      @keyframes deadline-notice {
+        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(192,128,0,0); }
+        50%      { opacity:0.88; box-shadow:0 0 2px 2px rgba(192,128,0,0.2); }
+      }
+      @keyframes deadline-warning {
+        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(233,115,12,0); }
+        50%      { opacity:0.84; box-shadow:0 0 3px 2px rgba(233,115,12,0.25); }
+      }
+      @keyframes deadline-critical {
+        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(176,0,32,0); }
+        40%      { opacity:0.78; box-shadow:0 0 4px 2px rgba(176,0,32,0.3); }
+      }
+      @keyframes deadline-overdue {
+        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(176,0,32,0); }
+        35%      { opacity:0.7; box-shadow:0 0 5px 2px rgba(176,0,32,0.35); }
+      }
+      @keyframes dot-beat-notice   { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.8);opacity:0.5} }
+      @keyframes dot-beat-warning  { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(2.1);opacity:0.45} }
+      @keyframes dot-beat-critical { 0%,100%{transform:scale(1);opacity:1} 40%{transform:scale(2.4);opacity:0.38} }
+      @keyframes dot-beat-overdue  { 0%,100%{transform:scale(1);opacity:1} 30%{transform:scale(2.8);opacity:0.3} }
+      @keyframes icon-shake {
+        0%,100%{transform:rotate(0deg)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(12deg)}
+        60%{transform:rotate(-8deg)} 80%{transform:rotate(8deg)}
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
+  // Returns inline animation style per urgency level
+  const deadlineAnim = (urgency) => {
+    if (!urgency || urgency === 'ok' || urgency === 'done') return {};
+    const map = {
+      notice:   { animation: 'deadline-notice   3s ease-in-out infinite' },
+      warning:  { animation: 'deadline-warning  2s ease-in-out infinite' },
+      critical: { animation: 'deadline-critical 1.2s ease-in-out infinite' },
+      overdue:  { animation: 'deadline-overdue  0.75s ease-in-out infinite' },
+      today:    { animation: 'deadline-overdue  0.75s ease-in-out infinite' },
+    };
+    return map[urgency] || {};
+  };
+
+  const dotAnim = (urgency) => {
+    if (!urgency || urgency === 'ok' || urgency === 'done') return {};
+    const map = {
+      notice:   { animation: 'dot-beat-notice   3s ease-in-out infinite' },
+      warning:  { animation: 'dot-beat-warning  2s ease-in-out infinite' },
+      critical: { animation: 'dot-beat-critical 1.2s ease-in-out infinite' },
+      overdue:  { animation: 'dot-beat-overdue  0.75s ease-in-out infinite' },
+      today:    { animation: 'dot-beat-overdue  0.75s ease-in-out infinite' },
+    };
+    return map[urgency] || {};
+  };
+
+  const iconAnim = (urgency) => {
+    if (urgency === 'overdue' || urgency === 'today') {
+      return { animation: 'icon-shake 1s ease-in-out infinite' };
+    }
+    if (urgency === 'critical') {
+      return { animation: 'icon-shake 1.5s ease-in-out infinite' };
+    }
+    return {};
+  };
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [filterQuery, setFilterQuery] = useState("");
 
@@ -115,30 +185,89 @@ const ProductionExecution = () => {
     return { text: "Tepat Waktu", type: "ontime" };
   };
 
-  // Schedule Status Calculator (On Schedule, Near Due, Overdue)
-  const getScheduleStatus = (batch) => {
-    // If already finished/delivered, it's completed
-    const isCompleted = batch.status_model?.kode === 'BS-05' || batch.status_model?.kode === 'BS-06';
+  // Schedule Status Calculator — based on planned_end (deadline) with tiered urgency
+  const getDeadlineStatus = (batch) => {
+    // Already completed/delivered → done, no urgency
+    const statusName = (batch.status_model?.status || batch.statusModel?.status || '').toLowerCase();
+    const isCompleted = statusName.includes('finish') || statusName.includes('selesai') ||
+                        statusName.includes('deliver') || statusName.includes('kirim');
     if (isCompleted) {
-      return { label: "On Schedule", color: "text-[#107E3E] bg-[#E5F6ED]", dot: "bg-[#107E3E]" };
+      return { label: 'Selesai', color: 'text-[#107E3E] bg-[#E5F6ED]', dot: 'bg-[#107E3E]', urgency: 'done' };
     }
 
-    const plan = batch.planned_date ? new Date(batch.planned_date) : null;
-    if (!plan) return { label: "On Schedule", color: "text-[#107E3E] bg-[#E5F6ED]", dot: "bg-[#107E3E]" };
+    // Use planned_end as deadline; fallback to planned_date
+    const deadlineRaw = batch.planned_end || batch.planned_date;
+    if (!deadlineRaw) {
+      return { label: 'On Schedule', color: 'text-[#107E3E] bg-[#E5F6ED]', dot: 'bg-[#107E3E]', urgency: 'ok' };
+    }
 
+    const deadline = new Date(deadlineRaw);
+    deadline.setHours(23, 59, 59, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    plan.setHours(0, 0, 0, 0);
 
-    const diffDays = Math.round((plan - today) / (1000 * 60 * 60 * 24));
+    const diffMs   = deadline - today;
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return { label: "Overdue", color: "text-[#B00020] bg-[#FBE6E9]", dot: "bg-[#B00020]" };
+      // Past deadline
+      const daysLate = Math.abs(diffDays);
+      return {
+        label: `Overdue ${daysLate}h`,
+        color: 'text-[#B00020] bg-[#FBE6E9]',
+        dot: 'bg-[#B00020]',
+        urgency: 'overdue',
+        daysLeft: diffDays,
+      };
     } else if (diffDays === 0) {
-      return { label: "Near Due", color: "text-[#E9730C] bg-[#FFF2E5]", dot: "bg-[#E9730C]" };
+      return {
+        label: 'Due Hari Ini',
+        color: 'text-[#B00020] bg-[#FBE6E9]',
+        dot: 'bg-[#B00020]',
+        urgency: 'today',
+        daysLeft: 0,
+      };
+    } else if (diffDays <= 7) {
+      // < 1 minggu — merah
+      return {
+        label: `${diffDays} Hari Lagi`,
+        color: 'text-[#B00020] bg-[#FBE6E9]',
+        dot: 'bg-[#B00020]',
+        urgency: 'critical',
+        daysLeft: diffDays,
+      };
+    } else if (diffDays <= 14) {
+      // < 2 minggu — oranye
+      return {
+        label: `${diffDays} Hari Lagi`,
+        color: 'text-[#E9730C] bg-[#FFF2E5]',
+        dot: 'bg-[#E9730C]',
+        urgency: 'warning',
+        daysLeft: diffDays,
+      };
+    } else if (diffDays <= 21) {
+      // < 3 minggu — kuning
+      return {
+        label: `${diffDays} Hari Lagi`,
+        color: 'text-[#C08000] bg-[#FEF9E6]',
+        dot: 'bg-[#C08000]',
+        urgency: 'notice',
+        daysLeft: diffDays,
+      };
     }
-    return { label: "On Schedule", color: "text-[#107E3E] bg-[#E5F6ED]", dot: "bg-[#107E3E]" };
+
+    // > 3 minggu — hijau
+    return {
+      label: 'On Schedule',
+      color: 'text-[#107E3E] bg-[#E5F6ED]',
+      dot: 'bg-[#107E3E]',
+      urgency: 'ok',
+      daysLeft: diffDays,
+    };
   };
+
+  // Legacy alias used by existing variance block
+  const getScheduleStatus = (batch) => getDeadlineStatus(batch);
 
   const getActionLabel = (nextStatusName) => {
     if (!nextStatusName) return "";
@@ -214,10 +343,11 @@ const ProductionExecution = () => {
               className="w-full h-9 px-3 text-sm border border-[#DFE3E8] rounded focus:outline-none focus:border-[#0A6ED1]"
             />
           </div>
-          <div className="flex items-center gap-3 text-xs text-[#59687A]">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#107E3E]" />On Schedule</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#E9730C]" />Near Due</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B00020]" />Overdue</span>
+          <div className="flex items-center gap-3 text-xs text-[#59687A] flex-wrap">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#107E3E]" />On Schedule (&gt;3 minggu)</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#C08000]" />&lt; 3 Minggu</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#E9730C]" />&lt; 2 Minggu</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B00020]" />&lt; 1 Minggu / Overdue</span>
           </div>
         </div>
 
@@ -274,9 +404,14 @@ const ProductionExecution = () => {
                       </div>
                     ) : (
                       colBatches.map((batch) => {
-                        const schedInfo = getScheduleStatus(batch);
+                        const schedInfo = getDeadlineStatus(batch);
                         const variance = getVarianceString(batch);
                         
+                        // deadline from planned_end, fallback to planned_date
+                        const deadlineDisplay = batch.planned_end
+                          ? new Date(batch.planned_end).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                          : (batch.planned_date || 'N/A');
+
                         // Check if active running status (Casting, Curing, QC)
                         const isActiveRunning = ['BS-03', 'BS-07', 'BS-04'].includes(columnStatus.kode);
 
@@ -296,20 +431,41 @@ const ProductionExecution = () => {
                                 >
                                   <History className="w-3.5 h-3.5" />
                                 </button>
-                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-1 ${schedInfo.color}`}>
-                                  <span className={`w-1 h-1 rounded-full ${schedInfo.dot}`} />
+                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-1 ${schedInfo.color}`}
+                                  style={deadlineAnim(schedInfo.urgency)}>
+                                  <span className={`w-1 h-1 rounded-full ${schedInfo.dot}`}
+                                    style={dotAnim(schedInfo.urgency)} />
                                   {schedInfo.label}
                                 </span>
                               </div>
                             </div>
 
                             {/* Product Info */}
-                            <div className="flex items-start gap-2.5">
-                              <ProductIcon name={batch.product?.nama || ""} size="sm" className="mt-0.5" />
-                              <div className="min-w-0">
-                                <h4 className="text-xs font-bold text-[#1C252E] leading-tight truncate">{batch.product?.nama || "Unknown Product"}</h4>
-                                <p className="text-[10px] text-[#A6B0BE] mt-0.5">SO: {batch.sales_order?.no || "Stock (MTS)"}</p>
+                            <div className="flex items-start justify-between gap-2.5">
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <ProductIcon name={batch.product?.nama || ""} size="sm" className="mt-0.5" />
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-bold text-[#1C252E] leading-tight truncate">{batch.product?.nama || "Unknown Product"}</h4>
+                                  <p className="text-[10px] text-[#A6B0BE] mt-0.5">SO: {batch.sales_order?.no || "Stock (MTS)"}</p>
+                                </div>
                               </div>
+                              {columnStatus.kode === 'BS-04' && (
+                                <div className="flex-shrink-0">
+                                  {batch.qc_inspections && batch.qc_inspections.length > 0 ? (
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                      batch.qc_inspections[batch.qc_inspections.length - 1].status === 'Lulus' ? 'bg-[#E5F6ED] text-[#107E3E] border border-[#107E3E]/20' :
+                                      batch.qc_inspections[batch.qc_inspections.length - 1].status === 'Lulus Bersyarat' ? 'bg-[#FFF2E5] text-[#E9730C] border border-[#E9730C]/20' :
+                                      'bg-[#FBE6E9] text-[#B00020] border border-[#B00020]/20'
+                                    }`}>
+                                      QC: {batch.qc_inspections[batch.qc_inspections.length - 1].status}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#E5F0FA] text-[#0A6ED1] border border-[#0A6ED1]/20 animate-pulse">
+                                      Ready QC
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             {/* Batch Info Grid */}
@@ -325,10 +481,24 @@ const ProductionExecution = () => {
                                 </div>
                               </div>
                               <div>
-                                <span className="text-[#A6B0BE]">Tgl Jadwal:</span>
+                                <span className="text-[#A6B0BE]">Tgl Mulai:</span>
                                 <div className="font-semibold text-[#1C252E] font-mono-num">{batch.planned_date || "N/A"}</div>
                               </div>
                               <div>
+                                <span className="text-[#A6B0BE]">Deadline:</span>
+                                <div className={`font-semibold font-mono-num ${
+                                  schedInfo.urgency === 'overdue' || schedInfo.urgency === 'critical' || schedInfo.urgency === 'today'
+                                    ? 'text-[#B00020]'
+                                    : schedInfo.urgency === 'warning'
+                                    ? 'text-[#E9730C]'
+                                    : schedInfo.urgency === 'notice'
+                                    ? 'text-[#C08000]'
+                                    : 'text-[#59687A]'
+                                }`}>
+                                  {deadlineDisplay}
+                                </div>
+                              </div>
+                              <div className="col-span-2">
                                 <span className="text-[#A6B0BE]">Schedule Variance:</span>
                                 <div className={`font-semibold font-mono-num ${
                                   variance.type === 'late' ? 'text-[#B00020]' : variance.type === 'early' ? 'text-[#107E3E]' : 'text-[#59687A]'
@@ -337,6 +507,52 @@ const ProductionExecution = () => {
                                 </div>
                               </div>
                             </div>
+
+                            {/* Deadline Warning Banner */}
+                            {(schedInfo.urgency === 'overdue' || schedInfo.urgency === 'today' || schedInfo.urgency === 'critical' || schedInfo.urgency === 'warning' || schedInfo.urgency === 'notice') && schedInfo.urgency !== 'done' && (
+                              <div
+                                className={`flex items-center gap-2 rounded px-2.5 py-1.5 text-[10px] font-semibold border ${
+                                  schedInfo.urgency === 'overdue' || schedInfo.urgency === 'today'
+                                    ? 'bg-[#FBE6E9] border-[#F5A5B0] text-[#B00020]'
+                                    : schedInfo.urgency === 'critical'
+                                    ? 'bg-[#FBE6E9] border-[#F5A5B0] text-[#B00020]'
+                                    : schedInfo.urgency === 'warning'
+                                    ? 'bg-[#FFF2E5] border-[#FAC98A] text-[#E9730C]'
+                                    : 'bg-[#FEF9E6] border-[#EDD57A] text-[#C08000]'
+                                }`}
+                                style={deadlineAnim(schedInfo.urgency)}
+                              >
+                                <AlertTriangle
+                                  className="w-3 h-3 flex-shrink-0"
+                                  style={iconAnim(schedInfo.urgency)}
+                                />
+                                <span className="flex-1">
+                                  {schedInfo.urgency === 'overdue'
+                                    ? `Deadline terlewat ${Math.abs(schedInfo.daysLeft)} hari`
+                                    : schedInfo.urgency === 'today'
+                                    ? 'Deadline hari ini — selesaikan segera'
+                                    : schedInfo.urgency === 'critical'
+                                    ? `Deadline dalam ${schedInfo.daysLeft} hari — kurang dari 1 minggu`
+                                    : schedInfo.urgency === 'warning'
+                                    ? `Deadline dalam ${schedInfo.daysLeft} hari — kurang dari 2 minggu`
+                                    : `Deadline dalam ${schedInfo.daysLeft} hari — kurang dari 3 minggu`
+                                  }
+                                </span>
+                                {/* Animated countdown dot */}
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                    schedInfo.urgency === 'overdue' || schedInfo.urgency === 'today'
+                                      ? 'bg-[#B00020]'
+                                      : schedInfo.urgency === 'critical'
+                                      ? 'bg-[#B00020]'
+                                      : schedInfo.urgency === 'warning'
+                                      ? 'bg-[#E9730C]'
+                                      : 'bg-[#C08000]'
+                                  }`}
+                                  style={dotAnim(schedInfo.urgency)}
+                                />
+                              </div>
+                            )}
 
                             {/* Active production running indicators */}
                             {isActiveRunning && batch.actual_start && (

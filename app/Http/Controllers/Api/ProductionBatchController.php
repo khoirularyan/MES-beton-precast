@@ -16,7 +16,7 @@ class ProductionBatchController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $relations = ['product', 'mold', 'statusModel'];
+        $relations = ['product', 'mold', 'statusModel', 'salesOrder', 'qcInspections'];
         if (!$request->boolean('upcoming')) {
             $relations = array_merge($relations, ['workCenter', 'plan', 'cost']);
         }
@@ -147,7 +147,7 @@ class ProductionBatchController extends Controller
         return response()->json(
             $batch->load([
                 'product', 'workCenter', 'plan', 'demand.salesOrder', 'cost', 'mold', 'statusModel',
-                'statusLogs.fromStatus', 'statusLogs.toStatus', 'statusLogs.user'
+                'statusLogs.fromStatus', 'statusLogs.toStatus', 'statusLogs.user', 'qcInspections'
             ])
         );
     }

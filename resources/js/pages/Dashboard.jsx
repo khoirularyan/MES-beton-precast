@@ -4,6 +4,7 @@ import KPIDrilldownDialog from "@/components/shared/KPIDrilldownDialog";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -17,7 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dashboardApi } from "@/lib/api";
 import {
   Target, TrendingUp, Thermometer, ShieldCheck, AlertTriangle, Package,
-  Boxes, Hammer, Activity, Download, RefreshCw
+  Boxes, Hammer, Activity, Download, RefreshCw, AlertCircle
 } from "lucide-react";
 import { formatNumber, formatRupiah, company } from "@/data/mockData";
 
@@ -151,27 +152,44 @@ const getKpiDefinitions = (data) => {
       label: "Production Cost Today",
       formula: "Cost Today = Σ total_cost dari batch produksi hari ini",
       dataSource: "Production Costs (planned_date = today)",
-      deskripsi: "Total biaya standar produksi dari batch yang dijadwalkan hari ini.",
+      deskripsi: cost.today_production_cost != null
+        ? "Total biaya standar produksi dari batch yang dijadwalkan hari ini."
+        : "Belum ada data biaya hari ini. Pastikan batch sudah mencapai status Casting.",
       breakdown: [
-        { label: "Biaya Hari Ini", value: cost.today_production_cost || 0, unit: "Rp", color: "#0A6ED1" }
+        { label: "Biaya Hari Ini", value: cost.today_production_cost != null ? cost.today_production_cost : "Belum ada data", unit: cost.today_production_cost != null ? "Rp" : "", color: "#0A6ED1" }
       ]
     },
     "kpi-cost-month": {
       label: "Production Cost This Month",
       formula: "Cost This Month = Σ total_cost dari batch produksi bulan ini",
       dataSource: "Production Costs (planned_date = this month)",
-      deskripsi: "Total biaya standar produksi dari batch yang dijadwalkan bulan ini.",
+      deskripsi: cost.monthly_production_cost != null
+        ? "Total biaya standar produksi dari batch yang dijadwalkan bulan ini."
+        : "Belum ada data biaya bulan ini. Data muncul setelah batch mencapai status Casting.",
       breakdown: [
-        { label: "Biaya Bulan Ini", value: cost.monthly_production_cost || 0, unit: "Rp", color: "#E9730C" }
+        { label: "Biaya Bulan Ini", value: cost.monthly_production_cost != null ? cost.monthly_production_cost : "Belum ada data", unit: cost.monthly_production_cost != null ? "Rp" : "", color: "#E9730C" }
       ]
     },
     "kpi-cost-avg": {
-      label: "Average Cost per m³",
-      formula: "Average Cost = Total Cost Month ÷ Total Volume Month",
+      label: "Average Cost per m\u00b3",
+      formula: "Average Cost = Total Cost Month \u00f7 Total Volume Month",
       dataSource: "Production Costs & Batches",
-      deskripsi: "Rata-rata biaya standar produksi per meter kubik untuk bulan ini.",
+      deskripsi: cost.average_cost_per_m3 != null
+        ? "Rata-rata biaya standar produksi per meter kubik untuk bulan ini."
+        : "Belum ada data biaya per m\u00b3. Pastikan target_volume_m3 diisi pada batch produksi.",
       breakdown: [
-        { label: "Rata-rata / m³", value: cost.average_cost_per_m3 || 0, unit: "Rp/m³", color: "#107E3E" }
+        { label: "Rata-rata / m\u00b3", value: cost.average_cost_per_m3 != null ? cost.average_cost_per_m3 : "Belum ada data", unit: cost.average_cost_per_m3 != null ? "Rp/m\u00b3" : "", color: "#107E3E" }
+      ]
+    },
+    "kpi-fg-value": {
+      label: "FG Inventory Value",
+      formula: "FG Value = Σ (qty_on_hand × cost_per_unit) per lot dari InventoryBatch",
+      dataSource: "production_inventory_batches (cost_per_unit)",
+      deskripsi: inv.fg_inventory_value != null
+        ? "Nilai valuasi finansial produk jadi berdasarkan HPP per unit dari lot produksi."
+        : "Belum ada nilai inventory FG. Data muncul setelah batch selesai (Finished) dan cost_per_unit tercatat.",
+      breakdown: [
+        { label: "Nilai FG", value: inv.fg_inventory_value != null ? formatRupiah(inv.fg_inventory_value) : "Belum ada data", color: "#107E3E" }
       ]
     }
   };
@@ -255,26 +273,77 @@ const Dashboard = () => {
           planDayTotal={production.plan_day_total || 1}
         />
 
-        {/* KPI Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <KPICard testId="kpi-target" label="Production Target" value={isLoading ? "..." : formatNumber(production.target_today)} unit="unit" icon={Target} accent="neutral" info={kpiDefs["kpi-target"].deskripsi} onClick={() => openKPI("kpi-target", "neutral", `${formatNumber(production.target_today)} unit`)} />
-          <KPICard testId="kpi-realisasi" label="Actual Today" value={isLoading ? "..." : formatNumber(production.actual_today)} unit="unit" icon={TrendingUp} accent="default" info={kpiDefs["kpi-realisasi"].deskripsi} onClick={() => openKPI("kpi-realisasi", "default", `${formatNumber(production.actual_today)} unit`)} />
-          <KPICard testId="kpi-achievement" label="Achievement" value={isLoading ? "..." : `${(production.achievement || 0).toFixed(1)}%`} icon={Activity} accent={(production.achievement || 0) >= 90 ? "success" : "warning"} info={kpiDefs["kpi-achievement"].deskripsi} onClick={() => openKPI("kpi-achievement", (production.achievement || 0) >= 90 ? "success" : "warning", `${(production.achievement || 0).toFixed(1)}%`)} />
-          <KPICard testId="kpi-curing" label="Active Batch" value={isLoading ? "..." : formatNumber(production.active_batches)} unit="batch" icon={Boxes} accent="warning" info={kpiDefs["kpi-curing"].deskripsi} onClick={() => openKPI("kpi-curing", "warning", `${formatNumber(production.active_batches)} batch`)} />
-          <KPICard testId="kpi-qc" label="Overdue Batch" value={isLoading ? "..." : formatNumber(production.overdue_batches)} unit="batch" icon={AlertTriangle} accent="error" info={kpiDefs["kpi-qc"].deskripsi} onClick={() => openKPI("kpi-qc", "error", `${formatNumber(production.overdue_batches)} batch`)} />
-          <KPICard testId="kpi-reject" label="Low Stock Material" value={isLoading ? "..." : formatNumber(inventory.low_stock_count)} unit="item" icon={AlertTriangle} accent="default" info={kpiDefs["kpi-reject"].deskripsi} onClick={() => openKPI("kpi-reject", "default", `${formatNumber(inventory.low_stock_count)} item`)} />
+        {/* KPI Tabs */}
+        <Tabs defaultValue="production" className="w-full" data-testid="kpi-tabs">
+          <TabsList className="bg-white border border-[#DFE3E8] p-1 h-auto flex flex-wrap gap-1 max-w-max">
+            <TabsTrigger value="production" className="text-xs h-8">Production & Molds</TabsTrigger>
+            <TabsTrigger value="inventory" className="text-xs h-8">Inventory Status</TabsTrigger>
+            <TabsTrigger value="delivery" className="text-xs h-8">Delivery Logistics</TabsTrigger>
+            <TabsTrigger value="costing" className="text-xs h-8">Financial & Costing</TabsTrigger>
+          </TabsList>
 
-          <KPICard testId="kpi-stok" label="Finished Goods Stock" value={isLoading ? "..." : formatNumber(inventory.finished_goods_stock)} unit="unit" icon={Package} accent="success" info={kpiDefs["kpi-stok"].deskripsi} onClick={() => openKPI("kpi-stok", "success", `${formatNumber(inventory.finished_goods_stock)} unit`)} />
-          <KPICard testId="kpi-material" label="Material Inventory Value" value={isLoading ? "..." : formatRupiah(inventory.material_value)} icon={Boxes} accent="default" info={kpiDefs["kpi-material"].deskripsi} onClick={() => openKPI("kpi-material", "default", formatRupiah(inventory.material_value))} />
-          <KPICard testId="kpi-mold" label="Mold Utilization" value={isLoading ? "..." : `${(production.mold_utilization || 0).toFixed(1)}%`} icon={Hammer} accent={(production.mold_utilization || 0) >= 80 ? "success" : "warning"} info={kpiDefs["kpi-mold"].deskripsi} onClick={() => openKPI("kpi-mold", (production.mold_utilization || 0) >= 80 ? "success" : "warning", `${(production.mold_utilization || 0).toFixed(1)}%`)} />
-          <KPICard testId="kpi-wip" label="Stock Aging > 30d" value={isLoading ? "..." : formatNumber(inventory.aging_stock_qty)} unit="unit" icon={Activity} accent="neutral" info={kpiDefs["kpi-wip"].deskripsi} onClick={() => openKPI("kpi-wip", "neutral", `${formatNumber(inventory.aging_stock_qty)} unit`)} />
-          <KPICard testId="kpi-efisiensi" label="Delivery Performance" value={isLoading ? "..." : `${(delivery.performance || 0).toFixed(1)}%`} icon={TrendingUp} accent="success" info={kpiDefs["kpi-efisiensi"].deskripsi} onClick={() => openKPI("kpi-efisiensi", "success", `${(delivery.performance || 0).toFixed(1)}%`)} />
-          <KPICard testId="kpi-jadi-hari" label="Pending Delivery" value={isLoading ? "..." : formatNumber(delivery.pending_count)} unit="order" icon={ShieldCheck} accent="success" info={kpiDefs["kpi-jadi-hari"].deskripsi} onClick={() => openKPI("kpi-jadi-hari", "success", `${formatNumber(delivery.pending_count)} order`)} />
-          
-          <KPICard testId="kpi-cost-today" label="Production Cost Today" value={isLoading ? "..." : formatRupiah(costing.today_production_cost)} icon={TrendingUp} accent="neutral" info={kpiDefs["kpi-cost-today"].deskripsi} onClick={() => openKPI("kpi-cost-today", "neutral", formatRupiah(costing.today_production_cost))} />
-          <KPICard testId="kpi-cost-month" label="Production Cost This Month" value={isLoading ? "..." : formatRupiah(costing.monthly_production_cost)} icon={Activity} accent="neutral" info={kpiDefs["kpi-cost-month"].deskripsi} onClick={() => openKPI("kpi-cost-month", "neutral", formatRupiah(costing.monthly_production_cost))} />
-          <KPICard testId="kpi-cost-avg" label="Average Cost per m³" value={isLoading ? "..." : formatRupiah(costing.average_cost_per_m3)} icon={ShieldCheck} accent="success" info={kpiDefs["kpi-cost-avg"].deskripsi} onClick={() => openKPI("kpi-cost-avg", "success", formatRupiah(costing.average_cost_per_m3))} />
-        </div>
+          <TabsContent value="production" className="mt-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <KPICard testId="kpi-target" label="Production Target" value={isLoading ? "..." : formatNumber(production.target_today)} unit="unit" icon={Target} accent="neutral" info={kpiDefs["kpi-target"].deskripsi} onClick={() => openKPI("kpi-target", "neutral", `${formatNumber(production.target_today)} unit`)} />
+              <KPICard testId="kpi-realisasi" label="Actual Today" value={isLoading ? "..." : formatNumber(production.actual_today)} unit="unit" icon={TrendingUp} accent="default" info={kpiDefs["kpi-realisasi"].deskripsi} onClick={() => openKPI("kpi-realisasi", "default", `${formatNumber(production.actual_today)} unit`)} />
+              <KPICard testId="kpi-achievement" label="Achievement" value={isLoading ? "..." : `${(production.achievement || 0).toFixed(1)}%`} icon={Activity} accent={(production.achievement || 0) >= 90 ? "success" : "warning"} info={kpiDefs["kpi-achievement"].deskripsi} onClick={() => openKPI("kpi-achievement", (production.achievement || 0) >= 90 ? "success" : "warning", `${(production.achievement || 0).toFixed(1)}%`)} />
+              <KPICard testId="kpi-curing" label="Active Batch" value={isLoading ? "..." : formatNumber(production.active_batches)} unit="batch" icon={Boxes} accent="warning" info={kpiDefs["kpi-curing"].deskripsi} onClick={() => openKPI("kpi-curing", "warning", `${formatNumber(production.active_batches)} batch`)} />
+              <KPICard testId="kpi-qc" label="Overdue Batch" value={isLoading ? "..." : formatNumber(production.overdue_batches)} unit="batch" icon={AlertTriangle} accent="error" info={kpiDefs["kpi-qc"].deskripsi} onClick={() => openKPI("kpi-qc", "error", `${formatNumber(production.overdue_batches)} batch`)} />
+              <KPICard testId="kpi-mold" label="Mold Utilization" value={isLoading ? "..." : `${(production.mold_utilization || 0).toFixed(1)}%`} icon={Hammer} accent={(production.mold_utilization || 0) >= 80 ? "success" : "warning"} info={kpiDefs["kpi-mold"].deskripsi} onClick={() => openKPI("kpi-mold", (production.mold_utilization || 0) >= 80 ? "success" : "warning", `${(production.mold_utilization || 0).toFixed(1)}%`)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="inventory" className="mt-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KPICard testId="kpi-stok" label="Finished Goods Stock" value={isLoading ? "..." : formatNumber(inventory.finished_goods_stock)} unit="unit" icon={Package} accent="success" info={kpiDefs["kpi-stok"].deskripsi} onClick={() => openKPI("kpi-stok", "success", `${formatNumber(inventory.finished_goods_stock)} unit`)} />
+              <KPICard testId="kpi-fg-value" label="FG Inventory Value" value={isLoading ? "..." : (inventory.fg_inventory_value != null ? formatRupiah(inventory.fg_inventory_value) : "–")} icon={TrendingUp} accent={inventory.fg_inventory_value != null ? "success" : "neutral"} info={kpiDefs["kpi-fg-value"].deskripsi} onClick={() => openKPI("kpi-fg-value", "success", inventory.fg_inventory_value != null ? formatRupiah(inventory.fg_inventory_value) : "Belum ada data")} />
+              <KPICard testId="kpi-material" label="Material Inventory Value" value={isLoading ? "..." : formatRupiah(inventory.material_value)} icon={Boxes} accent="default" info={kpiDefs["kpi-material"].deskripsi} onClick={() => openKPI("kpi-material", "default", formatRupiah(inventory.material_value))} />
+              <KPICard testId="kpi-reject" label="Low Stock Material" value={isLoading ? "..." : formatNumber(inventory.low_stock_count)} unit="item" icon={AlertTriangle} accent="default" info={kpiDefs["kpi-reject"].deskripsi} onClick={() => openKPI("kpi-reject", "default", `${formatNumber(inventory.low_stock_count)} item`)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="delivery" className="mt-3">
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-3 max-w-2xl">
+              <KPICard testId="kpi-efisiensi" label="Delivery Performance" value={isLoading ? "..." : `${(delivery.performance || 0).toFixed(1)}%`} icon={TrendingUp} accent="success" info={kpiDefs["kpi-efisiensi"].deskripsi} onClick={() => openKPI("kpi-efisiensi", "success", `${(delivery.performance || 0).toFixed(1)}%`)} />
+              <KPICard testId="kpi-jadi-hari" label="Pending Delivery" value={isLoading ? "..." : formatNumber(delivery.pending_count)} unit="order" icon={ShieldCheck} accent="success" info={kpiDefs["kpi-jadi-hari"].deskripsi} onClick={() => openKPI("kpi-jadi-hari", "success", `${formatNumber(delivery.pending_count)} order`)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="costing" className="mt-3">
+            {!isLoading && costing.rates_configured === false && (
+              <div className="mb-3 flex items-start gap-2.5 bg-[#FDF3E7] border border-[#F8C98C] rounded-md px-4 py-3">
+                <span className="text-[#E9730C] mt-0.5 flex-shrink-0">⚠️</span>
+                <div>
+                  <span className="text-xs font-semibold text-[#7A3B00]">Work Center Rates belum dikonfigurasi — </span>
+                  <span className="text-xs text-[#7A3B00]">Labor dan overhead rate di Master Data → Work Centers masih 0. HPP yang tampil hanya mencerminkan biaya material.</span>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <KPICard testId="kpi-cost-today" label="Production Cost Today"
+                value={isLoading ? "..." : (costing.today_production_cost != null ? formatRupiah(costing.today_production_cost) : "–")}
+                icon={TrendingUp} accent={costing.today_production_cost != null ? "neutral" : "neutral"}
+                info={kpiDefs["kpi-cost-today"].deskripsi}
+                onClick={() => openKPI("kpi-cost-today", "neutral", costing.today_production_cost != null ? formatRupiah(costing.today_production_cost) : "Belum ada data")} />
+              <KPICard testId="kpi-cost-month" label="Production Cost Month"
+                value={isLoading ? "..." : (costing.monthly_production_cost != null ? formatRupiah(costing.monthly_production_cost) : "–")}
+                icon={Activity} accent={costing.monthly_production_cost != null ? "neutral" : "neutral"}
+                info={kpiDefs["kpi-cost-month"].deskripsi}
+                onClick={() => openKPI("kpi-cost-month", "neutral", costing.monthly_production_cost != null ? formatRupiah(costing.monthly_production_cost) : "Belum ada data")} />
+              <KPICard testId="kpi-cost-avg" label="Average Cost / m\u00b3"
+                value={isLoading ? "..." : (costing.average_cost_per_m3 != null ? formatRupiah(costing.average_cost_per_m3) : "–")}
+                icon={ShieldCheck} accent={costing.average_cost_per_m3 != null ? "success" : "neutral"}
+                info={kpiDefs["kpi-cost-avg"].deskripsi}
+                onClick={() => openKPI("kpi-cost-avg", "success", costing.average_cost_per_m3 != null ? formatRupiah(costing.average_cost_per_m3) : "Belum ada data")} />
+            </div>
+            {!isLoading && !costing.has_cost_data && (
+              <div className="mt-4 flex items-center gap-2 text-xs text-[#59687A] bg-[#F8FAFC] border border-[#DFE3E8] rounded px-4 py-3">
+                <span>ℹ️</span>
+                <span>Data biaya akan muncul setelah batch produksi pertama mencapai status <strong>Casting</strong> dan StandardCostingService memproses HPP-nya.</span>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         <KPIDrilldownDialog
           open={Boolean(drilldown)}

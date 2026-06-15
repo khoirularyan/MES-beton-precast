@@ -46,9 +46,20 @@ class InventoryController extends Controller
                 ->orderBy('pp.kode')
                 ->get();
         } else {
-            // Fetch FG or Reject from production_inventory
+            // Fetch FG or Reject from production_inventory with lot-level cost data
             $query = DB::table('public.production_inventory as pi')
                 ->join('global.production_products as pp', 'pi.product_id', '=', 'pp.id')
+                ->leftJoin(DB::raw(
+                    "(SELECT product_id,
+                        ROUND(AVG(cost_per_unit)::numeric, 0) AS avg_cpu,
+                        ROUND(SUM(qty_on_hand * cost_per_unit)::numeric, 0) AS lot_value
+                      FROM public.production_inventory_batches
+                      WHERE qty_on_hand > 0
+                        AND cost_per_unit IS NOT NULL
+                        AND cost_per_unit > 0
+                        AND status IN ('Available','Partial','Reserved')
+                      GROUP BY product_id) AS ib"
+                ), 'ib.product_id', '=', 'pi.product_id')
                 ->select([
                     'pp.kode',
                     'pp.nama',
@@ -56,7 +67,9 @@ class InventoryController extends Controller
                     'pi.reserved',
                     DB::raw('(pi.stok - pi.reserved) as available'),
                     'pi.gudang',
-                    'pi.lokasi'
+                    'pi.lokasi',
+                    DB::raw('COALESCE(ib.avg_cpu, 0) as cost_per_unit'),
+                    DB::raw('COALESCE(ib.lot_value, 0) as total_lot_value'),
                 ]);
 
             if ($warehouseCode && $warehouseCode !== 'All') {
@@ -340,6 +353,17 @@ class InventoryController extends Controller
 
         $totalReservedQty = DB::table('public.production_inventory')->whereIn('gudang', ['WH-FG', 'GD-03'])->sum('reserved');
 
+        // FG Inventory total value from lot-level cost (InventoryBatch)
+        $fgInventoryValue = (float) DB::table('public.production_inventory_batches')
+            ->whereIn('status', ['Available', 'Partial', 'Reserved'])
+            ->whereRaw('qty_on_hand > 0')
+            ->whereNotNull('cost_per_unit')
+            ->where('cost_per_unit', '>', 0)
+            ->selectRaw('SUM(qty_on_hand * cost_per_unit) as total_value')
+            ->value('total_value') ?: 0.0;
+
+        $fgHasCostData = $fgInventoryValue > 0;
+
         return response()->json([
             'finished_goods'      => $finishedGoods,
             'warehouses'          => $warehouses,
@@ -349,6 +373,8 @@ class InventoryController extends Controller
             'total_reserved_qty'  => $totalReservedQty,
             'receipts_today'      => $receiptsToday,
             'issues_today'        => $issuesToday,
+            'fg_inventory_value'  => $fgHasCostData ? $fgInventoryValue : null,
+            'fg_has_cost_data'    => $fgHasCostData,
         ]);
     }
 

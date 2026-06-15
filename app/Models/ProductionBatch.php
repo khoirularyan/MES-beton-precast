@@ -22,6 +22,7 @@ class ProductionBatch extends Model
         'mold_id', 'batch_sequence', 'sales_order_id', 'planned_date',
         'batch_status_id', 'status',
         'bom_header_id', 'bom_version_snapshot', 'labor_rate_snapshot', 'overhead_rate_snapshot',
+        'material_consumed',
     ];
 
     protected static function booted()
@@ -72,6 +73,8 @@ class ProductionBatch extends Model
         }
     }
 
+    protected $appends = ['status'];
+
     protected $casts = [
         'target_qty'       => 'decimal:2',
         'actual_qty'       => 'decimal:2',
@@ -86,6 +89,7 @@ class ProductionBatch extends Model
         'bom_header_id'    => 'integer',
         'labor_rate_snapshot' => 'decimal:2',
         'overhead_rate_snapshot' => 'decimal:2',
+        'material_consumed' => 'boolean',
     ];
 
     public function product(): BelongsTo

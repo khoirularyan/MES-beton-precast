@@ -42,9 +42,10 @@ class ProductionPlanningService
     }
 
     /**
-     * Preview schedule before saving
+     * Preview schedule before saving.
+     * Accepts optional mold_id to override auto-selection.
      */
-    public function previewSchedule(ProductionDemand $demand, string $startDate): array
+    public function previewSchedule(ProductionDemand $demand, string $startDate, ?int $moldId = null): array
     {
         $productId = $demand->product_id;
         $demandQty = (float) $demand->demand_qty;
@@ -56,8 +57,21 @@ class ProductionPlanningService
             ]);
         }
 
-        // Use primary if available, or first compatible
-        $mold = $molds->firstWhere('pivot.is_primary', true) ?: $molds->first();
+        // Use caller-specified mold or auto-select primary / first compatible
+        if ($moldId) {
+            $mold = $molds->firstWhere('id', $moldId);
+            if (!$mold) {
+                // Allow any active mold when overriding
+                $mold = Mold::where('id', $moldId)->where('jumlah_aktif', '>', 0)->first();
+            }
+            if (!$mold) {
+                throw ValidationException::withMessages([
+                    'mold_id' => ['Selected mold is not active or not compatible with this product.']
+                ]);
+            }
+        } else {
+            $mold = $molds->firstWhere('pivot.is_primary', true) ?: $molds->first();
+        }
         
         $capacityService = new CapacityPlanningService();
         $dailyCapacity = $capacityService->getDailyCapacity($mold);
@@ -75,7 +89,6 @@ class ProductionPlanningService
         $sequence = 1;
 
         while ($remainingQty > 0) {
-            // Safety limit (max 1 year forecast)
             if ($dayCount > 365) {
                 throw ValidationException::withMessages([
                     'capacity' => ['Required production period exceeds 365 days. Capacity is too low or demand is too high.']
@@ -101,14 +114,160 @@ class ProductionPlanningService
 
         $uniqueDates = array_unique(array_column($batches, 'date'));
 
+        // Count molds in use: active batches (not finished/delivered) from start date onward
+        $finishedStatusIds = DB::table('global.production_batch_statuses')
+            ->whereRaw("LOWER(status) IN ('finished','selesai','delivered','kirim')")
+            ->pluck('id');
+
+        $jumlahTerpakai = (int) ProductionBatch::where('mold_id', $mold->id)
+            ->where('planned_date', '>=', $startDate)
+            ->whereNotIn('batch_status_id', $finishedStatusIds)
+            ->whereNull('deleted_at')
+            ->distinct('production_plan_id')
+            ->count('production_plan_id');
+
+        $jumlahTersedia = max(0, ($mold->jumlah_aktif ?? 0) - $jumlahTerpakai);
+
+        $compatibleMolds = $molds->map(function ($m) use ($startDate, $finishedStatusIds) {
+            $terpakai = (int) ProductionBatch::where('mold_id', $m->id)
+                ->where('planned_date', '>=', $startDate)
+                ->whereNotIn('batch_status_id', $finishedStatusIds)
+                ->whereNull('deleted_at')
+                ->distinct('production_plan_id')
+                ->count('production_plan_id');
+            $tersedia = max(0, ($m->jumlah_aktif ?? 0) - $terpakai);
+            return [
+                'id'              => $m->id,
+                'kode'            => $m->kode,
+                'nama'            => $m->nama,
+                'jumlah_total'    => $m->jumlah_total,
+                'jumlah_aktif'    => $m->jumlah_aktif,
+                'jumlah_terpakai' => $terpakai,
+                'jumlah_tersedia' => $tersedia,
+                'is_primary'      => (bool) ($m->pivot->is_primary ?? false),
+            ];
+        })->values()->toArray();
+
         return [
             'mold_id'          => $mold->id,
             'mold_name'        => $mold->nama,
-            'daily_capacity'   => $dailyCapacity,
+            'mold_kode'        => $mold->kode,
+            'jumlah_total'     => $mold->jumlah_total,
+            'jumlah_aktif'     => $mold->jumlah_aktif,
+            'jumlah_terpakai'  => $jumlahTerpakai,
+            'jumlah_tersedia'  => $jumlahTersedia,
             'required_days'    => count($uniqueDates),
             'required_batches' => count($batches),
             'batches'          => $batches,
+            'compatible_molds' => $compatibleMolds,
+            'daily_capacity'   => $dailyCapacity,
         ];
+    }
+
+    /**
+     * Manual Batch Scheduling — user provides explicit batches list.
+     *
+     * @param ProductionDemand $demand
+     * @param array $params ['start_date', 'mold_id', 'notes', 'manual_batches' => [['date','qty','sequence'],...]]
+     * @return ProductionPlan
+     */
+    private function scheduleProductionManual(ProductionDemand $demand, array $params): ProductionPlan
+    {
+        if (empty($params['mold_id'])) {
+            throw ValidationException::withMessages([
+                'mold_id' => ['Mold harus dipilih untuk mode manual.'],
+            ]);
+        }
+
+        $mold = Mold::find($params['mold_id']);
+        if (!$mold || ($mold->jumlah_aktif ?? 0) <= 0) {
+            throw ValidationException::withMessages([
+                'mold_id' => ['Mold yang dipilih tidak aktif atau tidak ditemukan.'],
+            ]);
+        }
+
+        $manualBatches = $params['manual_batches'];
+        $plannedQty = array_sum(array_column($manualBatches, 'qty'));
+
+        return DB::transaction(function () use ($demand, $params, $mold, $manualBatches, $plannedQty) {
+            $product = $demand->product;
+            $planVolume = ($product->volume_m3 ?? 0) * $plannedQty;
+            $planNumber = 'PLAN-' . now()->format('YmdHis') . '-' . $demand->id;
+
+            $batchDates = array_column($manualBatches, 'date');
+            sort($batchDates);
+            $startDate = $batchDates[0] ?? $params['start_date'];
+            $endDate   = end($batchDates) ?: $params['start_date'];
+
+            $plan = ProductionPlan::create([
+                'plan_number'             => $planNumber,
+                'plan_level'              => 'Daily',
+                'period_start'            => $startDate,
+                'period_end'              => $endDate,
+                'start_date'              => $startDate,
+                'end_date'                => $endDate,
+                'product_id'              => $demand->product_id,
+                'planned_qty'             => $plannedQty,
+                'demand_qty'              => (float) $demand->demand_qty,
+                'planned_volume_m3'       => $planVolume,
+                'sales_order_id'          => $demand->sales_order_id,
+                'demand_id'               => $demand->id,
+                'mold_id'                 => $mold->id,
+                'mold_capacity_per_cycle' => $mold->kapasitas_per_siklus,
+                'mold_capacity_snapshot'  => $mold->kapasitas_per_siklus,
+                'required_days'           => count(array_unique($batchDates)),
+                'required_batches'        => count($manualBatches),
+                'status'                  => 'Scheduled',
+                'notes'                   => ($params['notes'] ?? '') . ' [Manual Plan]',
+            ]);
+
+            $oldStatus = $demand->status;
+            $demand->update(['status' => 'Planned']);
+
+            AuditLog::log('production_demand.planned', 'production_demand', $demand->id,
+                ['status' => $oldStatus], ['status' => 'Planned']);
+            AuditLog::log('production_plan.scheduled', 'production_plan', $plan->id,
+                null, $plan->toArray());
+
+            $planningStatus = DB::table('global.production_batch_statuses')
+                ->where(function ($q) {
+                    $q->whereRaw('LOWER(status) LIKE ?', ['%planning%'])
+                      ->orWhereRaw('LOWER(status) LIKE ?', ['%rencana%']);
+                })
+                ->first() ?: DB::table('global.production_batch_statuses')->orderBy('urutan')->first();
+            $batchStatusId = $planningStatus ? $planningStatus->id : 1;
+            $totalBatches  = count($manualBatches);
+
+            foreach ($manualBatches as $index => $b) {
+                $seq        = $b['sequence'] ?? ($index + 1);
+                $batchQty   = (float) $b['qty'];
+                $batchVol   = ($product->volume_m3 ?? 0) * $batchQty;
+                $batchNumber = 'BATCH-' . str_pad($plan->id, 4, '0', STR_PAD_LEFT) . '-' . str_pad($seq, 3, '0', STR_PAD_LEFT);
+
+                $batch = ProductionBatch::create([
+                    'batch_number'       => $batchNumber,
+                    'production_plan_id' => $plan->id,
+                    'demand_id'          => $plan->demand_id,
+                    'sales_order_id'     => $plan->sales_order_id,
+                    'source_type'        => 'SO',
+                    'product_id'         => $plan->product_id,
+                    'target_qty'         => $batchQty,
+                    'target_volume_m3'   => $batchVol,
+                    'planned_date'       => $b['date'],
+                    'planned_start'      => $b['date'] . ' 08:00:00',
+                    'planned_end'        => (!empty($b['end_date']) ? $b['end_date'] : $b['date']) . ' 17:00:00',
+                    'mold_id'            => $mold->id,
+                    'batch_sequence'     => $seq,
+                    'batch_status_id'    => $batchStatusId,
+                    'notes'              => "Batch {$seq} of {$totalBatches} - Manual entry",
+                ]);
+
+                AuditLog::log('production_batch.generated', 'production_batch', $batch->id,
+                    null, $batch->toArray());
+            }
+
+            return $plan;
+        });
     }
 
     /**
@@ -117,11 +276,16 @@ class ProductionPlanningService
      * reserves capacity over required days, creates production plan, and generates batches.
      * 
      * @param ProductionDemand $demand
-     * @param array $params ['start_date', 'notes']
+     * @param array $params ['start_date', 'notes', 'planning_mode?', 'manual_batches?']
      * @return ProductionPlan
      */
     public function scheduleProduction(ProductionDemand $demand, array $params): ProductionPlan
     {
+        $planningMode = $params['planning_mode'] ?? 'auto';
+
+        if ($planningMode === 'manual') {
+            return $this->scheduleProductionManual($demand, $params);
+        }
         // Validate demand status
         if (!in_array($demand->status, ['Open', 'Approved'])) {
             throw ValidationException::withMessages([
@@ -135,7 +299,7 @@ class ProductionPlanningService
             ]);
         }
 
-        $preview = $this->previewSchedule($demand, $params['start_date']);
+        $preview = $this->previewSchedule($demand, $params['start_date'], $params['mold_id'] ?? null);
         $mold = Mold::findOrFail($preview['mold_id']);
         
         return DB::transaction(function () use ($demand, $params, $preview, $mold) {
@@ -223,38 +387,51 @@ class ProductionPlanningService
     }
 
     /**
-     * Get Gantt Calendar Data - Refactored to return flat list of plans
+     * Get Gantt Calendar Data - Per batch, so each batch renders as its own bar.
      */
     public function getCalendarData(?string $from = null, ?string $to = null): array
     {
-        $query = ProductionPlan::with(['product', 'mold', 'salesOrder.customer'])
-            ->whereNotNull('mold_id');
+        $query = ProductionBatch::with(['product', 'mold', 'plan.salesOrder.customer', 'statusModel'])
+            ->whereNotNull('mold_id')
+            ->whereNull('deleted_at');
 
         if ($from && $to) {
             $query->where(function ($q) use ($from, $to) {
-                $q->whereBetween('start_date', [$from, $to])
-                  ->orWhereBetween('end_date', [$from, $to])
-                  ->orWhereBetween('period_start', [$from, $to])
-                  ->orWhereBetween('period_end', [$from, $to]);
+                $q->whereBetween('planned_date', [$from, $to])
+                  ->orWhere(function ($q2) use ($from, $to) {
+                      $q2->whereRaw("DATE(planned_start) BETWEEN ? AND ?", [$from, $to]);
+                  });
             });
         }
 
-        $plans = $query->get();
+        $batches = $query->get();
 
-        return $plans->map(function ($plan) {
-            $start = $plan->start_date ?: $plan->period_start;
-            $end = $plan->end_date ?: $plan->period_end;
-            
+        return $batches->map(function ($batch) {
+            $date  = $batch->planned_date
+                ? (is_string($batch->planned_date) ? $batch->planned_date : $batch->planned_date->toDateString())
+                : ($batch->planned_start ? substr($batch->planned_start, 0, 10) : null);
+
+            // end_date: use planned_end if available, otherwise same day as start
+            $endDate = $batch->planned_end
+                ? substr(is_string($batch->planned_end) ? $batch->planned_end : $batch->planned_end->toDateString(), 0, 10)
+                : $date;
+
+            $plan = $batch->plan;
+
             return [
-                'resource'     => $plan->mold?->nama ?? 'Unknown Mold',
-                'start'        => $start ? $start->toDateString() : null,
-                'end'          => $end ? $end->toDateString() : null,
-                'qty'          => (float) $plan->planned_qty,
-                'customer'     => $plan->salesOrder?->customer?->nama ?? 'MTS / Stock',
-                'sales_order'  => $plan->salesOrder?->no ?? $plan->salesOrder?->so_number ?? 'N/A',
-                'plan_id'      => $plan->id,
-                'mold_id'      => $plan->mold_id,
-                'product_name' => $plan->product?->nama,
+                'resource'      => $batch->mold?->nama ?? 'Unknown Mold',
+                'start'         => $date,
+                'end'           => $endDate,
+                'qty'           => (float) $batch->target_qty,
+                'customer'      => $plan?->salesOrder?->customer?->nama ?? 'MTS / Stock',
+                'sales_order'   => $plan?->salesOrder?->no ?? $plan?->salesOrder?->so_number ?? 'N/A',
+                'plan_id'       => $batch->production_plan_id,
+                'batch_id'      => $batch->id,
+                'batch_number'  => $batch->batch_number,
+                'batch_seq'     => $batch->batch_sequence,
+                'mold_id'       => $batch->mold_id,
+                'product_name'  => $batch->product?->nama,
+                'status'        => $batch->statusModel?->status ?? null,
             ];
         })->toArray();
     }

@@ -169,6 +169,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('production-plans/stats',    [ProductionPlanController::class, 'dashboardStats']);
         Route::get('planning/material-readiness', [ProductionPlanController::class, 'materialReadiness']);
         Route::get('planning/mps-summary',        [ProductionPlanController::class, 'mpsSummary']);
+        Route::get('production-demands/queue',    [ProductionDemandController::class, 'queue']);
         Route::apiResource('production-demands', ProductionDemandController::class)->only(['index', 'show']);
         Route::apiResource('production-plans',   ProductionPlanController::class)->only(['index', 'show']);
     });
@@ -183,6 +184,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('production-demands/{productionDemand}/preview-batches',    [ProductionDemandController::class, 'previewBatches']);
         Route::post('production-demands/{productionDemand}/approve',           [ProductionDemandController::class, 'approve']);
         Route::post('production-demands/{productionDemand}/reject',            [ProductionDemandController::class, 'reject']);
+        Route::post('production-demands/{productionDemand}/reopen',            [ProductionDemandController::class, 'reopen']);
     });
 
     // ============================================================
