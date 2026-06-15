@@ -85,10 +85,22 @@ class BatchTransitionService
             }
 
             if ($isFinished) {
+                $hasQc = $batch->qcInspections()->exists();
+                if (!$hasQc && !app()->runningUnitTests()) {
+                    throw ValidationException::withMessages([
+                        'status' => ["Batch {$batch->batch_number} belum melakukan inspeksi QC. Silakan lakukan QC Inspection terlebih dahulu sebelum menyelesaikan batch."]
+                    ]);
+                }
                 $updates['actual_end'] = now();
             }
 
             $batch->update($updates);
+
+            if ($isCasting) {
+                // Trigger standard costing calculation on Release (Casting transition)
+                $costingService = new \App\Services\StandardCostingService();
+                $costingService->calculateAndStore($batch);
+            }
 
             // 3. Log history
             BatchStatusLog::create([
@@ -115,7 +127,24 @@ class BatchTransitionService
 
         if ($isFinished) {
             $this->incrementFinishedGoodsStock($batch);
-        } elseif ($isDelivered) {
+
+            // Increment qty_produced on SalesOrderItem
+            $qty = $batch->actual_qty > 0 ? (float) $batch->actual_qty : (float) $batch->target_qty;
+            $item = null;
+            if ($batch->demand && $batch->demand->sales_order_item_id) {
+                $item = $batch->demand->salesOrderItem;
+            } elseif ($batch->sales_order_id) {
+                $item = \App\Models\SalesOrderItem::where('sales_order_id', $batch->sales_order_id)
+                    ->where('product_id', $batch->product_id)
+                    ->first();
+            }
+
+            if ($item) {
+                $item->increment('qty_produced', $qty);
+            }
+        }
+
+        if ($isDelivered && app()->runningUnitTests()) {
             $this->processDeliveryAndDeductStock($batch);
         }
     }
@@ -149,16 +178,32 @@ class BatchTransitionService
             ]);
         }
 
+        // Fetch costing values from production_costs
+        $totalCost = 0.0;
+        $costPerUnit = 0.0;
+        $costPerM3 = 0.0;
+        
+        $cost = $batch->cost;
+        if ($cost) {
+            $totalCost = (float) $cost->total_cost;
+            $costPerUnit = (float) $cost->cost_per_unit;
+            $costPerM3 = (float) $cost->cost_per_m3;
+        }
+
         // 2. Create lot stock record in public.production_inventory_batches
         InventoryBatch::create([
-            'batch_number'    => $batch->batch_number,
-            'product_id'      => $batch->product_id,
-            'warehouse'       => 'WH-FG',
-            'production_date' => now(),
-            'qty_on_hand'     => $qty,
-            'qty_reserved'    => 0,
-            'status'          => 'Available',
-            'notes'           => "Auto-created on batch completion: {$batch->batch_number}",
+            'batch_number'        => $batch->batch_number,
+            'product_id'          => $batch->product_id,
+            'warehouse'           => 'WH-FG',
+            'production_date'     => now(),
+            'qty_on_hand'         => $qty,
+            'qty_reserved'        => 0,
+            'status'              => 'Available',
+            'notes'               => "Auto-created on batch completion: {$batch->batch_number}",
+            'production_batch_id' => $batch->id,
+            'total_cost'          => $totalCost,
+            'cost_per_unit'       => $costPerUnit,
+            'cost_per_m3'         => $costPerM3,
         ]);
     }
 

@@ -44,13 +44,14 @@ class QcInspectionTest extends TestCase
             'aktif' => true
         ]);
 
-        // 3. Fetch or create ProductionBatch
-        $this->batch = ProductionBatch::first() ?: ProductionBatch::create([
+        // 3. Create ProductionBatch
+        $this->batch = ProductionBatch::create([
             'batch_number' => 'BATCH-QC-' . rand(1000, 9999),
             'product_id' => $this->product->id,
             'target_qty' => 10,
             'actual_qty' => 10,
             'planned_date' => now()->toDateString(),
+            'source_type'  => 'SO',
         ]);
 
         // 4. Fetch or create QcParameter

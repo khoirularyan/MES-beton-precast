@@ -100,7 +100,7 @@ export const materialApi = {
 // ============================================
 
 export const inventoryApi = {
-  getOverview: () => api.get('/inventory'),
+  getOverview: (params = {}) => api.get('/inventory', { params }),
 };
 
 // ============================================
@@ -174,6 +174,8 @@ export const productionPlanApi = {
   create: (data)        => api.post('/production-plans', data),
   update: (id, data)    => api.put(`/production-plans/${id}`, data),
   delete: (id)          => api.delete(`/production-plans/${id}`),
+  getMaterialReadiness: (params = {}) => api.get('/planning/material-readiness', { params }),
+  getMpsSummary: (params = {}) => api.get('/planning/mps-summary', { params }),
 };
 
 export const productionDemandApi = {
@@ -194,6 +196,8 @@ export const productionBatchApi = {
   start:     (id)          => api.post(`/production-batches/${id}/start`),
   complete:  (id)          => api.post(`/production-batches/${id}/complete`),
   transition: (id, data)   => api.post(`/production-batches/${id}/transition`, data),
+  getCost:   (id)          => api.get(`/production-batches/${id}/cost`),
+  getCostDashboard: ()     => api.get('/costing/dashboard'),
 };
 
 // ============================================

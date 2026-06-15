@@ -169,60 +169,77 @@ class DashboardController extends Controller
             }
 
             // 1.1 Production Trend (Last 14 Days)
+            $startDate = now()->subDays(13)->toDateString();
+            $endDate = now()->toDateString();
+
+            $batchSums = DB::table('public.production_batches')
+                ->whereBetween('planned_date', [$startDate, $endDate])
+                ->whereNull('deleted_at')
+                ->selectRaw("
+                    planned_date,
+                    SUM(target_qty) as total_target,
+                    SUM(CASE WHEN batch_status_id IN (" . ($finishedStatusIds->isEmpty() ? '0' : $finishedStatusIds->implode(',')) . ") THEN actual_qty ELSE 0 END) as total_actual
+                ")
+                ->groupBy('planned_date')
+                ->get()
+                ->keyBy(function($item) {
+                    return \Carbon\Carbon::parse($item->planned_date)->toDateString();
+                });
+
+            $rejectSums = DB::table('public.production_qc_inspections')
+                ->whereBetween('tanggal', [$startDate, $endDate])
+                ->selectRaw('tanggal, SUM(dimensi_reject) as total_reject')
+                ->groupBy('tanggal')
+                ->get()
+                ->keyBy(function($item) {
+                    return \Carbon\Carbon::parse($item->tanggal)->toDateString();
+                });
+
             $trend14Days = [];
             for ($i = 13; $i >= 0; $i--) {
                 $date = now()->subDays($i);
                 $dateStr = $date->toDateString();
                 $formattedDate = $date->translatedFormat('d M');
 
-                $target = (float) DB::table('public.production_batches')
-                    ->where('planned_date', $dateStr)
-                    ->whereNull('deleted_at')
-                    ->sum('target_qty');
-
-                $actual = (float) DB::table('public.production_batches')
-                    ->where('planned_date', $dateStr)
-                    ->whereIn('batch_status_id', $finishedStatusIds)
-                    ->whereNull('deleted_at')
-                    ->sum('actual_qty');
-
-                $reject = (float) DB::table('public.production_qc_inspections')
-                    ->where('tanggal', $dateStr)
-                    ->sum('dimensi_reject');
+                $batchData = $batchSums->get($dateStr);
+                $rejectData = $rejectSums->get($dateStr);
 
                 $trend14Days[] = [
                     'tanggal'   => $formattedDate,
-                    'target'    => $target,
-                    'realisasi' => $actual,
-                    'reject'    => $reject,
+                    'target'    => $batchData ? (float) $batchData->total_target : 0.0,
+                    'realisasi' => $batchData ? (float) $batchData->total_actual : 0.0,
+                    'reject'    => $rejectData ? (float) $rejectData->total_reject : 0.0,
                 ];
             }
 
             // 1.2 Monthly Production (Last 6 Months)
+            $sixMonthsAgo = now()->subMonths(5)->startOfMonth()->toDateString();
+            $monthlySums = DB::table('public.production_batches')
+                ->where('planned_date', '>=', $sixMonthsAgo)
+                ->whereNull('deleted_at')
+                ->selectRaw("
+                    DATE_TRUNC('month', planned_date) as month_date,
+                    SUM(target_qty) as total_target,
+                    SUM(CASE WHEN batch_status_id IN (" . ($finishedStatusIds->isEmpty() ? '0' : $finishedStatusIds->implode(',')) . ") THEN actual_qty ELSE 0 END) as total_actual
+                ")
+                ->groupBy(DB::raw("DATE_TRUNC('month', planned_date)"))
+                ->get()
+                ->keyBy(function($item) {
+                    return \Carbon\Carbon::parse($item->month_date)->format('Y-m');
+                });
+
             $monthlyProduction = [];
             for ($i = 5; $i >= 0; $i--) {
                 $date = now()->subMonths($i);
-                $year = $date->year;
-                $month = $date->month;
+                $key = $date->format('Y-m');
                 $formattedMonth = $date->translatedFormat('M');
 
-                $target = (float) DB::table('public.production_batches')
-                    ->whereMonth('planned_date', $month)
-                    ->whereYear('planned_date', $year)
-                    ->whereNull('deleted_at')
-                    ->sum('target_qty');
-
-                $actual = (float) DB::table('public.production_batches')
-                    ->whereMonth('planned_date', $month)
-                    ->whereYear('planned_date', $year)
-                    ->whereIn('batch_status_id', $finishedStatusIds)
-                    ->whereNull('deleted_at')
-                    ->sum('actual_qty');
+                $monthData = $monthlySums->get($key);
 
                 $monthlyProduction[] = [
                     'bulan'    => $formattedMonth,
-                    'target'   => $target,
-                    'produksi' => $actual,
+                    'target'   => $monthData ? (float) $monthData->total_target : 0.0,
+                    'produksi' => $monthData ? (float) $monthData->total_actual : 0.0,
                 ];
             }
 
@@ -399,6 +416,29 @@ class DashboardController extends Controller
                 ->whereNull('deleted_at')
                 ->count();
 
+            $todayStr = date('Y-m-d');
+            $startOfMonth = date('Y-m-01');
+            $endOfMonth = date('Y-m-t');
+
+            $todayCost = DB::table('public.production_costs as pc')
+                ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+                ->whereDate('pb.planned_date', $todayStr)
+                ->whereNull('pb.deleted_at')
+                ->sum('pc.total_cost');
+
+            $monthlyCost = DB::table('public.production_costs as pc')
+                ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+                ->whereBetween('pb.planned_date', [$startOfMonth, $endOfMonth])
+                ->whereNull('pb.deleted_at')
+                ->sum('pc.total_cost');
+
+            $avgCostPerM3 = DB::table('public.production_costs as pc')
+                ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+                ->whereBetween('pb.planned_date', [$startOfMonth, $endOfMonth])
+                ->whereNull('pb.deleted_at')
+                ->selectRaw('SUM(pc.total_cost) / NULLIF(SUM(pb.target_volume_m3), 0) as avg_cost')
+                ->value('avg_cost') ?: 0.0;
+
             return [
                 'production' => [
                     'target_today'       => $targetToday,
@@ -443,6 +483,11 @@ class DashboardController extends Controller
                     'rejected_today'     => $rejectedToday,
                     'reject_rate'        => $qcRejectRate,
                     'batches_waiting_qc' => $batchesWaitingQc,
+                ],
+                'costing' => [
+                    'today_production_cost'   => (float) $todayCost,
+                    'monthly_production_cost' => (float) $monthlyCost,
+                    'average_cost_per_m3'     => (float) $avgCostPerM3,
                 ],
             ];
         });

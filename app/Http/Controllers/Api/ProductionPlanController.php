@@ -137,4 +137,148 @@ class ProductionPlanController extends Controller
         $stats = $this->planningService->getPlanningDashboardStats();
         return response()->json($stats);
     }
+
+    /**
+     * Get material readiness preview for a specific product and quantity.
+     */
+    public function materialReadiness(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|integer|exists:production_products,id',
+            'qty'        => 'required|numeric|min:0.01',
+        ]);
+
+        $reqService = new \App\Services\MaterialRequirementService();
+        $requirements = $reqService->calculateRequirements($validated['product_id'], (float) $validated['qty']);
+
+        $hasShortage = $requirements->contains(function ($r) {
+            return $r['shortage_qty'] > 0;
+        });
+
+        $formattedMaterials = $requirements->map(function ($r) {
+            return [
+                'material'      => $r['material_nama'],
+                'required_qty'  => (float) $r['required_qty'],
+                'available_qty' => (float) $r['available_qty'],
+                'shortage_qty'  => (float) $r['shortage_qty'],
+                'satuan'        => $r['satuan'],
+                'status'        => $r['shortage_qty'] > 0 ? 'SHORTAGE' : 'READY',
+            ];
+        })->toArray();
+
+        return response()->json([
+            'materials'    => $formattedMaterials,
+            'has_shortage' => $hasShortage,
+        ]);
+    }
+
+    /**
+     * Get aggregated MPS Summary dashboard and grouping details.
+     */
+    public function mpsSummary(Request $request): JsonResponse
+    {
+        $planLevel = $request->query('plan_level');
+        if ($planLevel === 'All' || empty($planLevel)) {
+            $planLevel = null;
+        }
+
+        // 1. Get finished/delivered status IDs
+        $finishedStatusIds = DB::table('global.production_batch_statuses')
+            ->whereIn('status', ['Finished', 'Delivered'])
+            ->pluck('id');
+
+        // 2. Query Monthly Planned Volume
+        $plannedQuery = DB::table('public.production_plans')
+            ->whereNull('deleted_at');
+        if ($planLevel) {
+            $plannedQuery->where('plan_level', $planLevel);
+        }
+        $plannedByMonth = $plannedQuery
+            ->selectRaw("DATE_TRUNC('month', period_start) as month_date, SUM(planned_volume_m3) as planned_volume")
+            ->groupBy(DB::raw("DATE_TRUNC('month', period_start)"))
+            ->get()
+            ->pluck('planned_volume', 'month_date')
+            ->toArray();
+
+        // 3. Query Monthly Produced Volume
+        $producedQuery = DB::table('public.production_batches as pb')
+            ->join('global.production_products as pp', 'pb.product_id', '=', 'pp.id')
+            ->whereIn('pb.batch_status_id', $finishedStatusIds)
+            ->whereNull('pb.deleted_at');
+        if ($planLevel) {
+            $producedQuery->join('public.production_plans as pl', 'pb.production_plan_id', '=', 'pl.id')
+                ->where('pl.plan_level', $planLevel);
+        }
+        $producedByMonth = $producedQuery
+            ->selectRaw("DATE_TRUNC('month', pb.actual_end) as month_date, SUM(COALESCE(pp.volume_m3, 0) * COALESCE(pb.actual_qty, 0)) as produced_volume")
+            ->groupBy(DB::raw("DATE_TRUNC('month', pb.actual_end)"))
+            ->get()
+            ->pluck('produced_volume', 'month_date')
+            ->toArray();
+
+        // 4. Combine month keys and format (normalized to Y-m-d)
+        $plannedByMonthNormalized = [];
+        foreach ($plannedByMonth as $key => $val) {
+            if (!$key) continue;
+            $normKey = (new \DateTime($key))->format('Y-m-d');
+            $plannedByMonthNormalized[$normKey] = (float) $val;
+        }
+
+        $producedByMonthNormalized = [];
+        foreach ($producedByMonth as $key => $val) {
+            if (!$key) continue;
+            $normKey = (new \DateTime($key))->format('Y-m-d');
+            $producedByMonthNormalized[$normKey] = (float) $val;
+        }
+
+        $months = array_unique(array_merge(array_keys($plannedByMonthNormalized), array_keys($producedByMonthNormalized)));
+        usort($months, function ($a, $b) {
+            return strcmp($a, $b);
+        });
+
+        $summaryTable = [];
+        foreach ($months as $monthKey) {
+            $date = new \DateTime($monthKey);
+            $monthYear = $date->format('F Y');
+            $planned = $plannedByMonthNormalized[$monthKey] ?? 0.0;
+            $produced = $producedByMonthNormalized[$monthKey] ?? 0.0;
+            $achievement = $planned > 0 ? round(($produced / $planned) * 100, 1) : 0.0;
+
+            $summaryTable[] = [
+                'month_year'      => $monthYear,
+                'planned_volume'  => $planned,
+                'produced_volume' => $produced,
+                'achievement_pct' => $achievement,
+            ];
+        }
+
+        // 5. Calculate monthly planned/produced volume for the current month
+        $monthlyPlannedVolume = 0.0;
+        $monthlyProducedVolume = 0.0;
+        foreach ($months as $monthKey) {
+            $date = new \DateTime($monthKey);
+            if ($date->format('Y-m') === now()->format('Y-m')) {
+                $monthlyPlannedVolume = $plannedByMonthNormalized[$monthKey] ?? 0.0;
+                $monthlyProducedVolume = $producedByMonthNormalized[$monthKey] ?? 0.0;
+            }
+        }
+
+        $achievementPct = $monthlyPlannedVolume > 0 ? round(($monthlyProducedVolume / $monthlyPlannedVolume) * 100, 1) : 0.0;
+
+        // 6. Get Open Demand count
+        $openDemandCount = DB::table('public.production_demands')
+            ->whereIn('status', ['Open', 'Approved'])
+            ->whereNull('deleted_at')
+            ->count();
+
+        return response()->json([
+            'kpis' => [
+                'monthly_planned_volume'  => $monthlyPlannedVolume,
+                'monthly_produced_volume' => $monthlyProducedVolume,
+                'achievement_pct'         => $achievementPct,
+                'open_demand_count'       => $openDemandCount,
+            ],
+            'summary_table' => $summaryTable,
+        ]);
+    }
 }

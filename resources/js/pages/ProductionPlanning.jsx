@@ -31,6 +31,19 @@ const ProductionPlanningRefactored = () => {
     mold_utilization_pct: 0,
   });
 
+  // MPS Summary state
+  const [planLevel, setPlanLevel] = useState('All');
+  const [mpsData, setMpsData] = useState({
+    kpis: {
+      monthly_planned_volume: 0,
+      monthly_produced_volume: 0,
+      achievement_pct: 0,
+      open_demand_count: 0
+    },
+    summary_table: []
+  });
+  const [mpsLoading, setMpsLoading] = useState(false);
+
   // Schedule Dialog
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [schedulingDemand, setSchedulingDemand] = useState(null);
@@ -45,8 +58,10 @@ const ProductionPlanningRefactored = () => {
   const [daysToShow, setDaysToShow] = useState(14);
   const [calendarData, setCalendarData] = useState([]);
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
-    loadAllData();
+    loadAllData().then(() => setIsMounted(true));
   }, []);
 
   useEffect(() => {
@@ -56,8 +71,26 @@ const ProductionPlanningRefactored = () => {
   }, [schedulingDemand, scheduleForm.start_date]);
 
   useEffect(() => {
+    if (!isMounted) return;
     loadCalendarData();
-  }, [currentDate, daysToShow]);
+  }, [currentDate, daysToShow, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    loadMpsSummary(planLevel);
+  }, [planLevel, isMounted]);
+
+  const loadMpsSummary = async (level) => {
+    setMpsLoading(true);
+    try {
+      const res = await api.get('/planning/mps-summary', { params: { plan_level: level } });
+      setMpsData(res.data);
+    } catch (error) {
+      console.error('Failed to load MPS summary', error);
+    } finally {
+      setMpsLoading(false);
+    }
+  };
 
   const loadAllData = async () => {
     setLoading(true);
@@ -69,7 +102,7 @@ const ProductionPlanningRefactored = () => {
       setDemands(demandsRes.data.data || []);
 
       // Load all batches
-      const batchesRes = await api.get('/production-batches', { params: { per_page: 100 } });
+      const batchesRes = await api.get('/production-batches', { params: { per_page: 100, upcoming: true } });
       setBatches(batchesRes.data.data || []);
 
       // Load molds
@@ -82,6 +115,9 @@ const ProductionPlanningRefactored = () => {
 
       // Load calendar
       await loadCalendarData();
+
+      // Load MPS summary
+      await loadMpsSummary(planLevel);
     } catch (error) {
       toast.error('Failed to load production planning data');
       console.error(error);
@@ -245,6 +281,96 @@ const ProductionPlanningRefactored = () => {
           </Button>
         }
       />
+
+      {/* MPS Summary Panel */}
+      <Card className="border border-[#DFE3E8]">
+        <CardHeader className="pb-3 border-b">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="text-sm font-semibold text-[#1C252E] flex items-center gap-2">
+                <Boxes className="h-4 w-4 text-[#0A6ED1]" />
+                Master Production Schedule (MPS) Summary
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Agregasi target volume perencanaan (Planned) vs realisasi fisik completed (Produced)</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Plan Level:</span>
+              <Select value={planLevel} onValueChange={setPlanLevel} disabled={mpsLoading}>
+                <SelectTrigger className="w-32 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Levels</SelectItem>
+                  <SelectItem value="MPS">MPS Level</SelectItem>
+                  <SelectItem value="Weekly">Weekly Level</SelectItem>
+                  <SelectItem value="Daily">Daily Level</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-4">
+          {mpsLoading ? (
+            <div className="py-8 text-center text-xs text-muted-foreground">Loading MPS summary data...</div>
+          ) : (
+            <>
+              {/* MPS KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded-md p-3">
+                  <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider">Monthly Planned Volume</span>
+                  <span className="text-lg font-bold text-[#1C252E] mt-1 block">{(mpsData.kpis?.monthly_planned_volume || 0).toLocaleString()} m³</span>
+                </div>
+                <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded-md p-3">
+                  <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider">Monthly Produced Volume</span>
+                  <span className="text-lg font-bold text-[#1C252E] mt-1 block">{(mpsData.kpis?.monthly_produced_volume || 0).toLocaleString()} m³</span>
+                </div>
+                <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded-md p-3">
+                  <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider">Plan Achievement</span>
+                  <span className="text-lg font-bold text-emerald-600 mt-1 block">{(mpsData.kpis?.achievement_pct || 0)}%</span>
+                </div>
+                <div className="bg-[#F8FAFC] border border-[#DFE3E8] rounded-md p-3">
+                  <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider">Open Demands</span>
+                  <span className="text-lg font-bold text-[#0A6ED1] mt-1 block">{(mpsData.kpis?.open_demand_count || 0)} Demands</span>
+                </div>
+              </div>
+
+              {/* Summary Table */}
+              <div className="border border-[#DFE3E8] rounded-md overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#F8FAFC] border-b border-[#DFE3E8]">
+                    <tr>
+                      <th className="p-2.5 font-semibold text-[#1C252E]">Month Period</th>
+                      <th className="p-2.5 font-semibold text-[#1C252E] text-right">Planned Volume</th>
+                      <th className="p-2.5 font-semibold text-[#1C252E] text-right">Produced Volume</th>
+                      <th className="p-2.5 font-semibold text-[#1C252E] text-right">Achievement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mpsData.summary_table && mpsData.summary_table.length > 0 ? (
+                      mpsData.summary_table.map((row, idx) => (
+                        <tr key={idx} className="border-b last:border-0 hover:bg-accent/20">
+                          <td className="p-2.5 font-medium text-primary">{row.month_year}</td>
+                          <td className="p-2.5 text-right font-mono">{parseFloat(row.planned_volume).toLocaleString()} m³</td>
+                          <td className="p-2.5 text-right font-mono">{parseFloat(row.produced_volume).toLocaleString()} m³</td>
+                          <td className="p-2.5 text-right font-bold">
+                            <span className={row.achievement_pct >= 85 ? 'text-emerald-600' : row.achievement_pct >= 50 ? 'text-amber-600' : 'text-rose-600'}>
+                              {row.achievement_pct}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="p-6 text-center text-muted-foreground">No planning summaries available for this plan level.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* KPI Dashboard - Compact */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -728,6 +854,75 @@ const ProductionPlanningRefactored = () => {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Material Readiness Panel */}
+                  <div className="p-4 bg-accent/50 rounded-lg space-y-3">
+                    <div className="text-xs font-semibold text-[#1C252E] uppercase tracking-wider flex items-center gap-1">
+                      <Boxes className="w-3.5 h-3.5 text-[#0A6ED1]" />
+                      Material Readiness Check
+                    </div>
+                    {batchPreview.material_requirements && batchPreview.material_requirements.length > 0 ? (
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                        {batchPreview.material_requirements.map((mat, mIdx) => {
+                          const shortage = parseFloat(mat.shortage_qty || 0);
+                          const isReady = shortage <= 0;
+                          return (
+                            <div key={mat.material_id || mIdx} className="text-xs border-b pb-2 last:border-0 last:pb-0 flex items-center justify-between">
+                              <div>
+                                <span className="font-semibold text-primary block">{mat.material_nama || mat.material}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  Required: {parseFloat(mat.required_qty).toLocaleString()} {mat.satuan} • Available: {parseFloat(mat.available_qty).toLocaleString()} {mat.satuan}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                {isReady ? (
+                                  <Badge variant="success" className="text-[9px] px-1.5 py-0.5 bg-green-500 hover:bg-green-600 text-white">READY</Badge>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <Badge variant="destructive" className="text-[9px] px-1.5 py-0.5">SHORTAGE</Badge>
+                                    <span className="block text-[10px] text-destructive font-semibold">-{shortage.toLocaleString()} {mat.satuan}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground text-center py-2">No materials required for this product.</div>
+                    )}
+
+                    {/* Procurement Suggestion & Copy Button */}
+                    {batchPreview.material_shortage && (
+                      <div className="pt-2 border-t mt-2 flex flex-col space-y-2">
+                        <div className="text-[10px] font-bold text-destructive uppercase tracking-wider">Procurement Suggestion</div>
+                        <div className="p-2 bg-red-50 border border-red-200 rounded text-[10px] font-mono text-destructive space-y-1">
+                          {batchPreview.material_requirements.filter(m => parseFloat(m.shortage_qty) > 0).map((m, mIdx) => (
+                            <div key={m.material_id || mIdx}>
+                              • {m.material_nama || m.material}: Need {parseFloat(m.shortage_qty).toLocaleString()} {m.satuan}
+                            </div>
+                          ))}
+                        </div>
+                        <Button 
+                          onClick={() => {
+                            const text = `PROCUREMENT SUGGESTION\n\n` + 
+                              batchPreview.material_requirements
+                                .filter(m => parseFloat(m.shortage_qty) > 0)
+                                .map(m => `${m.material_nama || m.material}\nShortage: ${parseFloat(m.shortage_qty).toLocaleString()} ${m.satuan}`)
+                                .join('\n\n') + 
+                              `\n\nGenerated: ${formatDateToYYYYMMDD(new Date())}`;
+                            navigator.clipboard.writeText(text);
+                            toast.success('Procurement suggestion copied to clipboard!');
+                          }}
+                          size="sm"
+                          variant="outline"
+                          className="w-full text-[10px] h-7 border-destructive text-destructive hover:bg-destructive/10"
+                        >
+                          Copy Procurement Suggestion
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

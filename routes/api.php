@@ -133,6 +133,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('permission:planning.view')->group(function () {
         Route::get('production-plans/calendar', [ProductionPlanController::class, 'calendarData']);
         Route::get('production-plans/stats',    [ProductionPlanController::class, 'dashboardStats']);
+        Route::get('planning/material-readiness', [ProductionPlanController::class, 'materialReadiness']);
+        Route::get('planning/mps-summary',        [ProductionPlanController::class, 'mpsSummary']);
         Route::apiResource('production-demands', ProductionDemandController::class)->only(['index', 'show']);
         Route::apiResource('production-plans',   ProductionPlanController::class)->only(['index', 'show']);
     });
@@ -157,6 +159,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ============================================================
 
     Route::middleware('permission:batch.view')->group(function () {
+        Route::get('production-batches/{batch}/cost', [ProductionBatchController::class, 'cost']);
+        Route::get('costing/dashboard', [ProductionBatchController::class, 'costDashboard']);
         Route::apiResource('production-batches', ProductionBatchController::class)->only(['index', 'show']);
     });
 

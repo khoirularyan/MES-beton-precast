@@ -94,6 +94,16 @@ class QcInspectionController extends Controller
 
         return DB::transaction(function () use ($request, $qtyInspected, $qtyPassed, $qtyRejected, $defects) {
             $batch = ProductionBatch::findOrFail($request->input('production_batch_id'));
+
+            $deliveredStatusId = DB::table('global.production_batch_statuses')
+                ->where('status', 'Delivered')
+                ->value('id');
+
+            if ($deliveredStatusId && $batch->batch_status_id === $deliveredStatusId) {
+                throw ValidationException::withMessages([
+                    'production_batch_id' => ['Batch yang sudah dalam tahap Delivery tidak dapat dilakukan QC Inspection.']
+                ]);
+            }
             
             // Handle photo upload
             $photoPath = null;

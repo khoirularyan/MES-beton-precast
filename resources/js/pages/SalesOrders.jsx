@@ -189,6 +189,8 @@ const SalesOrders = () => {
         {
           product_id: "",
           qty_ordered: 1,
+          qty_reserved: 0,
+          qty_to_produce: 1,
           unit_price: 0,
           delivery_date: prev.tgl_kirim,
           notes: ""
@@ -201,7 +203,7 @@ const SalesOrders = () => {
     setFormData(prev => {
       const nextItems = [...prev.items];
       nextItems.splice(index, 1);
-      const nextNilai = nextItems.reduce((sum, item) => sum + (item.qty_ordered * item.unit_price), 0);
+      const nextNilai = nextItems.reduce((sum, item) => sum + ((item.qty_ordered || 0) * (item.unit_price || 0)), 0);
       return {
         ...prev,
         items: nextItems,
@@ -214,18 +216,42 @@ const SalesOrders = () => {
     setFormData(prev => {
       const nextItems = [...prev.items];
       let item = { ...nextItems[index], [field]: value };
+ 
+      const prod = products.find(p => String(p.id) === String(item.product_id || value));
+      const availableStock = prod ? Number(prod.available_stock || 0) : 0;
 
-      // Autofill unit price from product catalog list price
+      // Autofill unit price and default allocations if product changes
       if (field === "product_id") {
-        const prod = products.find(p => String(p.id) === String(value));
         if (prod) {
           item.unit_price = prod.harga;
         }
+        item.qty_reserved = Math.min(item.qty_ordered || 1, availableStock);
+        item.qty_to_produce = Math.max(0, (item.qty_ordered || 1) - item.qty_reserved);
       }
 
-      nextItems[index] = item;
-      const nextNilai = nextItems.reduce((sum, it) => sum + (it.qty_ordered * it.unit_price), 0);
+      // Auto-allocation calculations if qty_ordered is changed
+      if (field === "qty_ordered") {
+        const qtyOrdered = Number(value);
+        item.qty_reserved = Math.min(qtyOrdered, availableStock);
+        item.qty_to_produce = Math.max(0, qtyOrdered - item.qty_reserved);
+      }
 
+      // Auto-adjust companion when reserving/producing changes
+      if (field === "qty_reserved") {
+        const qtyReserved = Number(value);
+        const qtyOrdered = Number(item.qty_ordered || 0);
+        item.qty_to_produce = Math.max(0, qtyOrdered - qtyReserved);
+      }
+
+      if (field === "qty_to_produce") {
+        const qtyToProduce = Number(value);
+        const qtyOrdered = Number(item.qty_ordered || 0);
+        item.qty_reserved = Math.max(0, qtyOrdered - qtyToProduce);
+      }
+ 
+      nextItems[index] = item;
+      const nextNilai = nextItems.reduce((sum, it) => sum + ((it.qty_ordered || 0) * (it.unit_price || 0)), 0);
+ 
       return {
         ...prev,
         items: nextItems,
@@ -236,8 +262,12 @@ const SalesOrders = () => {
 
   // Actions
   const handleCreate = async () => {
-    if (!formData.customer_id || formData.items.length === 0) {
+    if (formData.so_type !== "MTS" && (!formData.customer_id || formData.items.length === 0)) {
       toast.warning("Please fill in customer and add at least one product.");
+      return;
+    }
+    if (formData.so_type === "MTS" && formData.items.length === 0) {
+      toast.warning("Please add at least one product.");
       return;
     }
     try {
@@ -263,6 +293,8 @@ const SalesOrders = () => {
       items: order.items.map(item => ({
         product_id: String(item.product_id),
         qty_ordered: Number(item.qty_ordered),
+        qty_reserved: Number(item.qty_reserved || 0),
+        qty_to_produce: Number(item.qty_to_produce || 0),
         unit_price: Number(item.unit_price),
         delivery_date: item.delivery_date,
         notes: item.notes || ""
@@ -578,19 +610,23 @@ const SalesOrders = () => {
             </div>
             <div className="space-y-2">
               <Label>Customer</Label>
-              <Select 
-                value={formData.customer_id} 
-                onValueChange={(val) => setFormData(prev => ({ ...prev, customer_id: val }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map(c => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.nama}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {formData.so_type === "MTS" ? (
+                <Input value="PT Default Perusahaan (MTS)" disabled className="bg-slate-50 text-slate-500 font-medium h-10" />
+              ) : (
+                <Select 
+                  value={formData.customer_id} 
+                  onValueChange={(val) => setFormData(prev => ({ ...prev, customer_id: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.nama}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label>SO Type</Label>
@@ -662,79 +698,108 @@ const SalesOrders = () => {
                 <thead className="bg-slate-100 border-b">
                   <tr>
                     <th className="p-2.5 text-left font-semibold text-[#59687A]">Product Name</th>
-                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Quantity</th>
-                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-40">Unit Price (IDR)</th>
-                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-36">Total Price</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-20">Qty Order</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Stok Tersedia</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Alokasi Stok</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Produksi Tambahan</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-32">Harga (IDR)</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-28">Total</th>
                     <th className="p-2.5 text-center font-semibold text-[#59687A] w-12">Delete</th>
                   </tr>
                 </thead>
                 <tbody>
                   {formData.items.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="text-center p-4 text-[#59687A] italic bg-white">No products added. Click Add Product to start.</td>
+                      <td colSpan="8" className="text-center p-4 text-[#59687A] italic bg-white">No products added. Click Add Product to start.</td>
                     </tr>
                   ) : (
-                    formData.items.map((item, idx) => (
-                      <tr key={idx} className="border-b bg-white">
-                        <td className="p-2">
-                          <Select 
-                            value={item.product_id} 
-                            onValueChange={(val) => handleItemChange(idx, "product_id", val)}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Select Product" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products.map(p => (
-                                <SelectItem key={p.id} value={String(p.id)}>{p.kode} - {p.nama}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-2">
-                          <Input 
-                            type="number" 
-                            className="h-8 text-right text-xs" 
-                            min="1"
-                            value={item.qty_ordered}
-                            onChange={(e) => handleItemChange(idx, "qty_ordered", Number(e.target.value))}
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input 
-                            type="number" 
-                            className="h-8 text-right text-xs" 
-                            min="0"
-                            value={item.unit_price}
-                            onChange={(e) => handleItemChange(idx, "unit_price", Number(e.target.value))}
-                          />
-                          {(() => {
-                            const prod = products.find(p => String(p.id) === String(item.product_id));
-                            if (prod && Number(item.unit_price) !== Number(prod.harga)) {
-                              return (
-                                <div className="text-[10px] text-right text-orange-600 mt-1 leading-tight font-medium">
-                                  Harga Master: {formatRupiah(prod.harga)} <br/>
-                                  Harga Kontrak: {formatRupiah(item.unit_price)}
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </td>
-                        <td className="p-2 text-right font-mono font-medium">
-                          {formatRupiah(item.qty_ordered * item.unit_price)}
-                        </td>
-                        <td className="p-2 text-center">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => handleRemoveItem(idx)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
+                    formData.items.map((item, idx) => {
+                      const prod = products.find(p => String(p.id) === String(item.product_id));
+                      const availableStock = prod ? Number(prod.available_stock || 0) : 0;
+                      const hasWarning = (Number(item.qty_reserved || 0) + Number(item.qty_to_produce || 0)) !== Number(item.qty_ordered || 0);
+
+                      return (
+                        <tr key={idx} className="border-b bg-white">
+                          <td className="p-2">
+                            <Select 
+                              value={item.product_id} 
+                              onValueChange={(val) => handleItemChange(idx, "product_id", val)}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select Product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {products.map(p => (
+                                  <SelectItem key={p.id} value={String(p.id)}>{p.kode} - {p.nama}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-2">
+                            <Input 
+                              type="number" 
+                              className="h-8 text-right text-xs font-mono-num" 
+                              min="1"
+                              value={item.qty_ordered}
+                              onChange={(e) => handleItemChange(idx, "qty_ordered", Number(e.target.value))}
+                            />
+                          </td>
+                          <td className="p-2 text-right font-mono font-medium text-slate-500 pr-4">
+                            {availableStock}
+                          </td>
+                          <td className="p-2">
+                            <Input 
+                              type="number" 
+                              className="h-8 text-right text-xs font-mono-num" 
+                              min="0"
+                              max={availableStock}
+                              value={item.qty_reserved || 0}
+                              onChange={(e) => handleItemChange(idx, "qty_reserved", Number(e.target.value))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input 
+                              type="number" 
+                              className="h-8 text-right text-xs font-mono-num" 
+                              min="0"
+                              value={item.qty_to_produce || 0}
+                              onChange={(e) => handleItemChange(idx, "qty_to_produce", Number(e.target.value))}
+                            />
+                            {hasWarning && (
+                              <div className="text-[10px] text-red-500 font-medium text-right mt-0.5">
+                                Harus berjumlah {item.qty_ordered}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            <Input 
+                              type="number" 
+                              className="h-8 text-right text-xs font-mono-num" 
+                              min="0"
+                              value={item.unit_price}
+                              onChange={(e) => handleItemChange(idx, "unit_price", Number(e.target.value))}
+                            />
+                            {prod && Number(item.unit_price) !== Number(prod.harga) && (
+                              <div className="text-[10px] text-right text-orange-600 mt-1 leading-tight font-medium">
+                                Master: {formatRupiah(prod.harga)}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2 text-right font-mono font-medium">
+                            {formatRupiah((item.qty_ordered || 0) * (item.unit_price || 0))}
+                          </td>
+                          <td className="p-2 text-center">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => handleRemoveItem(idx)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                   {formData.items.length > 0 && (
                     <tr className="bg-slate-50 font-semibold border-t">
-                      <td colSpan="3" className="p-2 text-right text-xs">Computed Contract Value:</td>
+                      <td colSpan="6" className="p-2 text-right text-xs">Computed Contract Value:</td>
                       <td className="p-2 text-right font-mono text-sm text-[#0A6ED1]">
                         {formatRupiah(formData.nilai)}
                       </td>
@@ -767,16 +832,23 @@ const SalesOrders = () => {
             </div>
             <div className="space-y-2">
               <Label>Customer</Label>
-              <Select value={formData.customer_id} onValueChange={(val) => setFormData(prev => ({ ...prev, customer_id: val }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map(c => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.nama}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {formData.so_type === "MTS" ? (
+                <Input value="PT Default Perusahaan (MTS)" disabled className="bg-slate-50 text-slate-500 font-medium h-10" />
+              ) : (
+                <Select 
+                  value={formData.customer_id} 
+                  onValueChange={(val) => setFormData(prev => ({ ...prev, customer_id: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.nama}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label>SO Type</Label>
@@ -826,56 +898,85 @@ const SalesOrders = () => {
                 <thead className="bg-slate-100 border-b">
                   <tr>
                     <th className="p-2.5 text-left font-semibold text-[#59687A]">Product Name</th>
-                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Quantity</th>
-                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-40">Unit Price (IDR)</th>
-                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-36">Total Price</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-20">Qty Order</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Stok Tersedia</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Alokasi Stok</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-24">Produksi Tambahan</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-32">Harga (IDR)</th>
+                    <th className="p-2.5 text-right font-semibold text-[#59687A] w-28">Total</th>
                     <th className="p-2.5 text-center font-semibold text-[#59687A] w-12">Delete</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {formData.items.map((item, idx) => (
-                    <tr key={idx} className="border-b bg-white">
-                      <td className="p-2">
-                        <Select value={item.product_id} onValueChange={(val) => handleItemChange(idx, "product_id", val)}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Select Product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map(p => (
-                              <SelectItem key={p.id} value={String(p.id)}>{p.kode} - {p.nama}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="p-2">
-                        <Input type="number" className="h-8 text-right text-xs" value={item.qty_ordered} onChange={(e) => handleItemChange(idx, "qty_ordered", Number(e.target.value))} />
-                      </td>
-                      <td className="p-2">
-                        <Input type="number" className="h-8 text-right text-xs" value={item.unit_price} onChange={(e) => handleItemChange(idx, "unit_price", Number(e.target.value))} />
-                        {(() => {
-                          const prod = products.find(p => String(p.id) === String(item.product_id));
-                          if (prod && Number(item.unit_price) !== Number(prod.harga)) {
-                            return (
-                              <div className="text-[10px] text-right text-orange-600 mt-1 leading-tight font-medium">
-                                Harga Master: {formatRupiah(prod.harga)} <br/>
-                                Harga Kontrak: {formatRupiah(item.unit_price)}
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </td>
-                      <td className="p-2 text-right font-mono font-medium">{formatRupiah(item.qty_ordered * item.unit_price)}</td>
-                      <td className="p-2 text-center">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => handleRemoveItem(idx)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {formData.items.map((item, idx) => {
+                    const prod = products.find(p => String(p.id) === String(item.product_id));
+                    const availableStock = prod ? Number(prod.available_stock || 0) : 0;
+                    const hasWarning = (Number(item.qty_reserved || 0) + Number(item.qty_to_produce || 0)) !== Number(item.qty_ordered || 0);
+
+                    return (
+                      <tr key={idx} className="border-b bg-white">
+                        <td className="p-2">
+                          <Select value={item.product_id} onValueChange={(val) => handleItemChange(idx, "product_id", val)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select Product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map(p => (
+                                <SelectItem key={p.id} value={String(p.id)}>{p.kode} - {p.nama}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-2">
+                          <Input type="number" className="h-8 text-right text-xs font-mono-num" value={item.qty_ordered} onChange={(e) => handleItemChange(idx, "qty_ordered", Number(e.target.value))} />
+                        </td>
+                        <td className="p-2 text-right font-mono font-medium text-slate-500 pr-4">
+                          {availableStock}
+                        </td>
+                        <td className="p-2">
+                          <Input 
+                            type="number" 
+                            className="h-8 text-right text-xs font-mono-num" 
+                            min="0"
+                            max={availableStock}
+                            value={item.qty_reserved || 0}
+                            onChange={(e) => handleItemChange(idx, "qty_reserved", Number(e.target.value))}
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input 
+                            type="number" 
+                            className="h-8 text-right text-xs font-mono-num" 
+                            min="0"
+                            value={item.qty_to_produce || 0}
+                            onChange={(e) => handleItemChange(idx, "qty_to_produce", Number(e.target.value))}
+                          />
+                          {hasWarning && (
+                            <div className="text-[10px] text-red-500 font-medium text-right mt-0.5">
+                              Harus berjumlah {item.qty_ordered}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-2">
+                          <Input type="number" className="h-8 text-right text-xs font-mono-num" value={item.unit_price} onChange={(e) => handleItemChange(idx, "unit_price", Number(e.target.value))} />
+                          {prod && Number(item.unit_price) !== Number(prod.harga) && (
+                            <div className="text-[10px] text-right text-orange-600 mt-1 leading-tight font-medium">
+                              Master: {formatRupiah(prod.harga)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-2 text-right font-mono font-medium">{formatRupiah((item.qty_ordered || 0) * (item.unit_price || 0))}</td>
+                        <td className="p-2 text-center">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => handleRemoveItem(idx)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {formData.items.length > 0 && (
                     <tr className="bg-slate-50 font-semibold border-t">
-                      <td colSpan="3" className="p-2 text-right">Computed Contract Value:</td>
+                      <td colSpan="6" className="p-2 text-right text-xs">Computed Contract Value:</td>
                       <td className="p-2 text-right font-mono text-sm text-[#0A6ED1]">{formatRupiah(formData.nilai)}</td>
                       <td></td>
                     </tr>
@@ -1052,9 +1153,13 @@ const SalesOrders = () => {
                     <thead className="bg-[#F4F6F8] border-b">
                       <tr>
                         <th className="p-3 text-left font-semibold text-[#59687A]">Product Snapshot</th>
-                        <th className="p-3 text-right font-semibold text-[#59687A] w-20">Qty</th>
-                        <th className="p-3 text-right font-semibold text-[#59687A] w-28">Price Snapshot</th>
-                        <th className="p-3 text-right font-semibold text-[#59687A] w-28">Est. Vol / Wt</th>
+                        <th className="p-3 text-right font-semibold text-[#59687A] w-16">Ordered</th>
+                        <th className="p-3 text-right font-semibold text-[#59687A] w-16">Reserved</th>
+                        <th className="p-3 text-right font-semibold text-[#59687A] w-16">To Produce</th>
+                        <th className="p-3 text-right font-semibold text-[#59687A] w-16">Produced</th>
+                        <th className="p-3 text-right font-semibold text-[#59687A] w-16">Delivered</th>
+                        <th className="p-3 text-right font-semibold text-[#59687A] w-24">Price</th>
+                        <th className="p-3 text-right font-semibold text-[#59687A] w-24">Est. Vol / Wt</th>
                         <th className="p-3 text-left font-semibold text-[#59687A] w-36">BOM Health Status</th>
                         <th className="p-3 text-center font-semibold text-[#59687A] w-24">BOM Lock</th>
                       </tr>
@@ -1070,8 +1175,20 @@ const SalesOrders = () => {
                               {item.product_name_snapshot || item.product?.nama}
                             </span>
                           </td>
-                          <td className="p-3 text-right font-mono-num font-semibold">
+                          <td className="p-3 text-right font-mono-num font-semibold text-[#1C252E]">
                             {Number(item.qty_ordered)} {item.unit_snapshot || item.product?.satuan}
+                          </td>
+                          <td className="p-3 text-right font-mono-num text-amber-700 font-medium">
+                            {Number(item.qty_reserved || 0)}
+                          </td>
+                          <td className="p-3 text-right font-mono-num text-blue-700 font-medium">
+                            {Number(item.qty_to_produce || 0)}
+                          </td>
+                          <td className="p-3 text-right font-mono-num text-indigo-700">
+                            {Number(item.qty_produced || 0)}
+                          </td>
+                          <td className="p-3 text-right font-mono-num text-green-700 font-medium">
+                            {Number(item.qty_delivered || 0)}
                           </td>
                           <td className="p-3 text-right font-mono-num text-[#1C252E]">
                             {formatRupiah(item.unit_price)}

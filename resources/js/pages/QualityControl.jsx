@@ -294,8 +294,8 @@ const QualityControl = () => {
   });
 
   const { data: activeBatches = [] } = useQuery({
-    queryKey: ["production-batches"],
-    queryFn: () => productionBatchApi.getAll({ per_page: 100 }).then(res => res.data.data || res.data)
+    queryKey: ["production-batches", "qc-eligible"],
+    queryFn: () => productionBatchApi.getAll({ per_page: 100, qc_eligible: true }).then(res => res.data.data || res.data)
   });
 
   // Mutations

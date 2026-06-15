@@ -20,20 +20,57 @@ class InventoryController extends Controller
             $this->seedDefaultFinishedGoods();
         }
 
-        // 2. Fetch Finished Goods
-        $finishedGoods = DB::table('public.production_inventory as pi')
-            ->join('global.production_products as pp', 'pi.product_id', '=', 'pp.id')
-            ->select([
-                'pp.kode',
-                'pp.nama',
-                'pi.stok',
-                'pi.reserved',
-                DB::raw('(pi.stok - pi.reserved) as available'),
-                'pi.gudang',
-                'pi.lokasi'
-            ])
-            ->orderBy('pp.kode')
-            ->get();
+        // 2. Fetch Finished Goods / WIP / Reject based on warehouse filter
+        $warehouseCode = $request->query('warehouse_code');
+
+        if ($warehouseCode === 'GD-02' || $warehouseCode === 'WH-WIP') {
+            // Fetch WIP goods from active batches
+            $activeStatuses = DB::table('global.production_batch_statuses')
+                ->whereIn('status', ['Casting', 'Demolding', 'QC'])
+                ->pluck('id');
+
+            $finishedGoods = DB::table('public.production_batches as pb')
+                ->join('global.production_products as pp', 'pb.product_id', '=', 'pp.id')
+                ->whereIn('pb.batch_status_id', $activeStatuses)
+                ->whereNull('pb.deleted_at')
+                ->select([
+                    'pp.kode',
+                    'pp.nama',
+                    DB::raw('CAST(SUM(pb.target_qty) AS INTEGER) as stok'),
+                    DB::raw('0 as reserved'),
+                    DB::raw('CAST(SUM(pb.target_qty) AS INTEGER) as available'),
+                    DB::raw('\'GD-02\' as gudang'),
+                    DB::raw('\'Area Produksi\' as lokasi')
+                ])
+                ->groupBy('pp.kode', 'pp.nama')
+                ->orderBy('pp.kode')
+                ->get();
+        } else {
+            // Fetch FG or Reject from production_inventory
+            $query = DB::table('public.production_inventory as pi')
+                ->join('global.production_products as pp', 'pi.product_id', '=', 'pp.id')
+                ->select([
+                    'pp.kode',
+                    'pp.nama',
+                    'pi.stok',
+                    'pi.reserved',
+                    DB::raw('(pi.stok - pi.reserved) as available'),
+                    'pi.gudang',
+                    'pi.lokasi'
+                ]);
+
+            if ($warehouseCode && $warehouseCode !== 'All') {
+                if ($warehouseCode === 'GD-03' || $warehouseCode === 'WH-FG') {
+                    $query->whereIn('pi.gudang', ['GD-03', 'WH-FG']);
+                } elseif ($warehouseCode === 'GD-04' || $warehouseCode === 'WH-REJ') {
+                    $query->whereIn('pi.gudang', ['GD-04', 'WH-REJ']);
+                } else {
+                    $query->where('pi.gudang', $warehouseCode);
+                }
+            }
+
+            $finishedGoods = $query->orderBy('pp.kode')->get();
+        }
 
         // 3. Fetch materials for warehouse RM calculation & visual storage gauges
         $materials = DB::table('global.production_materials as pm')
@@ -301,14 +338,17 @@ class InventoryController extends Controller
             }
         }
 
+        $totalReservedQty = DB::table('public.production_inventory')->whereIn('gudang', ['WH-FG', 'GD-03'])->sum('reserved');
+
         return response()->json([
-            'finished_goods'  => $finishedGoods,
-            'warehouses'      => $warehouses,
-            'storage'         => $storage,
-            'stock_movements' => $stockMovements,
-            'total_fg_qty'    => $totalFgQty,
-            'receipts_today'  => $receiptsToday,
-            'issues_today'    => $issuesToday,
+            'finished_goods'      => $finishedGoods,
+            'warehouses'          => $warehouses,
+            'storage'             => $storage,
+            'stock_movements'     => $stockMovements,
+            'total_fg_qty'        => $totalFgQty,
+            'total_reserved_qty'  => $totalReservedQty,
+            'receipts_today'      => $receiptsToday,
+            'issues_today'        => $issuesToday,
         ]);
     }
 

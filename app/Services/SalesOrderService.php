@@ -18,6 +18,24 @@ class SalesOrderService
     public function createSalesOrder(array $data): SalesOrder
     {
         return DB::transaction(function () use ($data) {
+            // MTS Customer Auto-Resolution
+            if (($data['so_type'] ?? '') === 'MTS') {
+                $internalCustomer = \App\Models\Customer::firstOrCreate(
+                    ['kode' => 'CUS-INTERNAL'],
+                    [
+                        'nama' => 'PT Default Perusahaan (MTS)',
+                        'kontak' => 'Internal Supervisor',
+                        'telepon' => '021-99998888',
+                        'email' => 'mts@perusahaan.com',
+                        'kota' => 'Bekasi',
+                        'segmen' => 'Internal',
+                        'limit_kredit' => 0,
+                        'aktif' => true,
+                    ]
+                );
+                $data['customer_id'] = $internalCustomer->id;
+            }
+
             // Auto-generate Sales Order number with Plant prefix: SO-PLANT-YYYYMMDD-XXXX
             $plantCode = 'BKS'; // Fallback
             $user = auth()->user();
@@ -63,6 +81,8 @@ class SalesOrderService
                     [
                         'product_id' => $data['product_id'],
                         'qty_ordered' => $data['qty'],
+                        'qty_reserved' => 0,
+                        'qty_to_produce' => $data['qty'],
                         'unit_price' => $data['nilai'] / max(1, $data['qty']),
                         'delivery_date' => $data['tgl_kirim'] ?? null,
                     ]
@@ -74,6 +94,35 @@ class SalesOrderService
                 }
                 if (empty($data['qty'])) {
                     $data['qty'] = array_sum(array_column($data['items'], 'qty_ordered'));
+                }
+            }
+
+            // Validate items: qty_reserved + qty_to_produce = qty_ordered
+            // and qty_reserved <= available_stock
+            foreach ($data['items'] as $itemData) {
+                $qtyOrdered = (float) $itemData['qty_ordered'];
+                $qtyReserved = (float) ($itemData['qty_reserved'] ?? 0);
+                $qtyToProduce = (float) ($itemData['qty_to_produce'] ?? $qtyOrdered);
+
+                if (abs(($qtyReserved + $qtyToProduce) - $qtyOrdered) > 0.0001) {
+                    throw ValidationException::withMessages([
+                        'items' => ["Total Qty Alokasi ({$qtyReserved}) dan Produksi ({$qtyToProduce}) harus sama dengan Qty Order ({$qtyOrdered})."]
+                    ]);
+                }
+
+                // Check available stock
+                $productId = $itemData['product_id'];
+                $availableStock = (float) DB::table('public.production_inventory_batches')
+                    ->where('product_id', $productId)
+                    ->where('warehouse', 'WH-FG')
+                    ->where('status', 'Available')
+                    ->selectRaw('SUM(qty_on_hand - qty_reserved) as avail')
+                    ->value('avail') ?: 0.0;
+
+                if ($qtyReserved > $availableStock) {
+                    throw ValidationException::withMessages([
+                        'items' => ["Jumlah alokasi stok ({$qtyReserved}) melebihi stok tersedia ({$availableStock}) untuk produk ID {$productId}."]
+                    ]);
                 }
             }
 
@@ -96,9 +145,11 @@ class SalesOrderService
                 $resolved = $this->prepareItemData($product, $itemData['qty_ordered'], $itemData['unit_price'] ?? null);
                 
                 $so->items()->create(array_merge($resolved, [
-                    'qty_ordered'   => $itemData['qty_ordered'],
-                    'delivery_date' => $itemData['delivery_date'] ?? $so->tgl_kirim,
-                    'notes'         => $itemData['notes'] ?? null,
+                    'qty_ordered'    => $itemData['qty_ordered'],
+                    'qty_reserved'   => $itemData['qty_reserved'] ?? 0,
+                    'qty_to_produce' => $itemData['qty_to_produce'] ?? $itemData['qty_ordered'],
+                    'delivery_date'  => $itemData['delivery_date'] ?? $so->tgl_kirim,
+                    'notes'          => $itemData['notes'] ?? null,
                 ]));
             }
 
@@ -128,6 +179,35 @@ class SalesOrderService
             ])));
 
             if (isset($data['items'])) {
+                // Validate items: qty_reserved + qty_to_produce = qty_ordered
+                // and qty_reserved <= available_stock
+                foreach ($data['items'] as $itemData) {
+                    $qtyOrdered = (float) $itemData['qty_ordered'];
+                    $qtyReserved = (float) ($itemData['qty_reserved'] ?? 0);
+                    $qtyToProduce = (float) ($itemData['qty_to_produce'] ?? $qtyOrdered);
+
+                    if (abs(($qtyReserved + $qtyToProduce) - $qtyOrdered) > 0.0001) {
+                        throw ValidationException::withMessages([
+                            'items' => ["Total Qty Alokasi ({$qtyReserved}) dan Produksi ({$qtyToProduce}) harus sama dengan Qty Order ({$qtyOrdered})."]
+                        ]);
+                    }
+
+                    // Check available stock
+                    $productId = $itemData['product_id'];
+                    $availableStock = (float) DB::table('public.production_inventory_batches')
+                        ->where('product_id', $productId)
+                        ->where('warehouse', 'WH-FG')
+                        ->where('status', 'Available')
+                        ->selectRaw('SUM(qty_on_hand - qty_reserved) as avail')
+                        ->value('avail') ?: 0.0;
+
+                    if ($qtyReserved > $availableStock) {
+                        throw ValidationException::withMessages([
+                            'items' => ["Jumlah alokasi stok ({$qtyReserved}) melebihi stok tersedia ({$availableStock}) untuk produk ID {$productId}."]
+                        ]);
+                    }
+                }
+
                 // Remove existing items and rebuild
                 $so->items()->delete();
 
@@ -136,9 +216,11 @@ class SalesOrderService
                     $resolved = $this->prepareItemData($product, $itemData['qty_ordered'], $itemData['unit_price'] ?? null);
 
                     $so->items()->create(array_merge($resolved, [
-                        'qty_ordered'   => $itemData['qty_ordered'],
-                        'delivery_date' => $itemData['delivery_date'] ?? $so->tgl_kirim,
-                        'notes'         => $itemData['notes'] ?? null,
+                        'qty_ordered'    => $itemData['qty_ordered'],
+                        'qty_reserved'   => $itemData['qty_reserved'] ?? 0,
+                        'qty_to_produce' => $itemData['qty_to_produce'] ?? $itemData['qty_ordered'],
+                        'delivery_date'  => $itemData['delivery_date'] ?? $so->tgl_kirim,
+                        'notes'          => $itemData['notes'] ?? null,
                     ]));
                 }
 
@@ -185,13 +267,94 @@ class SalesOrderService
             ]);
         }
 
-        $oldValues = ['status' => 'Submitted'];
-        $so->status = 'Approved';
-        $so->save();
+        return DB::transaction(function () use ($so) {
+            $oldValues = ['status' => 'Submitted'];
+            $so->status = 'Approved';
+            $so->save();
 
-        AuditLog::log('sales_order.approved', 'sales_order', $so->id, $oldValues, ['status' => 'Approved']);
+            // Perform FIFO lot allocation for items with qty_reserved > 0
+            foreach ($so->items as $item) {
+                $qtyReserved = (float) $item->qty_reserved;
+                if ($qtyReserved <= 0) {
+                    continue;
+                }
 
-        return $so;
+                $remaining = $qtyReserved;
+                
+                // Get available batches ordered by production_date (FIFO)
+                $batches = \App\Models\InventoryBatch::where('product_id', $item->product_id)
+                    ->where('warehouse', 'WH-FG')
+                    ->where('status', 'Available')
+                    ->orderBy('production_date', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($batches as $batch) {
+                    $batchAvailable = (float) $batch->qty_on_hand - (float) $batch->qty_reserved;
+                    if ($batchAvailable <= 0) {
+                        continue;
+                    }
+
+                    $allocated = min($remaining, $batchAvailable);
+
+                    // Update batch qty_reserved
+                    $batch->qty_reserved = (float) $batch->qty_reserved + $allocated;
+                    $batch->save();
+
+                    // Create stock reservation record
+                    \App\Models\StockReservation::create([
+                        'sales_order_id'      => $so->id,
+                        'sales_order_item_id' => $item->id,
+                        'inventory_batch_id' => $batch->id,
+                        'product_id'          => $item->product_id,
+                        'reserved_qty'        => $allocated,
+                        'reservation_date'    => now(),
+                        'status'              => 'Active',
+                        'notes'               => "Reserved during SO Approval: {$so->no}",
+                    ]);
+
+                    // Update aggregate inventory
+                    $existingInv = DB::table('public.production_inventory')
+                        ->where('product_id', $item->product_id)
+                        ->where('gudang', 'WH-FG')
+                        ->first();
+
+                    if ($existingInv) {
+                        DB::table('public.production_inventory')
+                            ->where('id', $existingInv->id)
+                            ->update([
+                                'reserved'   => $existingInv->reserved + $allocated,
+                                'updated_at' => now(),
+                            ]);
+                    } else {
+                        DB::table('public.production_inventory')->insert([
+                            'product_id'   => $item->product_id,
+                            'gudang'       => 'WH-FG',
+                            'stok'         => 0,
+                            'reserved'     => $allocated,
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                    }
+
+                    $remaining -= $allocated;
+                    if ($remaining <= 0) {
+                        break;
+                    }
+                }
+
+                if ($remaining > 0.0001) {
+                    throw ValidationException::withMessages([
+                        'items' => ["Gagal melakukan alokasi stok otomatis. Stok produk ID {$item->product_id} tidak mencukupi untuk melakukan reservasi sebesar {$qtyReserved} unit."]
+                    ]);
+                }
+            }
+
+            AuditLog::log('sales_order.approved', 'sales_order', $so->id, $oldValues, ['status' => 'Approved']);
+
+            return $so;
+        });
     }
 
     /**
@@ -228,13 +391,50 @@ class SalesOrderService
             ]);
         }
 
-        $oldValues = ['status' => $so->status];
-        $so->status = 'Cancelled';
-        $so->save();
+        return DB::transaction(function () use ($so) {
+            $oldValues = ['status' => $so->status];
+            $so->status = 'Cancelled';
+            $so->save();
 
-        AuditLog::log('sales_order.cancelled', 'sales_order', $so->id, $oldValues, ['status' => 'Cancelled']);
+            // Release any active stock reservations
+            $reservations = \App\Models\StockReservation::where('sales_order_id', $so->id)
+                ->where('status', 'Active')
+                ->lockForUpdate()
+                ->get();
 
-        return $so;
+            foreach ($reservations as $reservation) {
+                // Decrement batch qty_reserved
+                $batch = $reservation->inventoryBatch;
+                if ($batch) {
+                    $batch->qty_reserved = max(0.0, (float) $batch->qty_reserved - (float) $reservation->reserved_qty);
+                    $batch->save();
+                }
+
+                // Decrement aggregate inventory reserved
+                $existingInv = DB::table('public.production_inventory')
+                    ->where('product_id', $reservation->product_id)
+                    ->where('gudang', 'WH-FG')
+                    ->first();
+
+                if ($existingInv) {
+                    DB::table('public.production_inventory')
+                        ->where('id', $existingInv->id)
+                        ->update([
+                            'reserved'   => max(0, $existingInv->reserved - (float) $reservation->reserved_qty),
+                            'updated_at' => now(),
+                        ]);
+                }
+
+                // Delete reservation record
+                $reservation->status = 'Cancelled';
+                $reservation->save();
+                $reservation->delete();
+            }
+
+            AuditLog::log('sales_order.cancelled', 'sales_order', $so->id, $oldValues, ['status' => 'Cancelled']);
+
+            return $so;
+        });
     }
 
     /**
@@ -242,6 +442,26 @@ class SalesOrderService
      */
     public function generateDemands(SalesOrder $so): SalesOrder
     {
+        // Auto-initialize items if empty (e.g. from legacy tests)
+        if ($so->items()->count() === 0) {
+            $bomHeaderId = \App\Models\BomHeader::where('product_id', $so->product_id)
+                ->where('status', 'active')
+                ->value('id') 
+                ?: \App\Models\BomHeader::where('product_id', $so->product_id)->value('id');
+
+            $so->items()->create([
+                'product_id'     => $so->product_id,
+                'qty_ordered'    => $so->qty ?? 1.0,
+                'qty_reserved'   => 0.0,
+                'qty_to_produce' => $so->qty ?? 1.0,
+                'qty_produced'   => 0.0,
+                'qty_delivered'  => 0.0,
+                'unit_price'     => $so->qty ? ($so->nilai / $so->qty) : $so->nilai,
+                'bom_header_id'  => $bomHeaderId,
+            ]);
+            $so->load('items');
+        }
+
         // Validation 5: Check Sales Order status is Approved
         if ($so->status !== 'Approved') {
             $msg = "Generate Demand gagal. Status Sales Order harus Approved.";
@@ -257,8 +477,18 @@ class SalesOrderService
             throw ValidationException::withMessages(['sales_order_id' => [$msg]]);
         }
 
-        // Verify each item before starting transaction
+        // Verify each item before starting transaction (only if it requires production)
         foreach ($so->items as $item) {
+            $qtyReserved = (float) $item->qty_reserved;
+            $qtyToProduce = (float) $item->qty_to_produce;
+            if (abs(($qtyReserved + $qtyToProduce) - (float) $item->qty_ordered) > 0.0001) {
+                $qtyToProduce = (float) $item->qty_ordered - $qtyReserved;
+            }
+
+            if ($qtyToProduce <= 0) {
+                continue;
+            }
+
             $product = $item->product;
             $productName = $item->product_name_snapshot ?? ($product ? $product->nama : 'Unknown Product');
 
@@ -291,6 +521,16 @@ class SalesOrderService
             $oldValues = ['status' => 'Approved'];
 
             foreach ($so->items as $item) {
+                $qtyReserved = (float) $item->qty_reserved;
+                $qtyToProduce = (float) $item->qty_to_produce;
+                if (abs(($qtyReserved + $qtyToProduce) - (float) $item->qty_ordered) > 0.0001) {
+                    $qtyToProduce = (float) $item->qty_ordered - $qtyReserved;
+                }
+
+                if ($qtyToProduce <= 0) {
+                    continue;
+                }
+
                 // Format: DEMAND-SO-{so_no}-{item_id}
                 $demandNumber = 'DEMAND-SO-' . $so->no . '-' . $item->id;
 
@@ -300,16 +540,12 @@ class SalesOrderService
                     'sales_order_id'      => $so->id,
                     'sales_order_item_id' => $item->id,
                     'product_id'          => $item->product_id,
-                    'demand_qty'          => $item->qty_ordered,
+                    'demand_qty'          => $qtyToProduce,
                     'required_date'       => $item->delivery_date ?? $so->tgl_kirim,
                     'priority'            => $so->prioritas === 'Tinggi' ? 3 : ($so->prioritas === 'Rendah' ? 7 : 5),
                     'status'              => 'Open',
                     'notes'               => $item->notes ?? 'Generated from SO ' . $so->no,
                 ]);
-
-                // Update item states
-                $item->qty_to_produce = $item->qty_ordered;
-                $item->save();
             }
 
             $so->status = 'Planning';

@@ -302,6 +302,11 @@ class ProductionPlanningService
             ->where('aktif', true)
             ->get();
 
+        $statusCounts = ProductionBatch::select('batch_status_id', DB::raw('COUNT(*) as count'))
+            ->groupBy('batch_status_id')
+            ->pluck('count', 'batch_status_id')
+            ->toArray();
+
         $batchPlanned = 0;
         $batchActive = 0;
         $batchQc = 0;
@@ -310,7 +315,7 @@ class ProductionPlanningService
 
         foreach ($batchStatuses as $status) {
             $nameLower = strtolower(trim($status->status));
-            $count = ProductionBatch::where('batch_status_id', $status->id)->count();
+            $count = $statusCounts[$status->id] ?? 0;
 
             if (strpos($nameLower, 'planning') !== false || strpos($nameLower, 'rencana') !== false) {
                 $batchPlanned += $count;

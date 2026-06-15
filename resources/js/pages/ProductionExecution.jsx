@@ -392,6 +392,47 @@ const ProductionExecution = () => {
               </div>
 
               <div className="p-6 space-y-4 max-h-[50vh] overflow-y-auto">
+                {selectedBatch.cost && (
+                  <div className="bg-[#F8FAFC] border border-[#EEF0F2] rounded-lg p-4 space-y-2">
+                    <h4 className="text-xs font-semibold text-[#1C252E] flex items-center gap-1.5">
+                      <span className="w-1.5 h-3 bg-[#0A6ED1] rounded-full" />
+                      Cost Summary (Biaya Standar)
+                    </h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                      <div className="flex justify-between border-b border-dashed border-[#EEF0F2] pb-1">
+                        <span className="text-[#59687A]">Material Cost:</span>
+                        <span className="font-semibold text-[#1C252E]">
+                          Rp {Number(selectedBatch.cost.material_cost || 0).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-dashed border-[#EEF0F2] pb-1">
+                        <span className="text-[#59687A]">Labor Cost:</span>
+                        <span className="font-semibold text-[#1C252E]">
+                          Rp {Number(selectedBatch.cost.labor_cost || 0).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-dashed border-[#EEF0F2] pb-1">
+                        <span className="text-[#59687A]">Overhead Cost:</span>
+                        <span className="font-semibold text-[#1C252E]">
+                          Rp {Number(selectedBatch.cost.overhead_cost || 0).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-dashed border-[#EEF0F2] pb-1">
+                        <span className="text-[#59687A]">Total Cost:</span>
+                        <span className="font-semibold text-[#0B6ED0]">
+                          Rp {Number(selectedBatch.cost.total_cost || 0).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-dashed border-[#EEF0F2] pb-1 col-span-2">
+                        <span className="text-[#59687A]">Cost Per Unit / m³:</span>
+                        <span className="font-semibold text-[#1C252E]">
+                          Rp {Number(selectedBatch.cost.cost_per_unit || 0).toLocaleString('id-ID')} / Rp {Number(selectedBatch.cost.cost_per_m3 || 0).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="relative border-l-2 border-[#DFE3E8] ml-2.5 pl-6 space-y-6">
                   {selectedBatch.status_logs && selectedBatch.status_logs.length > 0 ? (
                     selectedBatch.status_logs.map((log) => (

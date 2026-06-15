@@ -16,12 +16,17 @@ class InventoryBatch extends Model
     protected $fillable = [
         'batch_number', 'product_id', 'warehouse', 'location',
         'production_date', 'qty_on_hand', 'qty_reserved', 'status', 'notes',
+        'production_batch_id', 'total_cost', 'cost_per_unit', 'cost_per_m3',
     ];
 
     protected $casts = [
         'production_date' => 'date',
         'qty_on_hand'     => 'decimal:2',
         'qty_reserved'    => 'decimal:2',
+        'production_batch_id' => 'integer',
+        'total_cost'      => 'decimal:2',
+        'cost_per_unit'   => 'decimal:2',
+        'cost_per_m3'     => 'decimal:2',
     ];
 
     protected $appends = ['qty_available', 'aging_days'];
@@ -45,5 +50,10 @@ class InventoryBatch extends Model
     public function reservations(): HasMany
     {
         return $this->hasMany(StockReservation::class, 'inventory_batch_id');
+    }
+
+    public function productionBatch(): BelongsTo
+    {
+        return $this->belongsTo(ProductionBatch::class, 'production_batch_id');
     }
 }

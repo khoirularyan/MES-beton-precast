@@ -21,6 +21,7 @@ class ProductionBatch extends Model
         'actual_start', 'actual_end', 'work_center_id', 'notes',
         'mold_id', 'batch_sequence', 'sales_order_id', 'planned_date',
         'batch_status_id', 'status',
+        'bom_header_id', 'bom_version_snapshot', 'labor_rate_snapshot', 'overhead_rate_snapshot',
     ];
 
     protected static function booted()
@@ -82,6 +83,9 @@ class ProductionBatch extends Model
         'batch_sequence'   => 'integer',
         'planned_date'     => 'date',
         'batch_status_id'  => 'integer',
+        'bom_header_id'    => 'integer',
+        'labor_rate_snapshot' => 'decimal:2',
+        'overhead_rate_snapshot' => 'decimal:2',
     ];
 
     public function product(): BelongsTo
@@ -122,6 +126,11 @@ class ProductionBatch extends Model
     public function statusModel(): BelongsTo
     {
         return $this->belongsTo(BatchStatus::class, 'batch_status_id');
+    }
+
+    public function bomHeader(): BelongsTo
+    {
+        return $this->belongsTo(BomHeader::class, 'bom_header_id');
     }
 
     public function statusLogs(): HasMany

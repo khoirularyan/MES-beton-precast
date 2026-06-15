@@ -16,8 +16,27 @@ class ProductionBatchController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ProductionBatch::with(['product', 'workCenter', 'plan', 'cost', 'mold', 'statusModel'])
+        $relations = ['product', 'mold', 'statusModel'];
+        if (!$request->boolean('upcoming')) {
+            $relations = array_merge($relations, ['workCenter', 'plan', 'cost']);
+        }
+
+        $query = ProductionBatch::with($relations)
             ->whereNull('deleted_at');
+
+        if ($request->boolean('upcoming')) {
+            $finishedStatusIds = DB::table('global.production_batch_statuses')
+                ->whereIn('status', ['Finished', 'Delivered'])
+                ->pluck('id');
+            $query->whereNotIn('batch_status_id', $finishedStatusIds);
+        }
+
+        if ($request->boolean('qc_eligible')) {
+            $ineligibleStatusIds = DB::table('global.production_batch_statuses')
+                ->whereIn('status', ['Planning', 'Ready Material', 'Delivered'])
+                ->pluck('id');
+            $query->whereNotIn('batch_status_id', $ineligibleStatusIds);
+        }
 
         if ($request->filled('status_id')) {
             $query->where('batch_status_id', $request->status_id);
@@ -330,5 +349,77 @@ class ProductionBatchController extends Controller
         }
 
         return response()->json(['message' => 'No active next status configured after ' . $currentStatus->status], 422);
+    }
+
+    public function cost($id): JsonResponse
+    {
+        $batch = ProductionBatch::findOrFail($id);
+        $cost = $batch->cost;
+        
+        if (!$cost) {
+            return response()->json([
+                'batch_number'  => $batch->batch_number,
+                'material_cost' => 0.00,
+                'labor_cost'    => 0.00,
+                'overhead_cost' => 0.00,
+                'total_cost'    => 0.00,
+                'cost_per_unit' => 0.00,
+                'cost_per_m3'   => 0.00,
+            ]);
+        }
+
+        return response()->json([
+            'batch_number'  => $batch->batch_number,
+            'material_cost' => (float) $cost->material_cost,
+            'labor_cost'    => (float) $cost->labor_cost,
+            'overhead_cost' => (float) $cost->overhead_cost,
+            'total_cost'    => (float) $cost->total_cost,
+            'cost_per_unit' => (float) $cost->cost_per_unit,
+            'cost_per_m3'   => (float) $cost->cost_per_m3,
+        ]);
+    }
+
+    public function costDashboard(): JsonResponse
+    {
+        $today = date('Y-m-d');
+        $startOfMonth = date('Y-m-01');
+        $endOfMonth = date('Y-m-t');
+
+        $todayCost = DB::table('public.production_costs as pc')
+            ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+            ->whereDate('pb.planned_date', $today)
+            ->whereNull('pb.deleted_at')
+            ->sum('pc.total_cost');
+
+        $monthlyCost = DB::table('public.production_costs as pc')
+            ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+            ->whereBetween('pb.planned_date', [$startOfMonth, $endOfMonth])
+            ->whereNull('pb.deleted_at')
+            ->sum('pc.total_cost');
+
+        $avgCostPerM3 = DB::table('public.production_costs as pc')
+            ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+            ->whereBetween('pb.planned_date', [$startOfMonth, $endOfMonth])
+            ->whereNull('pb.deleted_at')
+            ->selectRaw('SUM(pc.total_cost) / NULLIF(SUM(pb.target_volume_m3), 0) as avg_cost')
+            ->value('avg_cost') ?: 0.0;
+
+        $topProducts = DB::table('public.production_costs as pc')
+            ->join('public.production_batches as pb', 'pc.production_batch_id', '=', 'pb.id')
+            ->join('global.production_products as p', 'pb.product_id', '=', 'p.id')
+            ->whereBetween('pb.planned_date', [$startOfMonth, $endOfMonth])
+            ->whereNull('pb.deleted_at')
+            ->select('p.nama as product_name', DB::raw('SUM(pc.total_cost) as total_cost'))
+            ->groupBy('p.id', 'p.nama')
+            ->orderByDesc('total_cost')
+            ->limit(5)
+            ->get();
+
+        return response()->json([
+            'today_production_cost'   => (float) $todayCost,
+            'monthly_production_cost' => (float) $monthlyCost,
+            'average_cost_per_m3'     => (float) $avgCostPerM3,
+            'top_cost_products'       => $topProducts,
+        ]);
     }
 }

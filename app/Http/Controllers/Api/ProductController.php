@@ -30,6 +30,15 @@ class ProductController extends Controller
 
         $data = $query->orderBy('kode')->paginate($request->get('per_page', 20));
 
+        foreach ($data->items() as $product) {
+            $product->available_stock = (float) \Illuminate\Support\Facades\DB::table('public.production_inventory_batches')
+                ->where('product_id', $product->id)
+                ->where('warehouse', 'WH-FG')
+                ->where('status', 'Available')
+                ->selectRaw('SUM(qty_on_hand - qty_reserved) as avail')
+                ->value('avail') ?: 0.0;
+        }
+
         return response()->json($data);
     }
 
@@ -74,6 +83,13 @@ class ProductController extends Controller
 
     public function show(Product $product): JsonResponse
     {
+        $product->available_stock = (float) \Illuminate\Support\Facades\DB::table('public.production_inventory_batches')
+            ->where('product_id', $product->id)
+            ->where('warehouse', 'WH-FG')
+            ->where('status', 'Available')
+            ->selectRaw('SUM(qty_on_hand - qty_reserved) as avail')
+            ->value('avail') ?: 0.0;
+
         return response()->json($product->load(['bomHeaders.items.material']));
     }
 

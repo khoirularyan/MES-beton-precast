@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Truck, MapPin, Clock, CheckCircle2, Plus, Package, Warehouse, ShieldCheck } from "lucide-react";
 import { TruckIllustration } from "@/components/visuals/IndustrialVisuals";
 import { formatNumber } from "@/data/mockData";
-import { deliveryOrderApi, salesOrderApi, customerApi } from "@/lib/api";
+import { deliveryOrderApi, salesOrderApi, customerApi, productApi } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -74,6 +74,8 @@ const DeliveryOrders = () => {
   const [tglKirim, setTglKirim] = useState("");
   const [catatan, setCatatan] = useState("");
   const [fifoWarning, setFifoWarning] = useState(null);
+  const [availableStock, setAvailableStock] = useState(0);
+  const [soItemDetails, setSoItemDetails] = useState(null);
 
   // Queries
   const { data: deliveryOrdersList = [], isLoading: isLoadingDOs } = useQuery({
@@ -101,10 +103,12 @@ const DeliveryOrders = () => {
     }
   });
 
-  // Check FIFO Warning
+  // Check FIFO Warning and load stock details
   const handleSOChange = async (soId) => {
     setSelectedSO(soId);
     setFifoWarning(null);
+    setSoItemDetails(null);
+    setAvailableStock(0);
 
     if (!soId) {
       setSelectedCust("");
@@ -115,7 +119,29 @@ const DeliveryOrders = () => {
     const so = salesOrdersData.find(s => s.id === parseInt(soId));
     if (so) {
       setSelectedCust(so.customer_id || "");
-      setQty(so.qty || "");
+      
+      const item = so.items?.find(i => i.product_id === so.product_id);
+      if (item) {
+        const remaining = Number(item.qty_ordered || 0) - Number(item.qty_delivered || 0);
+        setSoItemDetails({
+          qty_ordered: Number(item.qty_ordered || 0),
+          qty_delivered: Number(item.qty_delivered || 0),
+          remaining: remaining
+        });
+        setQty(remaining > 0 ? remaining.toString() : "");
+      } else {
+        setQty(so.qty || "");
+      }
+
+      // Fetch product details to get available_stock
+      try {
+        const prodRes = await productApi.getOne(so.product_id);
+        if (prodRes.data) {
+          setAvailableStock(Number(prodRes.data.available_stock || 0));
+        }
+      } catch (err) {
+        console.error("Failed to load product available stock", err);
+      }
     }
 
     try {
@@ -145,12 +171,49 @@ const DeliveryOrders = () => {
       setTglKirim("");
       setCatatan("");
       setFifoWarning(null);
+      setSoItemDetails(null);
+      setAvailableStock(0);
     },
     onError: (err) => {
       console.error("Create DO failed", err);
       toast.error(err.response?.data?.message || "Gagal membuat Delivery Order");
     }
   });
+
+  // Mutation for updating status transitions
+  const { mutateAsync: updateDOStatus } = useMutation({
+    mutationFn: ({ id, status }) => deliveryOrderApi.update(id, { status }),
+    onSuccess: () => {
+      toast.success("Status pengiriman berhasil diperbarui");
+      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
+    },
+    onError: (err) => {
+      console.error("Update status failed", err);
+      toast.error(err.response?.data?.message || "Gagal memperbarui status pengiriman");
+    }
+  });
+
+  const handleTransitionStatus = async (id, currentStatus) => {
+    let nextStatus = "";
+    if (currentStatus === "Disiapkan") nextStatus = "Siap Berangkat";
+    else if (currentStatus === "Siap Berangkat") nextStatus = "Dalam Perjalanan";
+    else if (currentStatus === "Dalam Perjalanan") nextStatus = "Selesai";
+
+    if (!nextStatus) return;
+
+    if (nextStatus === "Selesai") {
+      const confirmText = "Apakah Anda yakin ingin menyelesaikan pengiriman ini? Ini akan memotong stok di gudang.";
+      if (!window.confirm(confirmText)) {
+        return;
+      }
+    }
+
+    try {
+      await updateDOStatus({ id, status: nextStatus });
+    } catch (err) {
+      // toast is already shown by onError of useMutation
+    }
+  };
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -263,6 +326,7 @@ const DeliveryOrders = () => {
                 <th className="px-4 py-2 text-left w-48">Timeline</th>
                 <th className="px-4 py-2 text-left">Delivery Date</th>
                 <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-center">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -277,11 +341,29 @@ const DeliveryOrders = () => {
                   <td className="px-4"><DeliveryTimeline status={d.status} /></td>
                   <td className="px-4 font-mono-num">{d.tgl_kirim}</td>
                   <td className="px-4"><StatusBadge status={d.status} /></td>
+                  <td className="px-4 text-center">
+                    {d.status !== "Selesai" ? (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="text-xs h-7 px-2 font-semibold text-[#0A6ED1] border-[#0A6ED1] hover:bg-[#0A6ED1] hover:text-white transition-colors"
+                        onClick={() => handleTransitionStatus(d.id, d.status)}
+                      >
+                        {d.status === "Disiapkan" && "Konfirmasi Siap"}
+                        {d.status === "Siap Berangkat" && "Kirim Armada"}
+                        {d.status === "Dalam Perjalanan" && "Selesaikan"}
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-green-600 font-semibold flex items-center justify-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {!loading && deliveryOrdersList.length === 0 && (
                 <tr>
-                  <td colSpan="9" className="px-4 py-8 text-center text-xs text-[#59687A]">Belum ada data delivery order.</td>
+                  <td colSpan="10" className="px-4 py-8 text-center text-xs text-[#59687A]">Belum ada data delivery order.</td>
                 </tr>
               )}
             </tbody>
@@ -341,14 +423,40 @@ const DeliveryOrders = () => {
                 </div>
               </div>
 
+              {/* SO Info & Stock Status Panel */}
+              {soItemDetails && (
+                <div className="bg-slate-50 border border-[#EEF0F2] rounded p-3 text-xs space-y-2 font-sans">
+                  <span className="font-semibold block text-[#1C252E]">Sales Order & Stock Status:</span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                    <div className="bg-white p-2 border rounded">
+                      <span className="text-[10px] text-[#59687A] block">Ordered</span>
+                      <span className="font-mono font-bold text-sm text-[#1C252E]">{soItemDetails.qty_ordered}</span>
+                    </div>
+                    <div className="bg-white p-2 border rounded">
+                      <span className="text-[10px] text-[#59687A] block">Delivered</span>
+                      <span className="font-mono font-bold text-sm text-green-700">{soItemDetails.qty_delivered}</span>
+                    </div>
+                    <div className="bg-white p-2 border rounded">
+                      <span className="text-[10px] text-[#59687A] block">Remaining</span>
+                      <span className="font-mono font-bold text-sm text-[#0A6ED1]">{soItemDetails.remaining}</span>
+                    </div>
+                    <div className="bg-white p-2 border rounded">
+                      <span className="text-[10px] text-[#59687A] block">Available Stock</span>
+                      <span className="font-mono font-bold text-sm text-amber-700">{availableStock}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-[#59687A] block mb-1">Quantity (unit) *</label>
                   <input
                     type="number"
-                    className="w-full border border-[#DFE3E8] rounded px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                    min="1"
+                    className="w-full border border-[#DFE3E8] rounded px-3 py-2 text-sm focus:border-[#0A6ED1] focus:outline-none"
                     value={qty}
-                    disabled
+                    onChange={(e) => setQty(e.target.value)}
                     required
                   />
                 </div>

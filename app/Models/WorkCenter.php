@@ -13,6 +13,7 @@ class WorkCenter extends Model
         'code', 'name', 'description',
         'capacity_qty_per_shift', 'capacity_m3_per_shift',
         'shifts_per_day', 'is_active',
+        'standard_labor_rate_per_m3', 'standard_overhead_rate_per_m3',
     ];
 
     protected $casts = [
@@ -20,6 +21,8 @@ class WorkCenter extends Model
         'capacity_qty_per_shift' => 'decimal:2',
         'capacity_m3_per_shift' => 'decimal:3',
         'shifts_per_day' => 'integer',
+        'standard_labor_rate_per_m3' => 'decimal:2',
+        'standard_overhead_rate_per_m3' => 'decimal:2',
     ];
 
     public function productionPlans(): HasMany

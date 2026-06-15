@@ -140,6 +140,7 @@ const StorageStrip = ({ materialsList = [] }) => {
 
 const Inventory = () => {
   const [tab, setTab] = useState("finished");
+  const [selectedWarehouseFilter, setSelectedWarehouseFilter] = useState("All");
   const queryClient = useQueryClient();
 
   // Stock Adjustment Modal states
@@ -182,9 +183,9 @@ const Inventory = () => {
     receipts_today: 0,
     issues_today: 0
   }, isLoading: isLoadingOverview } = useQuery({
-    queryKey: ["inventoryOverview"],
+    queryKey: ["inventoryOverview", selectedWarehouseFilter],
     queryFn: async () => {
-      const res = await inventoryApi.getOverview();
+      const res = await inventoryApi.getOverview({ warehouse_code: selectedWarehouseFilter });
       return res.data || {};
     }
   });
@@ -239,10 +240,11 @@ const Inventory = () => {
       />
       <div className="p-6 space-y-6">
         {/* KPI */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <KPICard testId="inv-kpi-fg" label="Total Finished Goods Inventory" value={loading ? "..." : formatNumber(overview.total_fg_qty)} unit="units" icon={Package} accent="success" />
+          <KPICard testId="inv-kpi-reserved" label="Reserved Finished Goods" value={loading ? "..." : formatNumber(overview.total_reserved_qty || 0)} unit="units" icon={Package} accent="warning" />
           <KPICard testId="inv-kpi-rm" label="Total Material Inventory" value={loading ? "..." : formatNumber(stats.total_weight_tons)} unit="tons" icon={Boxes} accent="default" />
-          <KPICard testId="inv-kpi-in" label="Receipts Today" value={loading ? "..." : formatNumber(overview.receipts_today)} unit="transactions" icon={ArrowDownToLine} accent="warning" />
+          <KPICard testId="inv-kpi-in" label="Receipts Today" value={loading ? "..." : formatNumber(overview.receipts_today)} unit="transactions" icon={ArrowDownToLine} accent="default" />
           <KPICard testId="inv-kpi-out" label="Issues Today" value={loading ? "..." : formatNumber(overview.issues_today)} unit="transactions" icon={ArrowUpFromLine} accent="neutral" />
         </div>
 
@@ -267,7 +269,31 @@ const Inventory = () => {
             <TabsTrigger value="consumption" className="text-xs h-8">Material Consumption</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="finished" className="mt-4">
+          <TabsContent value="finished" className="mt-4 space-y-3">
+            <div className="flex items-center justify-between bg-white border border-[#DFE3E8] p-3 rounded-md shadow-sm">
+              <span className="text-xs font-semibold text-[#1C252E] uppercase tracking-wider">
+                Daftar Inventori
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#59687A] font-medium">Filter Gudang:</span>
+                <select
+                  value={selectedWarehouseFilter}
+                  onChange={(e) => setSelectedWarehouseFilter(e.target.value)}
+                  className="text-xs border border-[#DFE3E8] rounded px-2.5 py-1.5 bg-white text-[#1C252E] font-medium focus:outline-none focus:ring-1 focus:ring-[#0A6ED1]"
+                >
+                  <option value="All">Semua Gudang (FG & Reject)</option>
+                  {warehousesList
+                    .filter((w) => w.tipe !== "Raw Material" && w.kode !== "GD-01")
+                    .map((w) => (
+                      <option key={w.kode} value={w.kode}>
+                        {w.nama} ({w.kode})
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
+            </div>
+
             <div className="bg-white border border-[#DFE3E8] rounded-md overflow-hidden">
               <table className="w-full mes-table">
                 <thead>

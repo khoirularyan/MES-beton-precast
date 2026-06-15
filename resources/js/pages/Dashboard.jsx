@@ -32,6 +32,7 @@ const getKpiDefinitions = (data) => {
   const p = data?.production || {};
   const inv = data?.inventory || {};
   const d = data?.delivery || {};
+  const cost = data?.costing || {};
 
   return {
     "kpi-target": {
@@ -145,6 +146,33 @@ const getKpiDefinitions = (data) => {
         { label: "Order Pending", value: d.pending_count || 0, unit: "DO", color: "#E9730C" },
         { label: "Pengiriman Hari Ini", value: d.today_count || 0, unit: "DO", color: "#0A6ED1" }
       ]
+    },
+    "kpi-cost-today": {
+      label: "Production Cost Today",
+      formula: "Cost Today = Σ total_cost dari batch produksi hari ini",
+      dataSource: "Production Costs (planned_date = today)",
+      deskripsi: "Total biaya standar produksi dari batch yang dijadwalkan hari ini.",
+      breakdown: [
+        { label: "Biaya Hari Ini", value: cost.today_production_cost || 0, unit: "Rp", color: "#0A6ED1" }
+      ]
+    },
+    "kpi-cost-month": {
+      label: "Production Cost This Month",
+      formula: "Cost This Month = Σ total_cost dari batch produksi bulan ini",
+      dataSource: "Production Costs (planned_date = this month)",
+      deskripsi: "Total biaya standar produksi dari batch yang dijadwalkan bulan ini.",
+      breakdown: [
+        { label: "Biaya Bulan Ini", value: cost.monthly_production_cost || 0, unit: "Rp", color: "#E9730C" }
+      ]
+    },
+    "kpi-cost-avg": {
+      label: "Average Cost per m³",
+      formula: "Average Cost = Total Cost Month ÷ Total Volume Month",
+      dataSource: "Production Costs & Batches",
+      deskripsi: "Rata-rata biaya standar produksi per meter kubik untuk bulan ini.",
+      breakdown: [
+        { label: "Rata-rata / m³", value: cost.average_cost_per_m3 || 0, unit: "Rp/m³", color: "#107E3E" }
+      ]
     }
   };
 };
@@ -177,6 +205,7 @@ const Dashboard = () => {
   const inventory = dashboardData?.inventory || {};
   const delivery = dashboardData?.delivery || {};
   const salesOrder = dashboardData?.sales_order || {};
+  const costing = dashboardData?.costing || {};
 
   const kpiDefs = getKpiDefinitions(dashboardData);
   const def = drilldown ? kpiDefs[drilldown.id] : null;
@@ -241,6 +270,10 @@ const Dashboard = () => {
           <KPICard testId="kpi-wip" label="Stock Aging > 30d" value={isLoading ? "..." : formatNumber(inventory.aging_stock_qty)} unit="unit" icon={Activity} accent="neutral" info={kpiDefs["kpi-wip"].deskripsi} onClick={() => openKPI("kpi-wip", "neutral", `${formatNumber(inventory.aging_stock_qty)} unit`)} />
           <KPICard testId="kpi-efisiensi" label="Delivery Performance" value={isLoading ? "..." : `${(delivery.performance || 0).toFixed(1)}%`} icon={TrendingUp} accent="success" info={kpiDefs["kpi-efisiensi"].deskripsi} onClick={() => openKPI("kpi-efisiensi", "success", `${(delivery.performance || 0).toFixed(1)}%`)} />
           <KPICard testId="kpi-jadi-hari" label="Pending Delivery" value={isLoading ? "..." : formatNumber(delivery.pending_count)} unit="order" icon={ShieldCheck} accent="success" info={kpiDefs["kpi-jadi-hari"].deskripsi} onClick={() => openKPI("kpi-jadi-hari", "success", `${formatNumber(delivery.pending_count)} order`)} />
+          
+          <KPICard testId="kpi-cost-today" label="Production Cost Today" value={isLoading ? "..." : formatRupiah(costing.today_production_cost)} icon={TrendingUp} accent="neutral" info={kpiDefs["kpi-cost-today"].deskripsi} onClick={() => openKPI("kpi-cost-today", "neutral", formatRupiah(costing.today_production_cost))} />
+          <KPICard testId="kpi-cost-month" label="Production Cost This Month" value={isLoading ? "..." : formatRupiah(costing.monthly_production_cost)} icon={Activity} accent="neutral" info={kpiDefs["kpi-cost-month"].deskripsi} onClick={() => openKPI("kpi-cost-month", "neutral", formatRupiah(costing.monthly_production_cost))} />
+          <KPICard testId="kpi-cost-avg" label="Average Cost per m³" value={isLoading ? "..." : formatRupiah(costing.average_cost_per_m3)} icon={ShieldCheck} accent="success" info={kpiDefs["kpi-cost-avg"].deskripsi} onClick={() => openKPI("kpi-cost-avg", "success", formatRupiah(costing.average_cost_per_m3))} />
         </div>
 
         <KPIDrilldownDialog
