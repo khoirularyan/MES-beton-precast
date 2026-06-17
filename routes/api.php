@@ -33,6 +33,8 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // ── Dashboard — any authenticated active user ────────────────────────────
     Route::get('dashboard', [DashboardController::class, 'index']);
+    Route::get('dashboard/financial-health', [DashboardController::class, 'financialHealth'])->middleware('permission:dashboard.view');
+    Route::get('dashboard/kpi-drilldown/{kpi}', [DashboardController::class, 'kpiDrilldown'])->middleware('permission:dashboard.view');
 
     // ============================================================
     // MASTER DATA (FINE-GRAINED PERMISSIONS)

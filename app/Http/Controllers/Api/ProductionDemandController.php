@@ -135,6 +135,7 @@ class ProductionDemandController extends Controller
     {
         $validated = $request->validate([
             'start_date'              => 'required|date',
+            'end_date'                => 'nullable|date|after_or_equal:start_date',
             'mold_id'                 => 'nullable|integer',
             'notes'                   => 'nullable|string',
             'planning_mode'           => ['nullable', Rule::in(['auto', 'manual'])],
@@ -196,13 +197,15 @@ class ProductionDemandController extends Controller
         $validated = $request->validate([
             'start_date' => 'required|date',
             'mold_id'    => 'nullable|integer',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
         ]);
 
         try {
             $preview = $this->planningService->previewSchedule(
                 $productionDemand,
                 $validated['start_date'],
-                $validated['mold_id'] ?? null
+                $validated['mold_id'] ?? null,
+                $validated['end_date'] ?? null
             );
             
             // Check material shortage

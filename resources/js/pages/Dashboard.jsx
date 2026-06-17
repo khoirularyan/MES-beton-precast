@@ -41,6 +41,7 @@ const getKpiDefinitions = (data) => {
       formula: "Target = Σ target_qty dari batch produksi hari ini",
       dataSource: "Production Batches (planned_date = today)",
       deskripsi: "Jumlah unit yang direncanakan untuk diproduksi hari ini berdasarkan batch yang dijadwalkan.",
+      navigation_path: "/planning",
       breakdown: [
         { label: "Target Hari Ini", value: p.target_today || 0, unit: "unit", color: "#59687A" }
       ]
@@ -50,6 +51,7 @@ const getKpiDefinitions = (data) => {
       formula: "Realisasi = Σ actual_qty dari batch berstatus Finished hari ini",
       dataSource: "Production Batches (status = Finished)",
       deskripsi: "Jumlah unit aktual yang telah selesai dicetak hari ini.",
+      navigation_path: "/production-execution",
       breakdown: [
         { label: "Realisasi Selesai", value: p.actual_today || 0, unit: "unit", color: "#107E3E" }
       ]
@@ -59,6 +61,7 @@ const getKpiDefinitions = (data) => {
       formula: "Achievement (%) = (Realisasi ÷ Target) × 100",
       dataSource: "Dihitung dari Target & Realisasi Hari Ini",
       deskripsi: "Persentase realisasi dibanding target produksi.",
+      navigation_path: "/production-execution",
       breakdown: [
         { label: "Realisasi", value: p.actual_today || 0, unit: "unit", color: "#107E3E" },
         { label: "Target", value: p.target_today || 0, unit: "unit", color: "#59687A" },
@@ -70,6 +73,7 @@ const getKpiDefinitions = (data) => {
       formula: "Active Batch = Count(batch) dengan status Ready Material, Casting, atau QC",
       dataSource: "Production Batches (aktif)",
       deskripsi: "Jumlah batch produksi yang saat ini sedang aktif berjalan di area pabrik.",
+      navigation_path: "/curing",
       breakdown: [
         { label: "Batch Aktif", value: p.active_batches || 0, unit: "batch", color: "#0A6ED1" }
       ]
@@ -79,6 +83,7 @@ const getKpiDefinitions = (data) => {
       formula: "Overdue = Count(batch) belum selesai & planned_end < NOW",
       dataSource: "Production Batches (terlambat)",
       deskripsi: "Jumlah batch produksi yang melewati batas waktu penyelesaian yang direncanakan.",
+      navigation_path: "/production-execution",
       breakdown: [
         { label: "Batch Terlambat", value: p.overdue_batches || 0, unit: "batch", color: "#B00020" }
       ]
@@ -88,6 +93,7 @@ const getKpiDefinitions = (data) => {
       formula: "Low Stock = Count(material) dengan qty_on_hand ≤ min_stok dan > 0.5 * min_stok",
       dataSource: "Material Inventory",
       deskripsi: "Bahan baku yang kuantitas stoknya saat ini berada di bawah batas minimum stok aman.",
+      navigation_path: "/inventory",
       breakdown: [
         { label: "Stok Rendah (Low)", value: inv.low_stock_count || 0, unit: "item", color: "#E9730C" },
         { label: "Stok Kritis (Critical)", value: inv.critical_stock_count || 0, unit: "item", color: "#B00020" }
@@ -98,6 +104,7 @@ const getKpiDefinitions = (data) => {
       formula: "FG Stock = Σ stok produk jadi di gudang utama",
       dataSource: "Inventory Finished Goods",
       deskripsi: "Total produk jadi yang siap dikirim dan berada di gudang Finished Goods.",
+      navigation_path: "/inventory",
       breakdown: [
         { label: "Stok Gudang FG", value: inv.finished_goods_stock || 0, unit: "unit", color: "#107E3E" }
       ]
@@ -107,6 +114,7 @@ const getKpiDefinitions = (data) => {
       formula: "Inventory Value = Σ (qty_on_hand * harga) untuk semua bahan baku",
       dataSource: "Material Inventory & Master Harga",
       deskripsi: "Nilai valuasi finansial dari seluruh stok bahan baku yang tersimpan saat ini.",
+      navigation_path: "/inventory",
       breakdown: [
         { label: "Total Valuasi", value: formatRupiah(inv.material_value || 0), color: "#0A6ED1" }
       ]
@@ -116,6 +124,7 @@ const getKpiDefinitions = (data) => {
       formula: "Average Mold Utilization (%) = AVG(utilisasi) dari semua cetakan aktif",
       dataSource: "Master Cetakan",
       deskripsi: "Rata-rata utilitas penggunaan cetakan aktif saat ini.",
+      navigation_path: "/master-data",
       breakdown: [
         { label: "Utilisasi Cetakan", value: `${(p.mold_utilization || 0).toFixed(1)}%`, color: "#107E3E" }
       ]
@@ -125,6 +134,7 @@ const getKpiDefinitions = (data) => {
       formula: "Aging Stock = Σ stok produk jadi dengan umur simpan > 30 hari",
       dataSource: "Inventory Finished Goods (tgl_produksi)",
       deskripsi: "Volume produk jadi yang telah tersimpan di gudang melebihi 30 hari sejak tanggal produksi.",
+      navigation_path: "/inventory",
       breakdown: [
         { label: "Stok Usang (> 30 hari)", value: inv.aging_stock_qty || 0, unit: "unit", color: "#E9730C" }
       ]
@@ -134,6 +144,7 @@ const getKpiDefinitions = (data) => {
       formula: "Delivery Performance (%) = (Σ DO status Delivered ÷ Σ Total DO) * 100",
       dataSource: "Delivery Orders",
       deskripsi: "Persentase ketepatan waktu pengiriman yang sukses diselesaikan.",
+      navigation_path: "/delivery",
       breakdown: [
         { label: "Delivery Performance", value: `${(d.performance || 0).toFixed(1)}%`, color: "#107E3E" }
       ]
@@ -143,6 +154,7 @@ const getKpiDefinitions = (data) => {
       formula: "Pending Delivery = Count(DO) dengan status belum terkirim (Pending, Confirmed, Loading, In Transit)",
       dataSource: "Delivery Orders (aktif)",
       deskripsi: "Jumlah order pengiriman yang saat ini sedang diproses atau antri dikirim.",
+      navigation_path: "/delivery",
       breakdown: [
         { label: "Order Pending", value: d.pending_count || 0, unit: "DO", color: "#E9730C" },
         { label: "Pengiriman Hari Ini", value: d.today_count || 0, unit: "DO", color: "#0A6ED1" }
@@ -155,6 +167,7 @@ const getKpiDefinitions = (data) => {
       deskripsi: cost.today_production_cost != null
         ? "Total biaya standar produksi dari batch yang dijadwalkan hari ini."
         : "Belum ada data biaya hari ini. Pastikan batch sudah mencapai status Casting.",
+      navigation_path: "/reports",
       breakdown: [
         { label: "Biaya Hari Ini", value: cost.today_production_cost != null ? cost.today_production_cost : "Belum ada data", unit: cost.today_production_cost != null ? "Rp" : "", color: "#0A6ED1" }
       ]
@@ -166,17 +179,19 @@ const getKpiDefinitions = (data) => {
       deskripsi: cost.monthly_production_cost != null
         ? "Total biaya standar produksi dari batch yang dijadwalkan bulan ini."
         : "Belum ada data biaya bulan ini. Data muncul setelah batch mencapai status Casting.",
+      navigation_path: "/reports",
       breakdown: [
         { label: "Biaya Bulan Ini", value: cost.monthly_production_cost != null ? cost.monthly_production_cost : "Belum ada data", unit: cost.monthly_production_cost != null ? "Rp" : "", color: "#E9730C" }
       ]
     },
     "kpi-cost-avg": {
       label: "Average Cost per m\u00b3",
-      formula: "Average Cost = Total Cost Month \u00f7 Total Volume Month",
+      formula: "Average Cost = Total Cost Month ÷ Total Volume Month",
       dataSource: "Production Costs & Batches",
       deskripsi: cost.average_cost_per_m3 != null
         ? "Rata-rata biaya standar produksi per meter kubik untuk bulan ini."
         : "Belum ada data biaya per m\u00b3. Pastikan target_volume_m3 diisi pada batch produksi.",
+      navigation_path: "/reports",
       breakdown: [
         { label: "Rata-rata / m\u00b3", value: cost.average_cost_per_m3 != null ? cost.average_cost_per_m3 : "Belum ada data", unit: cost.average_cost_per_m3 != null ? "Rp/m\u00b3" : "", color: "#107E3E" }
       ]
@@ -188,8 +203,49 @@ const getKpiDefinitions = (data) => {
       deskripsi: inv.fg_inventory_value != null
         ? "Nilai valuasi finansial produk jadi berdasarkan HPP per unit dari lot produksi."
         : "Belum ada nilai inventory FG. Data muncul setelah batch selesai (Finished) dan cost_per_unit tercatat.",
+      navigation_path: "/inventory",
       breakdown: [
         { label: "Nilai FG", value: inv.fg_inventory_value != null ? formatRupiah(inv.fg_inventory_value) : "Belum ada data", color: "#107E3E" }
+      ]
+    },
+    "kpi-revenue-month": {
+      label: "Revenue Month",
+      formula: "Revenue = Σ (qty_ordered * unit_price) dari SO item bulan ini",
+      dataSource: "production_sales_order_items & production_sales_orders",
+      deskripsi: "Total pendapatan dari item Sales Order yang dipesan bulan ini.",
+      navigation_path: "/sales",
+      breakdown: [
+        { label: "Revenue Bulan Ini", value: formatRupiah(data?.financial?.revenue_month || 0), color: "#0A6ED1" }
+      ]
+    },
+    "kpi-cost-month-fin": {
+      label: "Cost Month",
+      formula: "Cost = Σ biaya standard / aktual batch bulan ini",
+      dataSource: "production_costs / production_bom_headers",
+      deskripsi: "Total biaya produksi bulan ini menggunakan data aktual atau fallback estimasi BOM.",
+      navigation_path: "/reports",
+      breakdown: [
+        { label: "Cost Bulan Ini", value: formatRupiah(data?.financial?.cost_month || 0), color: "#E9730C" }
+      ]
+    },
+    "kpi-gross-margin": {
+      label: "Gross Margin",
+      formula: "Gross Margin = Revenue - Cost",
+      dataSource: "Kombinasi Revenue & Cost Bulan Ini",
+      deskripsi: "Selisih antara total pendapatan dan total biaya produksi bulan ini.",
+      navigation_path: "/reports",
+      breakdown: [
+        { label: "Gross Margin", value: formatRupiah(data?.financial?.gross_margin || 0), color: "#107E3E" }
+      ]
+    },
+    "kpi-margin-pct": {
+      label: "Margin %",
+      formula: "Margin (%) = (Gross Margin ÷ Revenue) * 100",
+      dataSource: "Dihitung dari Gross Margin & Revenue",
+      deskripsi: "Rasio keuntungan kotor terhadap pendapatan bulan ini.",
+      navigation_path: "/reports",
+      breakdown: [
+        { label: "Margin %", value: `${(data?.financial?.gross_margin_pct || 0).toFixed(1)}%`, color: "#107E3E" }
       ]
     }
   };
@@ -207,6 +263,16 @@ const Dashboard = () => {
     }
   });
 
+  const { data: drilldownDetails } = useQuery({
+    queryKey: ["kpiDrilldown", drilldown?.id],
+    queryFn: async () => {
+      if (!drilldown?.id) return null;
+      const res = await dashboardApi.getKpiDrilldown(drilldown.id);
+      return res.data;
+    },
+    enabled: Boolean(drilldown?.id),
+  });
+
   useEffect(() => {
     if (error) {
       toast.error("Gagal memuat data dashboard. Silakan coba lagi.");
@@ -216,6 +282,9 @@ const Dashboard = () => {
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboardOverview"] });
+    if (drilldown?.id) {
+      queryClient.invalidateQueries({ queryKey: ["kpiDrilldown", drilldown.id] });
+    }
     toast.success("Dashboard data refreshed");
   };
 
@@ -224,9 +293,26 @@ const Dashboard = () => {
   const delivery = dashboardData?.delivery || {};
   const salesOrder = dashboardData?.sales_order || {};
   const costing = dashboardData?.costing || {};
+  const financial = dashboardData?.financial || {};
+  const financialMetadata = dashboardData?.financial_metadata || {};
+  const financialWarnings = dashboardData?.financial_warnings || [];
 
   const kpiDefs = getKpiDefinitions(dashboardData);
-  const def = drilldown ? kpiDefs[drilldown.id] : null;
+  const staticDef = drilldown ? kpiDefs[drilldown.id] : null;
+  const def = staticDef ? {
+    ...staticDef,
+    trend: drilldownDetails?.trend || [],
+    breakdown: (drilldownDetails?.breakdown && drilldownDetails.breakdown.length > 0)
+      ? drilldownDetails.breakdown
+      : (staticDef.breakdown || []),
+    formula: (drilldownDetails?.formula && drilldownDetails.formula !== "KPI not supported")
+      ? drilldownDetails.formula
+      : staticDef.formula,
+    dataSource: (drilldownDetails?.source && drilldownDetails.source !== "N/A")
+      ? drilldownDetails.source
+      : staticDef.dataSource,
+    metadata: drilldownDetails?.metadata,
+  } : null;
 
   const openKPI = (id, accent, value, delta) => setDrilldown({ id, accent, value, delta });
 
@@ -310,38 +396,181 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="costing" className="mt-3">
-            {!isLoading && costing.rates_configured === false && (
-              <div className="mb-3 flex items-start gap-2.5 bg-[#FDF3E7] border border-[#F8C98C] rounded-md px-4 py-3">
-                <span className="text-[#E9730C] mt-0.5 flex-shrink-0">⚠️</span>
+            {/* Warning Banner */}
+            {!isLoading && financialWarnings.length > 0 && (
+              <div className="mb-3 flex flex-col gap-1.5 bg-[#FDF3E7] border border-[#F8C98C] rounded-md px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#E9730C] text-sm">⚠️</span>
+                  <span className="text-xs font-semibold text-[#7A3B00]">Peringatan Data Finansial ({financialWarnings.length})</span>
+                </div>
+                <ul className="list-disc list-inside text-[11px] text-[#7A3B00] space-y-1">
+                  {financialWarnings.map((warning, index) => (
+                    <li key={index}>
+                      {warning.type === 'MISSING_BOM' 
+                        ? `Batch #${warning.batch_id} tidak memiliki snapshot BOM. Fallback aktif digunakan.`
+                        : warning.message || JSON.stringify(warning)
+                      }
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {!isLoading && financialWarnings.length === 0 && financialMetadata.cost_confidence === 'MEDIUM' && (
+              <div className="mb-3 flex items-start gap-2.5 bg-[#F4F6F8] border border-[#DFE3E8] rounded-md px-4 py-3">
+                <span className="text-[#59687A] text-xs mt-0.5">ℹ️</span>
                 <div>
-                  <span className="text-xs font-semibold text-[#7A3B00]">Work Center Rates belum dikonfigurasi — </span>
-                  <span className="text-xs text-[#7A3B00]">Labor dan overhead rate di Master Data → Work Centers masih 0. HPP yang tampil hanya mencerminkan biaya material.</span>
+                  <span className="text-xs font-semibold text-[#1C252E]">Costing menggunakan Estimasi BOM — </span>
+                  <span className="text-xs text-[#59687A]">Actual production cost belum tersedia untuk batch bulan ini. Margin di bawah dihitung menggunakan HPP standar.</span>
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <KPICard testId="kpi-cost-today" label="Production Cost Today"
-                value={isLoading ? "..." : (costing.today_production_cost != null ? formatRupiah(costing.today_production_cost) : "–")}
-                icon={TrendingUp} accent={costing.today_production_cost != null ? "neutral" : "neutral"}
-                info={kpiDefs["kpi-cost-today"].deskripsi}
-                onClick={() => openKPI("kpi-cost-today", "neutral", costing.today_production_cost != null ? formatRupiah(costing.today_production_cost) : "Belum ada data")} />
-              <KPICard testId="kpi-cost-month" label="Production Cost Month"
-                value={isLoading ? "..." : (costing.monthly_production_cost != null ? formatRupiah(costing.monthly_production_cost) : "–")}
-                icon={Activity} accent={costing.monthly_production_cost != null ? "neutral" : "neutral"}
-                info={kpiDefs["kpi-cost-month"].deskripsi}
-                onClick={() => openKPI("kpi-cost-month", "neutral", costing.monthly_production_cost != null ? formatRupiah(costing.monthly_production_cost) : "Belum ada data")} />
-              <KPICard testId="kpi-cost-avg" label="Average Cost / m\u00b3"
-                value={isLoading ? "..." : (costing.average_cost_per_m3 != null ? formatRupiah(costing.average_cost_per_m3) : "–")}
-                icon={ShieldCheck} accent={costing.average_cost_per_m3 != null ? "success" : "neutral"}
-                info={kpiDefs["kpi-cost-avg"].deskripsi}
-                onClick={() => openKPI("kpi-cost-avg", "success", costing.average_cost_per_m3 != null ? formatRupiah(costing.average_cost_per_m3) : "Belum ada data")} />
+
+            {/* Confidence Badge Header */}
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#59687A] uppercase tracking-wider">Financial Performance</span>
+              {!isLoading && (
+                <div 
+                  className="text-[10px] font-bold px-2 py-0.5 rounded border tracking-wide uppercase"
+                  style={
+                    financialMetadata.cost_confidence === 'HIGH' 
+                      ? { backgroundColor: '#E6F5EC', color: '#107E3E', borderColor: '#C2E5D3' }
+                      : financialMetadata.cost_confidence === 'MEDIUM'
+                      ? { backgroundColor: '#FDF3E7', color: '#E9730C', borderColor: '#F8C98C' }
+                      : { backgroundColor: '#FBE6E9', color: '#B00020', borderColor: '#F3C2C9' }
+                  }
+                >
+                  {financialMetadata.cost_confidence === 'HIGH' && 'Actual Production Cost'}
+                  {financialMetadata.cost_confidence === 'MEDIUM' && 'Estimated BOM Cost'}
+                  {(financialMetadata.cost_confidence === 'NONE' || !financialMetadata.cost_confidence) && 'No Costing Data'}
+                </div>
+              )}
             </div>
-            {!isLoading && !costing.has_cost_data && (
-              <div className="mt-4 flex items-center gap-2 text-xs text-[#59687A] bg-[#F8FAFC] border border-[#DFE3E8] rounded px-4 py-3">
-                <span>ℹ️</span>
-                <span>Data biaya akan muncul setelah batch produksi pertama mencapai status <strong>Casting</strong> dan StandardCostingService memproses HPP-nya.</span>
+
+            {/* KPI Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KPICard testId="kpi-revenue-month" label="Revenue Month"
+                value={isLoading ? "..." : formatRupiah(financial.revenue_month || 0)}
+                icon={TrendingUp} accent="default"
+                info={kpiDefs["kpi-revenue-month"]?.deskripsi}
+                onClick={() => openKPI("kpi-revenue-month", "default", formatRupiah(financial.revenue_month || 0))} />
+              <KPICard testId="kpi-cost-month-fin" label="Cost Month"
+                value={isLoading ? "..." : formatRupiah(financial.cost_month || 0)}
+                icon={Activity} accent="warning"
+                info={kpiDefs["kpi-cost-month-fin"]?.deskripsi}
+                onClick={() => openKPI("kpi-cost-month-fin", "warning", formatRupiah(financial.cost_month || 0))} />
+              <KPICard testId="kpi-gross-margin" label="Gross Margin"
+                value={isLoading ? "..." : formatRupiah(financial.gross_margin || 0)}
+                icon={ShieldCheck} accent="success"
+                info={kpiDefs["kpi-gross-margin"]?.deskripsi}
+                onClick={() => openKPI("kpi-gross-margin", "success", formatRupiah(financial.gross_margin || 0))} />
+              <KPICard testId="kpi-margin-pct" label="Margin %"
+                value={isLoading ? "..." : `${(financial.gross_margin_pct || 0).toFixed(1)}%`}
+                icon={Activity} accent={(financial.gross_margin_pct || 0) >= 30 ? "success" : "warning"}
+                info={kpiDefs["kpi-margin-pct"]?.deskripsi}
+                onClick={() => openKPI("kpi-margin-pct", (financial.gross_margin_pct || 0) >= 30 ? "success" : "warning", `${(financial.gross_margin_pct || 0).toFixed(1)}%`)} />
+            </div>
+
+            {/* Charts & Breakdown Sub-row */}
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Revenue vs Cost Trend Chart */}
+              <div className="lg:col-span-2 bg-white border border-[#DFE3E8] rounded-md p-4">
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Revenue vs Cost Trend</div>
+                    <div className="text-base font-semibold text-[#1C252E] font-display">Last 6 Months</div>
+                  </div>
+                  <div className="flex items-center gap-3 text-[11px] text-[#59687A]">
+                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#0A6ED1]" /> Revenue</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#E9730C]" /> Cost</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#107E3E]" /> Margin</span>
+                  </div>
+                </div>
+
+                {/* Activity check */}
+                {!isLoading && financial.monthly_series && !financial.monthly_series.some(s => s.activity) ? (
+                  <div className="h-[220px] flex flex-col items-center justify-center border border-dashed border-[#DFE3E8] rounded bg-[#F8FAFC]">
+                    <span className="text-lg">📊</span>
+                    <span className="text-xs font-semibold text-[#59687A] mt-1">No Activity</span>
+                    <span className="text-[10px] text-[#59687A] mt-0.5">Tidak ada transaksi produksi atau penjualan pada periode ini.</span>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={financial.monthly_series || []} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+                      <CartesianGrid stroke="#EEF0F2" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#59687A" }} axisLine={{ stroke: "#DFE3E8" }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "#59687A" }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(0)}M` : v} />
+                      <Tooltip formatter={(value) => [formatRupiah(value), null]} />
+                      <Line type="monotone" dataKey="revenue" stroke="#0A6ED1" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="cost" stroke="#E9730C" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="margin" stroke="#107E3E" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </div>
-            )}
+
+              {/* Sales Pipeline Breakdown */}
+              <div className="bg-white border border-[#DFE3E8] rounded-md p-4">
+                <div className="mb-4">
+                  <div className="text-[11px] uppercase tracking-wider text-[#59687A] font-semibold">Sales Pipeline Breakdown</div>
+                  <div className="text-base font-semibold text-[#1C252E] font-display">Total Value Allocation</div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-[#59687A] font-medium">Draft & Submitted</span>
+                      <span className="text-[#1C252E] font-semibold font-mono-num">{formatRupiah(financial.pipeline_breakdown?.draft || 0)}</span>
+                    </div>
+                    <div className="w-full bg-[#EEF0F2] h-1.5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ 
+                        width: `${financial.revenue_pipeline > 0 ? ((financial.pipeline_breakdown?.draft || 0) / financial.revenue_pipeline) * 100 : 0}%`, 
+                        backgroundColor: '#59687A' 
+                      }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-[#0A6ED1] font-medium">Approved & Planned</span>
+                      <span className="text-[#1C252E] font-semibold font-mono-num">{formatRupiah(financial.pipeline_breakdown?.approved || 0)}</span>
+                    </div>
+                    <div className="w-full bg-[#EEF0F2] h-1.5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ 
+                        width: `${financial.revenue_pipeline > 0 ? ((financial.pipeline_breakdown?.approved || 0) / financial.revenue_pipeline) * 100 : 0}%`, 
+                        backgroundColor: '#0A6ED1' 
+                      }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-[#E9730C] font-medium">Casting & QC (Production)</span>
+                      <span className="text-[#1C252E] font-semibold font-mono-num">{formatRupiah(financial.pipeline_breakdown?.production || 0)}</span>
+                    </div>
+                    <div className="w-full bg-[#EEF0F2] h-1.5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ 
+                        width: `${financial.revenue_pipeline > 0 ? ((financial.pipeline_breakdown?.production || 0) / financial.revenue_pipeline) * 100 : 0}%`, 
+                        backgroundColor: '#E9730C' 
+                      }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-[#107E3E] font-medium">Delivered & Completed</span>
+                      <span className="text-[#1C252E] font-semibold font-mono-num">{formatRupiah(financial.pipeline_breakdown?.delivered || 0)}</span>
+                    </div>
+                    <div className="w-full bg-[#EEF0F2] h-1.5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ 
+                        width: `${financial.revenue_pipeline > 0 ? ((financial.pipeline_breakdown?.delivered || 0) / financial.revenue_pipeline) * 100 : 0}%`, 
+                        backgroundColor: '#107E3E' 
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 

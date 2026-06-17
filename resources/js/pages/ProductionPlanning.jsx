@@ -78,7 +78,7 @@ const ProductionPlanningRefactored = () => {
     if (planningMode === 'manual' && schedulingDemand && scheduleForm.start_date && scheduleForm.mold_id) {
       loadAutoPreview();
     }
-  }, [schedulingDemand, scheduleForm.start_date, scheduleForm.mold_id, planningMode]);
+  }, [schedulingDemand, scheduleForm.start_date, scheduleForm.end_date, scheduleForm.mold_id, planningMode]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -140,6 +140,7 @@ const ProductionPlanningRefactored = () => {
     try {
       const params = { start_date: scheduleForm.start_date };
       if (scheduleForm.mold_id) params.mold_id = scheduleForm.mold_id;
+      if (scheduleForm.end_date) params.end_date = scheduleForm.end_date;
 
       const res = await api.get(`/production-demands/${schedulingDemand.id}/preview-batches`, { params });
       setBatchPreview(res.data);
@@ -174,6 +175,7 @@ const ProductionPlanningRefactored = () => {
     setSchedulingDemand(demand);
     setScheduleForm({
       start_date: '',
+      end_date: '',
       mold_id: null,
       notes: ''
     });
@@ -211,6 +213,7 @@ const ProductionPlanningRefactored = () => {
     setAutoPreviewError(null);
     try {
       const params = { start_date: scheduleForm.start_date, mold_id: scheduleForm.mold_id };
+      if (scheduleForm.end_date) params.end_date = scheduleForm.end_date;
       const res = await api.get(`/production-demands/${schedulingDemand.id}/preview-batches`, { params });
       setAutoPreviewData(res.data);
     } catch (error) {
@@ -261,6 +264,7 @@ const ProductionPlanningRefactored = () => {
         planning_mode: planningMode,
       };
       if (scheduleForm.mold_id) payload.mold_id = scheduleForm.mold_id;
+      if (scheduleForm.end_date) payload.end_date = scheduleForm.end_date;
 
       if (planningMode === 'manual') {
         payload.manual_batches = manualBatches.map((b, i) => ({
@@ -984,7 +988,7 @@ const ProductionPlanningRefactored = () => {
               </div>
 
               {/* ── 2. Scheduling Parameters ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="start_date" className="text-xs font-semibold">Tanggal Mulai Produksi *</Label>
                   <Input
@@ -993,6 +997,16 @@ const ProductionPlanningRefactored = () => {
                     className="mt-1"
                     value={scheduleForm.start_date}
                     onChange={(e) => setScheduleForm({ ...scheduleForm, start_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end_date" className="text-xs font-semibold">Tanggal Selesai Target (Deadline)</Label>
+                  <Input
+                    id="end_date"
+                    type="date"
+                    className="mt-1"
+                    value={scheduleForm.end_date}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, end_date: e.target.value })}
                   />
                 </div>
                 <div>

@@ -52,20 +52,28 @@ MES-beton-precast/
 
 ---
 
-## Tech Stack
+## 🛠️ Technology Stack & Architecture
+=========================================
 
-| Layer        | Teknologi                          | Versi     |
-|--------------|------------------------------------|-----------|
-| Backend      | Laravel                            | 13.15     |
-| Language     | PHP                                | 8.4       |
-| Frontend     | React                              | 19.0      |
-| Build Tool   | Vite + Rolldown                    | 8.0       |
-| CSS          | Tailwind CSS                       | v4        |
-| UI Library   | shadcn/ui (Radix UI primitives)    | —         |
-| Charts       | Recharts                           | 3.6       |
-| Routing      | React Router DOM                   | 7.5       |
-| Icons        | Lucide React                       | 0.516     |
-| Database     | PostgreSQL                         | 16.14     |
+Aplikasi MES Beton Precast ini dibangun menggunakan arsitektur monolitik modern berbasis **Laravel + React SPA (Single Page Application)** dengan pembagian tanggung jawab yang jelas antara frontend (React) dan backend (Laravel REST API).
+
+### **1. Frontend Layer**
+*   **Core Library**: **React 18 (`react: ^18.3.1`)** — Menangani rendering UI deklaratif dan reaktivitas komponen.
+*   **Routing & Navigation**: **React Router DOM 7 (`react-router-dom: 7.5.1`)** — Mengatur navigasi halaman SPA tanpa reload penuh.
+*   **State Management & Caching**: **TanStack React Query v5 (`@tanstack/react-query: 5.56.2`)** — Digunakan untuk manajemen state asinkronus, caching data API, otomatisasi refetching, dan optimasi load data dari database.
+*   **Styling (CSS)**: **Tailwind CSS v4 (`tailwindcss: ^4.0.0`)** — Menyediakan utility-first CSS styling dengan performa tinggi langsung via compiler Vite.
+*   **HTTP Client**: **Axios (`axios: 1.8.4`)** — Digunakan untuk request data ke REST API Laravel dengan proteksi CSRF Cookie otomatis via interceptor.
+*   **Visualisasi Data & KPI**: **Recharts (`recharts: 3.6.0`)** — Menyajikan data grafik tren produksi harian/bulanan serta distribusi penyebab reject secara interaktif.
+*   **Notifications**: **Sonner (`sonner: 2.0.3`)** — Toast alert melayang untuk respons interaksi pengguna.
+*   **UI Components**: **Radix UI primitive components** — Menyediakan fondasi dialog (`FormDialog`), select dropdown, popover, checkbox, dan tab navigation yang responsif dan aksesibel.
+*   **Build Tool**: **Vite v5** dengan **laravel-vite-plugin** — Menyediakan Hot Module Replacement (HMR) cepat untuk proses development dan kompilasi bundle production yang ringkas.
+
+### **2. Backend Layer (REST API & Business Logic)**
+*   **Core Framework**: **Laravel 13.x (PHP 8.3+)** — Menangani *routing* REST API, validasi data request, middleware otorisasi, penanganan job/queue background, dan arsitektur database.
+*   **Database ORM**: **Eloquent ORM** — Menyediakan abstraksi query database berorientasi objek dengan relasi terstruktur (`belongsTo`, `hasMany`, `hasOne`) serta getter/setter attribute serialization (`$appends` & `getStatusAttribute`).
+*   **Database Primary**: **PostgreSQL** — Menyimpan seluruh data master dan transaksi dengan skema terpisah (`public` untuk data operasional harian dan `global` untuk master data terpusat).
+*   **Testing Suite**: **PHPUnit 12** — Menyediakan framework testing unit dan feature untuk memastikan integritas logika bisnis (seperti alur konsumsi material dan transisi status produksi).
+*   **Security & Session**: Menggunakan mekanisme cookie-based session dengan token-based CSRF protection untuk mengamankan API endpoint.
 
 ---
 

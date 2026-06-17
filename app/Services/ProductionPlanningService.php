@@ -45,7 +45,7 @@ class ProductionPlanningService
      * Preview schedule before saving.
      * Accepts optional mold_id to override auto-selection.
      */
-    public function previewSchedule(ProductionDemand $demand, string $startDate, ?int $moldId = null): array
+    public function previewSchedule(ProductionDemand $demand, string $startDate, ?int $moldId = null, ?string $endDate = null): array
     {
         $productId = $demand->product_id;
         $demandQty = (float) $demand->demand_qty;
@@ -88,6 +88,15 @@ class ProductionPlanningService
         $dayCount = 0;
         $sequence = 1;
 
+        if ($endDate) {
+            $endCarbon = Carbon::parse($endDate);
+            $totalDays = max(1, $currentDate->diffInDays($endCarbon) + 1);
+            $targetQtyPerDay = ceil($demandQty / $totalDays);
+        } else {
+            $targetQtyPerDay = null;
+            $endCarbon = null;
+        }
+
         while ($remainingQty > 0) {
             if ($dayCount > 365) {
                 throw ValidationException::withMessages([
@@ -99,13 +108,19 @@ class ProductionPlanningService
             $remainingCapacity = $capacityService->getRemainingCapacity($mold->id, $dateStr);
 
             if ($remainingCapacity > 0) {
-                $allocQty = min($remainingCapacity, $remainingQty);
-                $batches[] = [
-                    'sequence' => $sequence++,
-                    'date'     => $dateStr,
-                    'qty'      => $allocQty,
-                ];
-                $remainingQty -= $allocQty;
+                // If within target range, limit by targetQtyPerDay. Otherwise, use full remainingCapacity.
+                $isWithinRange = !$endCarbon || $currentDate->lessThanOrEqualTo($endCarbon);
+                $limit = ($targetQtyPerDay && $isWithinRange) ? min($targetQtyPerDay, $remainingCapacity) : $remainingCapacity;
+
+                $allocQty = min($limit, $remainingQty);
+                if ($allocQty > 0) {
+                    $batches[] = [
+                        'sequence' => $sequence++,
+                        'date'     => $dateStr,
+                        'qty'      => $allocQty,
+                    ];
+                    $remainingQty -= $allocQty;
+                }
             }
 
             $currentDate->addDay();
@@ -299,7 +314,7 @@ class ProductionPlanningService
             ]);
         }
 
-        $preview = $this->previewSchedule($demand, $params['start_date'], $params['mold_id'] ?? null);
+        $preview = $this->previewSchedule($demand, $params['start_date'], $params['mold_id'] ?? null, $params['end_date'] ?? null);
         $mold = Mold::findOrFail($preview['mold_id']);
         
         return DB::transaction(function () use ($demand, $params, $preview, $mold) {
@@ -310,7 +325,7 @@ class ProductionPlanningService
 
             // Find start and end date from batches
             $batchDates = array_column($preview['batches'], 'date');
-            $endDate = !empty($batchDates) ? end($batchDates) : $params['start_date'];
+            $endDate = !empty($params['end_date']) ? $params['end_date'] : (!empty($batchDates) ? end($batchDates) : $params['start_date']);
 
             // Create production plan
             $plan = ProductionPlan::create([

@@ -256,6 +256,7 @@ export const deliveryOrderApi = {
 export const dashboardApi = {
   getStats: (params = {}) => api.get('/dashboard', { params }),
   getOverview: () => api.get('/dashboard'),
+  getKpiDrilldown: (kpi) => api.get(`/dashboard/kpi-drilldown/${kpi}`),
 };
 
 // ============================================

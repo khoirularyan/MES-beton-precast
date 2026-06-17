@@ -19,73 +19,42 @@ const ProductionExecution = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [transitionNotes, setTransitionNotes] = useState("");
 
-  // Inject deadline keyframe animations once on mount
+  // Inject lightweight, GPU-accelerated animations once on mount
   useEffect(() => {
     const styleId = 'deadline-keyframes';
     if (document.getElementById(styleId)) return;
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      @keyframes deadline-notice {
-        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(192,128,0,0); }
-        50%      { opacity:0.88; box-shadow:0 0 2px 2px rgba(192,128,0,0.2); }
+      @keyframes dot-pulse-fast {
+        0%, 100% { transform: scale(1); opacity: 0.4; }
+        50% { transform: scale(1.5); opacity: 1; }
       }
-      @keyframes deadline-warning {
-        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(233,115,12,0); }
-        50%      { opacity:0.84; box-shadow:0 0 3px 2px rgba(233,115,12,0.25); }
-      }
-      @keyframes deadline-critical {
-        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(176,0,32,0); }
-        40%      { opacity:0.78; box-shadow:0 0 4px 2px rgba(176,0,32,0.3); }
-      }
-      @keyframes deadline-overdue {
-        0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(176,0,32,0); }
-        35%      { opacity:0.7; box-shadow:0 0 5px 2px rgba(176,0,32,0.35); }
-      }
-      @keyframes dot-beat-notice   { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.8);opacity:0.5} }
-      @keyframes dot-beat-warning  { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(2.1);opacity:0.45} }
-      @keyframes dot-beat-critical { 0%,100%{transform:scale(1);opacity:1} 40%{transform:scale(2.4);opacity:0.38} }
-      @keyframes dot-beat-overdue  { 0%,100%{transform:scale(1);opacity:1} 30%{transform:scale(2.8);opacity:0.3} }
-      @keyframes icon-shake {
-        0%,100%{transform:rotate(0deg)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(12deg)}
-        60%{transform:rotate(-8deg)} 80%{transform:rotate(8deg)}
+      @keyframes dot-pulse-slow {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.3); opacity: 1; }
       }
     `;
     document.head.appendChild(style);
   }, []);
 
-  // Returns inline animation style per urgency level
+  // Static styles for the containers to prevent layout/repaint lag during scroll
   const deadlineAnim = (urgency) => {
-    if (!urgency || urgency === 'ok' || urgency === 'done') return {};
-    const map = {
-      notice:   { animation: 'deadline-notice   3s ease-in-out infinite' },
-      warning:  { animation: 'deadline-warning  2s ease-in-out infinite' },
-      critical: { animation: 'deadline-critical 1.2s ease-in-out infinite' },
-      overdue:  { animation: 'deadline-overdue  0.75s ease-in-out infinite' },
-      today:    { animation: 'deadline-overdue  0.75s ease-in-out infinite' },
-    };
-    return map[urgency] || {};
+    return {};
   };
 
   const dotAnim = (urgency) => {
     if (!urgency || urgency === 'ok' || urgency === 'done') return {};
-    const map = {
-      notice:   { animation: 'dot-beat-notice   3s ease-in-out infinite' },
-      warning:  { animation: 'dot-beat-warning  2s ease-in-out infinite' },
-      critical: { animation: 'dot-beat-critical 1.2s ease-in-out infinite' },
-      overdue:  { animation: 'dot-beat-overdue  0.75s ease-in-out infinite' },
-      today:    { animation: 'dot-beat-overdue  0.75s ease-in-out infinite' },
+    const isCritical = ['overdue', 'today', 'critical'].includes(urgency);
+    return {
+      animation: isCritical 
+        ? 'dot-pulse-fast 1.2s ease-in-out infinite' 
+        : 'dot-pulse-slow 2s ease-in-out infinite',
+      willChange: 'transform, opacity'
     };
-    return map[urgency] || {};
   };
 
   const iconAnim = (urgency) => {
-    if (urgency === 'overdue' || urgency === 'today') {
-      return { animation: 'icon-shake 1s ease-in-out infinite' };
-    }
-    if (urgency === 'critical') {
-      return { animation: 'icon-shake 1.5s ease-in-out infinite' };
-    }
     return {};
   };
   const [isTransitioning, setIsTransitioning] = useState(false);

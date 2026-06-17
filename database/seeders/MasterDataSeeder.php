@@ -47,10 +47,10 @@ class MasterDataSeeder extends Seeder
 
         // ── Cetakan (Molds)
         DB::table('global.production_molds')->insertOrIgnore([
-            ['kode' => 'CET-TL9',  'nama' => 'Cetakan Tiang 9m',   'produk' => 'TL-9M-K300', 'jumlah' => 20, 'aktif' => 18, 'kondisi' => 'Baik',            'utilisasi' => 90, 'kapasitas_per_siklus' => 2, 'siklus_per_hari' => 3, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CET-TL12', 'nama' => 'Cetakan Tiang 12m',  'produk' => 'TL-12M-K300','jumlah' => 15, 'aktif' => 12, 'kondisi' => 'Baik',            'utilisasi' => 80, 'kapasitas_per_siklus' => 1, 'siklus_per_hari' => 2, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CET-PD',   'nama' => 'Cetakan Panel Dinding','produk' => 'PD-120-K350','jumlah' => 10, 'aktif' => 8,  'kondisi' => 'Sedang',         'utilisasi' => 80, 'kapasitas_per_siklus' => 4, 'siklus_per_hari' => 2, 'created_at' => now(), 'updated_at' => now()],
-            ['kode' => 'CET-BC',   'nama' => 'Cetakan Box Culvert', 'produk' => 'BC-1010',    'jumlah' => 6,  'aktif' => 5,  'kondisi' => 'Perlu Perawatan', 'utilisasi' => 83, 'kapasitas_per_siklus' => 1, 'siklus_per_hari' => 1, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-TL9',  'nama' => 'Cetakan Tiang 9m',   'produk' => 'TL-9M-K300', 'jumlah_total' => 20, 'jumlah_aktif' => 18, 'kondisi' => 'Baik',            'utilisasi' => 90, 'kapasitas_per_siklus' => 2, 'siklus_per_hari' => 3, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-TL12', 'nama' => 'Cetakan Tiang 12m',  'produk' => 'TL-12M-K300','jumlah_total' => 15, 'jumlah_aktif' => 12, 'kondisi' => 'Baik',            'utilisasi' => 80, 'kapasitas_per_siklus' => 1, 'siklus_per_hari' => 2, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-PD',   'nama' => 'Cetakan Panel Dinding','produk' => 'PD-120-K350','jumlah_total' => 10, 'jumlah_aktif' => 8,  'kondisi' => 'Sedang',         'utilisasi' => 80, 'kapasitas_per_siklus' => 4, 'siklus_per_hari' => 2, 'created_at' => now(), 'updated_at' => now()],
+            ['kode' => 'CET-BC',   'nama' => 'Cetakan Box Culvert', 'produk' => 'BC-1010',    'jumlah_total' => 6,  'jumlah_aktif' => 5,  'kondisi' => 'Perlu Perawatan', 'utilisasi' => 83, 'kapasitas_per_siklus' => 1, 'siklus_per_hari' => 1, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // ── Gudang
@@ -143,6 +143,62 @@ class MasterDataSeeder extends Seeder
             ['kode' => 'CUS-003', 'nama' => 'PT Waskita Karya (Persero)', 'kontak' => 'Bapak Irwan Susilo', 'telepon' => '021-850-0008', 'email' => 'waskita@waskita.co.id',   'npwp' => '01.000.002.0-000.000', 'pic_proyek' => 'Eko Prabowo', 'kota' => 'Jakarta',   'segmen' => 'BUMN Konstruksi', 'limit_kredit' => 4000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
             ['kode' => 'CUS-004', 'nama' => 'Dinas PU Kabupaten Sragen',  'kontak' => 'Bapak Bambang Eko', 'telepon' => '0271-891-234', 'email' => 'pu.sragen@sragen.go.id',  'npwp' => '00.000.000.0-000.001', 'pic_proyek' => 'Hadi Susanto', 'kota' => 'Sragen',    'segmen' => 'Pemerintah',      'limit_kredit' => 1000000000, 'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
             ['kode' => 'CUS-005', 'nama' => 'PT Mitra Konstruksi Mandiri','kontak' => 'Ibu Citra Lestari',  'telepon' => '024-760-5678', 'email' => 'mkm@mkm.co.id',           'npwp' => '02.000.000.0-000.000', 'pic_proyek' => 'Dewi Kusuma', 'kota' => 'Semarang',  'segmen' => 'Swasta',          'limit_kredit' => 500000000,  'aktif' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // ── Work Centers
+        DB::table('global.production_work_centers')->insertOrIgnore([
+            [
+                'code' => 'WC-MIX',
+                'name' => 'Line Mixing & Batching',
+                'description' => 'Preparation of concrete mix, sand, aggregate, cement, admixture',
+                'capacity_qty_per_shift' => 100.00,
+                'capacity_m3_per_shift' => 50.000,
+                'shifts_per_day' => 3,
+                'is_active' => true,
+                'standard_labor_rate_per_m3' => 25000.00,
+                'standard_overhead_rate_per_m3' => 15000.00,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'code' => 'WC-MOLD',
+                'name' => 'Line Molding & Reinforcement',
+                'description' => 'Mold preparation, reinforcement assembly, and wire tensioning',
+                'capacity_qty_per_shift' => 50.00,
+                'capacity_m3_per_shift' => 30.000,
+                'shifts_per_day' => 2,
+                'is_active' => true,
+                'standard_labor_rate_per_m3' => 35000.00,
+                'standard_overhead_rate_per_m3' => 20000.00,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'code' => 'WC-CAST',
+                'name' => 'Line Casting & Compaction',
+                'description' => 'Concrete pouring, vibrating, and initial surface finishing',
+                'capacity_qty_per_shift' => 50.00,
+                'capacity_m3_per_shift' => 30.000,
+                'shifts_per_day' => 2,
+                'is_active' => true,
+                'standard_labor_rate_per_m3' => 30000.00,
+                'standard_overhead_rate_per_m3' => 18000.00,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'code' => 'WC-CURE',
+                'name' => 'Line Curing & Demolding',
+                'description' => 'Steam/water curing and subsequent demolding of concrete elements',
+                'capacity_qty_per_shift' => 50.00,
+                'capacity_m3_per_shift' => 30.000,
+                'shifts_per_day' => 3,
+                'is_active' => true,
+                'standard_labor_rate_per_m3' => 20000.00,
+                'standard_overhead_rate_per_m3' => 12000.00,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }

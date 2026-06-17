@@ -1,26 +1,21 @@
-﻿// KPI Drilldown Dialog — shows formula, data source, trend, and breakdown for any KPI.
+// KPI Drilldown Dialog — shows formula, data source, trend, and breakdown for any KPI.
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { Sigma, Database, TrendingUp, Layers } from "lucide-react";
-
-const synthTrend = (label) => {
-  const seed = label.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
-  const days = ["08 Feb", "09 Feb", "10 Feb", "11 Feb", "12 Feb", "13 Feb", "14 Feb"];
-  return days.map((d, i) => {
-    const base = 60 + ((seed + i * 11) % 35);
-    return { day: d, value: base + (i === 6 ? 8 : 0) };
-  });
-};
+import { Sigma, Database, TrendingUp, Layers, ExternalLink } from "lucide-react";
+import { NavLink } from "react-router-dom";
 
 const KPIDrilldownDialog = ({ open, onOpenChange, definition, currentValue, currentDelta, accent = "#0A6ED1" }) => {
   if (!definition) return null;
-  const trend = synthTrend(definition.label);
+  
+  const trend = definition.trend || [];
   const totalBreakdown = definition.breakdown
-    .filter((b) => typeof b.value === "number")
-    .reduce((s, b) => s + b.value, 0);
+    ? definition.breakdown
+        .filter((b) => typeof b.value === "number")
+        .reduce((s, b) => s + b.value, 0)
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -37,6 +32,23 @@ const KPIDrilldownDialog = ({ open, onOpenChange, definition, currentValue, curr
               {definition.deskripsi}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Metadata information */}
+          {definition.metadata && (
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-white/80 border-t border-white/10 pt-2">
+              {definition.metadata.last_updated && <span>Last Updated: {definition.metadata.last_updated}</span>}
+              {definition.metadata.confidence && (
+                <span className="flex items-center gap-1">
+                  Confidence: 
+                  <span className="font-semibold uppercase px-1 rounded text-[9px] bg-white/10">
+                    {definition.metadata.confidence}
+                  </span>
+                </span>
+              )}
+              {definition.metadata.source_type && <span>Source: {definition.metadata.source_type}</span>}
+            </div>
+          )}
+
           <div className="flex items-end gap-4 mt-3">
             <div>
               <div className="text-[10px] uppercase tracking-wider opacity-75">Nilai Saat Ini</div>
@@ -71,29 +83,36 @@ const KPIDrilldownDialog = ({ open, onOpenChange, definition, currentValue, curr
           <div className="border border-[#DFE3E8] rounded">
             <div className="flex items-center justify-between px-4 py-2 border-b border-[#EEF0F2]">
               <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#59687A] font-semibold">
-                <TrendingUp className="w-3 h-3" /> Tren 7 Hari Terakhir
+                <TrendingUp className="w-3 h-3" /> Tren Periode
               </div>
-              <div className="text-[10px] text-[#59687A] font-mono-num">data simulasi</div>
+              <div className="text-[10px] text-[#59687A] font-mono-num">data database</div>
             </div>
             <div className="h-32 px-2 py-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trend} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id={`grad-${definition.label.replace(/\s/g, "")}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={accent} stopOpacity={0.35} />
-                      <stop offset="100%" stopColor={accent} stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="2 4" stroke="#EEF0F2" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#59687A" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: "#59687A" }} axisLine={false} tickLine={false} width={28} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, padding: "4px 8px", borderRadius: 4, border: "1px solid #DFE3E8" }}
-                    labelStyle={{ fontWeight: 600, color: "#1C252E" }}
-                  />
-                  <Area type="monotone" dataKey="value" stroke={accent} strokeWidth={2} fill={`url(#grad-${definition.label.replace(/\s/g, "")})`} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {trend.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center bg-[#F8FAFC] rounded text-[#59687A]">
+                  <span className="text-xs font-semibold">No Historical Data</span>
+                  <span className="text-[10px] opacity-75 mt-0.5">Belum ada rekaman tren di database.</span>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trend} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id={`grad-${definition.label.replace(/\s/g, "")}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={accent} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={accent} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 4" stroke="#EEF0F2" vertical={false} />
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#59687A" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "#59687A" }} axisLine={false} tickLine={false} width={28} />
+                    <Tooltip
+                      contentStyle={{ fontSize: 11, padding: "4px 8px", borderRadius: 4, border: "1px solid #DFE3E8" }}
+                      labelStyle={{ fontWeight: 600, color: "#1C252E" }}
+                    />
+                    <Area type="monotone" dataKey="value" stroke={accent} strokeWidth={2} fill={`url(#grad-${definition.label.replace(/\s/g, "")})`} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -110,7 +129,7 @@ const KPIDrilldownDialog = ({ open, onOpenChange, definition, currentValue, curr
               )}
             </div>
             <div className="space-y-1.5" data-testid="kpi-breakdown-list">
-              {definition.breakdown.map((b, i) => {
+              {(definition.breakdown || []).map((b, i) => {
                 const num = typeof b.value === "number" ? b.value : 0;
                 const pct = totalBreakdown > 0 ? (num / totalBreakdown) * 100 : 0;
                 return (
@@ -119,7 +138,7 @@ const KPIDrilldownDialog = ({ open, onOpenChange, definition, currentValue, curr
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="text-xs text-[#1C252E] font-medium truncate">{b.label}</span>
                         <span className="text-xs font-mono-num font-semibold text-[#1C252E]">
-                          {b.value} {b.unit && <span className="text-[10px] text-[#59687A] font-sans">{b.unit}</span>}
+                          {b.value} {b.unit && <span className="text-[10px] text-[#59687A] font-sans font-normal">{b.unit}</span>}
                         </span>
                       </div>
                       <div className="h-1.5 bg-[#F4F6F8] rounded overflow-hidden">
@@ -127,7 +146,7 @@ const KPIDrilldownDialog = ({ open, onOpenChange, definition, currentValue, curr
                           className="h-full rounded transition-all"
                           style={{
                             width: typeof b.value === "number" && totalBreakdown > 0 ? `${pct}%` : "100%",
-                            backgroundColor: b.color || accent,
+                            backgroundColor: accent,
                             opacity: typeof b.value === "number" ? 1 : 0.4,
                           }}
                         />
@@ -138,6 +157,19 @@ const KPIDrilldownDialog = ({ open, onOpenChange, definition, currentValue, curr
               })}
             </div>
           </div>
+
+          {/* Navigation Path footer link */}
+          {definition.navigation_path && (
+            <div className="flex justify-end border-t border-[#EEF0F2] pt-4 mt-2">
+              <NavLink 
+                to={definition.navigation_path} 
+                onClick={() => onOpenChange(false)}
+                className="inline-flex items-center gap-1.5 justify-center rounded-md text-xs font-semibold h-8 px-4 bg-[#F4F6F8] hover:bg-[#E4E6E8] text-[#1C252E] transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Buka Modul Terkait
+              </NavLink>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
